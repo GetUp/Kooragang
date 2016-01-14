@@ -1,11 +1,19 @@
 {
   "name": "calling_tool",
+  "private": true,
   "version": "1.0.0",
   "description": "",
   "main": "ivr.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "heroku local -p 8080",
+    "web": "node ./app.js",
+    "worker": "node ./worker.js"
   },
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^1.14.2",
+    "express": "^4.13.3",
+    "plivo": "^0.3.3"
+  }
 }
