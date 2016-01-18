@@ -59,7 +59,7 @@ app.post('/response/ivr/', function(request, response) {
   } else if (digit === '2') {
     r.addPlay(PLIVO_SONG);
   } else {
-    r.addSpeak(WRONG_INPUT_MESSAGE);
+    r.addSpeak("POST route message");
   }
 
   console.log(r.toXML());
@@ -72,8 +72,8 @@ app.all('/response/tree/', function(request, response) {
   var text, params;
   var digit = request.body.Digits || request.query.Digits;
   if (digit === "1") {
-    text = "This message is being read out in English";
-    params = {'language': 'en-US'};
+    text = "Ce message est lu en français";
+    params = {'language': 'fr-FR'};
     r.addSpeak(text, params);
   } else if (digit === "2") {
     text = "Ce message est lu en français";
@@ -84,7 +84,7 @@ app.all('/response/tree/', function(request, response) {
     params = {'language': 'ru-RU'};
     r.addSpeak(text, params);
   } else {
-    r.addSpeak(WRONG_INPUT_MESSAGE);
+    r.addSpeak("ALL route message");
   }
 
   console.log(r.toXML());
