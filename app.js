@@ -25,7 +25,7 @@ app.all('/connect/', function(request, response) {
     if (digits === '1'){
       r.addSpeak('Connecting your call');
       var d = r.addDial();
-      d.addNumber('+61411653488'); // Rich's mobile
+      d.addNumber('+61413877188');
     } else {
       r.addSpeak('Invalid Digit');
     }
