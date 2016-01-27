@@ -7,6 +7,7 @@ const app = express();
 const logUrl = 'https://calling-tool-endpoint.herokuapp.com/log';
 const welcomeMessage = 'https://dl.dropboxusercontent.com/u/404666/getup/kooragang/welcome7.mp3';
 const briefingMessage = 'http://f.cl.ly/items/1a1d3q2D430Y43041d1h/briefing.mp3';
+const callEndBeep = 'https://dl.dropboxusercontent.com/u/404666/getup/kooragang/call_end_beep.wav';
 
 app.use(bodyParser.urlencoded({extended: true}));
 app.set('port', (process.env.PORT || 8080));
@@ -57,13 +58,14 @@ app.post('/call', (req, res) => {
     r.addSpeakAU(`You're about to call ${callee.name} from ${callee.location}`);
     r.addSpeakAU('Press star at any time to hang up the call.');
     const d = r.addDial({
-      action:`${host}/survey`,
       callbackUrl: logUrl,
-      hangupOnStar: true
+      hangupOnStar: true,
+      redirect: false
     });
     d.addNumber(callee.number);
+    r.addPlay(callEndBeep);
   }
-
+  r.addRedirect(`${host}/survey`);
   res.send(r.toXML());
 });
 
