@@ -5,6 +5,7 @@ const bodyParser = require('body-parser');
 const app = express();
 
 const logUrl = 'https://calling-tool-endpoint.herokuapp.com/log';
+const welcomeMessage = 'https://dl.dropboxusercontent.com/u/404666/getup/kooragang/welcome7.mp3';
 const briefingMessage = 'http://f.cl.ly/items/1a1d3q2D430Y43041d1h/briefing.mp3';
 
 app.use(bodyParser.urlencoded({extended: true}));
@@ -28,7 +29,6 @@ app.get('/', (req, res) => { res.send('<_-.-_>I\'m awake.</_-.-_>') });
 app.get('/connect', (req, res) => {
   const r = plivo.Response();
   r.addWait({length: 2});
-  r.addSpeakAU('Welcome to the GetUp calling tool.');
 
   const params = {
     action: `${host}/call`,
@@ -38,7 +38,7 @@ app.get('/connect', (req, res) => {
     retries: '1'
   };
   const getdigits = r.addGetDigits(params);
-  getdigits.addSpeakAU('Hold the line for an introductory briefing, or if you\'ve heard it before, press 1 to skip straight to calling.');
+  getdigits.addPlay(welcomeMessage);
   getdigits.addPlay(briefingMessage);
 
   r.addRedirect(`${host}/call`);
@@ -76,8 +76,7 @@ app.post('/survey', (req, res) => {
     retries: 2,
     validDigits: ['1', '2']
   });
-  surveyResponse.addSpeakAU('Did the person agree to your question?');
-  surveyResponse.addSpeakAU('Press 1 for yes or 2 for no');
+  surveyResponse.addSpeakAU('Did the person agree to your question. Press 1 for yes or 2 for no');
 
   const callAgain = r.addGetDigits({
     action: `${host}/call`,
