@@ -113,7 +113,6 @@ app.post('/feedback', (req, res) => {
   r.addRecord({
     action: logUrl,
     maxLength: 30,
-    finishOnKey: '*',
     redirect: false
   });
   r.addSpeakAU('Thanks again for calling. We hope to see you again soon!');
