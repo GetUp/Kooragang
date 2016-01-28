@@ -126,9 +126,9 @@ app.listen(app.get('port'), () => {
 let count = 0;
 const callees = [
   {name: 'Tim', location: 'Picnic Point', number: '+61 413877188'},
-  {name: 'a busy person', location: 'somewhere at work', number: '+61 2 8318 0746'},
-  {name: 'a rude person', location: 'somewhere', number: '+61 2 8318 0738'},
-  {name: 'Kajute', location: 'Melbourne', number: '+61 2 8317 6364'},
+  {name: 'Kajute', location: 'Melbourne', number: '+61 2 8317 6364'}, // success
+  {name: 'a busy person', location: 'somewhere at work', number: '+61 2 8318 0746'},  // no thanks
+  {name: 'a rude person', location: 'somewhere', number: '+61 2 8318 0738'}, // hangup
 ];
 
 function retrieveCallee() {
