@@ -15,6 +15,7 @@
     "babel-cli": "^6.4.0",
     "body-parser": "^1.14.2",
     "express": "^4.13.3",
-    "plivo": "^0.3.3"
+    "plivo": "^0.3.3",
+    "request": "^2.69.0"
   }
 }

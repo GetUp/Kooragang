@@ -3,6 +3,7 @@ const express = require('express');
 const plivo = require('plivo');
 const bodyParser = require('body-parser');
 const app = express();
+const webhooks = require('./webhooks');
 
 const logUrl = 'https://calling-tool-endpoint.herokuapp.com/log';
 const welcomeMessage = 'https://dl.dropboxusercontent.com/u/404666/getup/kooragang/welcome7.mp3';
@@ -45,6 +46,7 @@ app.get('/connect', (req, res) => {
   r.addRedirect(`${host}/call`);
 
   res.send(r.toXML());
+  webhooks(`sessions/${req.query.From}`, { session: 'active', status: 'welcome message', call: {} });
 });
 
 app.post('/call', (req, res) => {
@@ -64,6 +66,7 @@ app.post('/call', (req, res) => {
     });
     d.addNumber(callee.number);
     r.addPlay(callEndBeep);
+    webhooks(`sessions/${req.body.From}`, Object.assign({session: 'active', status: 'calling', call: callee}));
   }
   r.addRedirect(`${host}/survey`);
   res.send(r.toXML());
@@ -71,6 +74,7 @@ app.post('/call', (req, res) => {
 
 app.post('/survey', (req, res) => {
   const r = plivo.Response();
+  webhooks(`sessions/${req.body.From}`, {session: 'active', status: 'survey'});
 
   const surveyResponse = r.addGetDigits({
     action: logUrl,
@@ -94,6 +98,7 @@ app.post('/survey', (req, res) => {
 
 app.post('/disconnect', (req, res) => {
   const r = plivo.Response();
+  webhooks(`session/${req.body.From}`, {session: 'active', status: 'feedback', call: {}});
 
   r.addSpeakAU('Thank you very much for calling.');
 
