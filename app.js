@@ -123,12 +123,15 @@ app.listen(app.get('port'), () => {
   console.log('App is running on port', app.get('port'));
 });
 
+let count = 0;
+const callees = [
+  {name: 'Tim', location: 'Picnic Point', number: '+61 413877188'},
+  {name: 'a busy person', location: 'somewhere at work', number: '+61 2 8318 0746'},
+  {name: 'a rude person', location: 'somewhere', number: '+61 2 8318 0738'},
+  {name: 'Kajute', location: 'Melbourne', number: '+61 2 8317 6364'},
+];
+
 function retrieveCallee() {
-  const callees = [
-    {name: 'Tim', location: 'Picnic Point', number: '+61 413877188'},
-    {name: 'a busy person', location: 'somewhere at work', number: '+61 2 8318 0746'},
-    {name: 'a rude person', location: 'somewhere', number: '+61 2 8318 0738'},
-    {name: 'Kajute', location: 'Melbourne', number: '+61 2 8317 6364'},
-  ];
-  return callees[Math.floor(Math.random()*callees.length)];
+  count += 1
+  return callees[count % callees.length];
 }
