@@ -6,7 +6,7 @@
   "scripts": {
     "start": "heroku local -p 8080",
     "web": "./node_modules/.bin/babel-node ./index.js",
-    "test": "find . -name '*.js' -not -path './node_modules/*' | entr -c mocha"
+    "test": "find . -name '*.js' -not -path './node_modules/*' | entr -c mocha --compilers js:babel-register"
   },
   "author": "",
   "license": "ISC",
@@ -20,6 +20,7 @@
     "request": "^2.69.0"
   },
   "devDependencies": {
+    "babel-register": "^6.4.3",
     "mocha": "^2.4.5",
     "supertest": "^1.1.0"
   }

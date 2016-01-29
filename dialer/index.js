@@ -1,4 +1,3 @@
-'use strict';
 const express = require('express');
 const plivo = require('plivo');
 const bodyParser = require('body-parser');

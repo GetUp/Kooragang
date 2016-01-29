@@ -1,5 +1,3 @@
-'use strict';
-
 const app = require('../dialer');
 const request = require('supertest')(app);
 
