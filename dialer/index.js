@@ -11,7 +11,6 @@ const briefingMessage = 'http://f.cl.ly/items/1a1d3q2D430Y43041d1h/briefing.mp3'
 const callEndBeep = 'https://dl.dropboxusercontent.com/u/404666/getup/kooragang/call_end_beep.wav';
 
 app.use(bodyParser.urlencoded({extended: true}));
-app.set('port', (process.env.PORT || 8080));
 
 const response = Object.getPrototypeOf(plivo.Response());
 response.addSpeakAU = function(text) {
@@ -60,7 +59,7 @@ app.post('/call', (req, res) => {
     r.addSpeakAU(`You're about to call ${callee.name} from ${callee.location}`);
     r.addSpeakAU('Press star at any time to hang up the call.');
     const d = r.addDial({
-      callbackUrl: logUrl,
+      callbackUrl: `${host}/hangup`,
       hangupOnStar: true,
       redirect: false
     });
@@ -124,10 +123,6 @@ app.post('/feedback', (req, res) => {
   res.send(r.toXML());
 })
 
-app.listen(app.get('port'), () => {
-  console.log('App is running on port', app.get('port'));
-});
-
 let count = 0;
 const callees = [
   {name: 'Tim', location: 'Picnic Point', number: '+61 413877188'},
@@ -140,3 +135,5 @@ function retrieveCallee() {
   count += 1
   return callees[count % callees.length];
 }
+
+module.exports = app;
