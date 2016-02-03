@@ -1,9 +1,12 @@
 const app = require('../dialer');
 const request = require('supertest')(app);
+const expect = require('expect.js');
+const pgp = require('pg-promise')();
+const db = pgp(process.env.DATABASE_URL || 'postgres://localhost:5432/cte');
 
 describe('survey question', () => {
   it('is asked when the caller has a conversation longer than 10s', (done) => {
-    let long_convo = { DialBLegDuration: "11" };
+    const long_convo = { DialBLegDuration: "11" };
     request
       .post('/hangup')
       .type('form')
@@ -16,7 +19,7 @@ describe('survey question', () => {
   });
 
   it('is not asked when the caller has a conversation of 10s or shorter', (done) => {
-    let short_convo = { DialBLegDuration: "1" };
+    const short_convo = { DialBLegDuration: "1" };
     request
       .post('/hangup')
       .type('form')
@@ -26,6 +29,34 @@ describe('survey question', () => {
       .expect(/call_again/)
       .expect(/survey/)
       .end(done);
+  });
+});
+
+describe('survey question persistance', () => {
+  afterEach((done) => db.none('TRUNCATE survey_results;', done))
+
+  it('is persisted with user details', (done) => {
+    const UUID = "fakeUUID"
+    const DialBLegTo = "61299999999"
+    request
+      .post(`/survey_result?q=rsvp&calleeUUID=${UUID}&calleeNumber=${DialBLegTo}`)
+      .type('form')
+      .send({ Digits: '2' })
+      .expect(200)
+      .expect('Content-Type', /xml/)
+      .expect(/call_again/)
+      .end((err, res) => {
+        if (err) return done(err);
+
+        db.query(`SELECT * FROM survey_results WHERE callee_uuid='${UUID}'`)
+          .then((data) => {
+            expect(data).to.have.length(1);
+            expect(data[0].callee_uuid).to.be(UUID);
+            done();
+          })
+          .catch(done);
+      });
+
   });
 });
 

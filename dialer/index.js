@@ -28,19 +28,14 @@ app.use((req, res, next) => {
 const appUrl = endpoint => `${host}/${endpoint}`;
 const logUrl = () => appUrl('log');
 
-app.get('/', (req, res) => {
+app.get('/', (req, res, next) => {
   res.set('Content-Type', 'application/json');
   db.query('SELECT * FROM logs ORDER BY id DESC')
-    .then((data) => {
-      res.send(data);
-    })
-    .catch((err) => {
-      console.error(err);
-      res.sendStatus(500);
-    });
+    .then(res.send.bind(res))
+    .catch(next);
 });
 
-app.get('/connect', (req, res) => {
+app.post('/connect', (req, res) => {
   const r = plivo.Response();
   r.addWait({length: 2});
 
@@ -89,7 +84,7 @@ app.post('/hangup', (req, res) => {
     r.addSpeakAU('short call detected; calling again');
     r.addRedirect(appUrl('call_again'));
   }
-  r.addRedirect(appUrl('survey'));
+  r.addRedirect(appUrl(`survey?calleeUUID=${req.body.DialBLegUUID}&calleeNumber=${req.body.DialBLegTo}`));
   res.send(r.toXML());
 });
 
@@ -98,14 +93,13 @@ app.post('/survey', (req, res) => {
   webhooks(`sessions/${req.body.From}`, {session: 'active', status: 'survey'});
 
   const surveyResponse = r.addGetDigits({
-    action: logUrl(),
-    redirect: false,
+    action: appUrl(`survey_result?q=rsvp&calleeUUID=${req.query.DialBLegUUID}&calleeNumber=${req.query.DialBLegTo}`),
+    redirect: true,
     retries: 2,
     validDigits: ['1', '2']
   });
   surveyResponse.addSpeakAU('Did the person agree to your question. Press 1 for yes or 2 for no');
 
-  r.addRedirect(appUrl('call_again'));
   res.send(r.toXML());
 });
 
@@ -151,15 +145,29 @@ app.post('/feedback', (req, res) => {
   res.send(r.toXML());
 });
 
-app.post('/log', (req, res) => {
-  db.none('INSERT INTO logs(created_at, body) VALUES($1, $2)', [new Date(), req.body])
+const log = (body, cb) => {
+  db.none('INSERT INTO logs(created_at, body) VALUES($1, $2)', [new Date(), body])
+    .then(cb)
+    .catch(cb);
+}
+
+app.post('/log', (req, res) => log(res.body, (err) => res.sendStatus(err ? 500 : 200)));
+
+app.post('/survey_result', (req, res, next) => {
+  const data = {
+    callee_uuid: req.query.calleeUUID,
+    callee_number: req.query.calleeNumber,
+    question: req.query.q,
+    answer: req.body.Digits
+  }
+  const values = Object.keys(data).map(datum => `\$\{${datum}\}`)
+  db.none(`INSERT INTO survey_results(${Object.keys(data)}) VALUES(${values.join()})`, data)
     .then(() => {
-      res.sendStatus(200);
+      const r = plivo.Response();
+      r.addRedirect(appUrl('call_again'));
+      res.send(r.toXML());
     })
-    .catch((error) => {
-      console.error("ERROR:", error);
-      res.sendStatus(500);
-    });
+    .catch(next);
 });
 
 let count = 0;
