@@ -33,7 +33,7 @@ describe('survey question', () => {
 });
 
 describe('survey question persistance', () => {
-  afterEach((done) => db.none('TRUNCATE survey_results;', done))
+  beforeEach((done) => db.none('TRUNCATE survey_results;').then(done).catch(done))
 
   it('is persisted with user details', (done) => {
     const UUID = "fakeUUID"
@@ -60,9 +60,33 @@ describe('survey question persistance', () => {
   });
 });
 
+describe('log persistance', () => {
+  beforeEach((done) => db.none('TRUNCATE logs;').then(done).catch(done))
+
+  it('is persisted', (done) => {
+    const payload = { Digits: '2' };
+    request
+      .post(`/log`)
+      .type('form')
+      .send(payload)
+      .end((err, res) => {
+        if (err) return done(err);
+
+        db.query(`SELECT * FROM logs`)
+          .then((data) => {
+            expect(data).to.have.length(1);
+            expect(data[0].body).to.eql(payload);
+            done();
+          })
+          .catch(done);
+      });
+
+  });
+});
+
 describe('routing', () => {
   it('connect should redirect to call', (done) => {
-    request.get('/connect')
+    request.post('/connect')
       .expect(/Redirect\>http:\/\/127.0.0.1\/call/)
       .end(done);
   });

@@ -1,10 +1,23 @@
 const express = require('express');
 const plivo = require('plivo');
 const bodyParser = require('body-parser');
-const pgp = require('pg-promise')();
-const db = pgp(process.env.DATABASE_URL || 'postgres://localhost:5432/cte');
 const app = express();
 const webhooks = require('./webhooks');
+
+const objection = require('objection');
+const db = require('knex')({ client: 'pg',
+  connection: process.env.DATABASE_URL || 'postgres://localhost:5432/cte' });
+const Model = objection.Model;
+Model.knex(db);
+
+class Log extends Model {
+  static get tableName() { return 'logs' };
+}
+
+class SurveyResult extends Model {
+  static get tableName() { return 'survey_results' };
+}
+
 
 const welcomeMessage = 'https://dl.dropboxusercontent.com/u/404666/getup/kooragang/welcome7.mp3';
 const briefingMessage = 'http://f.cl.ly/items/1a1d3q2D430Y43041d1h/briefing.mp3';
@@ -30,9 +43,7 @@ const logUrl = () => appUrl('log');
 
 app.get('/', (req, res, next) => {
   res.set('Content-Type', 'application/json');
-  db.query('SELECT * FROM logs ORDER BY id DESC')
-    .then(res.send.bind(res))
-    .catch(next);
+  Log.query().orderBy('id', 'desc').then(res.send.bind(res));
 });
 
 app.post('/connect', (req, res) => {
@@ -145,13 +156,14 @@ app.post('/feedback', (req, res) => {
   res.send(r.toXML());
 });
 
-const log = (body, cb) => {
-  db.none('INSERT INTO logs(created_at, body) VALUES($1, $2)', [new Date(), body])
-    .then(cb)
-    .catch(cb);
-}
+const log = (body, cb) => { Log.query().insert({body}).nodeify(cb) }
 
-app.post('/log', (req, res) => log(res.body, (err) => res.sendStatus(err ? 500 : 200)));
+app.post('/log', (req, res) => {
+  log(req.body, (err, result) => {
+    if (err) return res.send(err);
+    res.sendStatus(200);
+  });
+});
 
 app.post('/survey_result', (req, res, next) => {
   const data = {
@@ -160,9 +172,7 @@ app.post('/survey_result', (req, res, next) => {
     question: req.query.q,
     answer: req.body.Digits
   }
-  const values = Object.keys(data).map(datum => `\$\{${datum}\}`)
-  db.none(`INSERT INTO survey_results(${Object.keys(data)}) VALUES(${values.join()})`, data)
-    .then(() => {
+  SurveyResult.query().insert(data).then(() => {
       const r = plivo.Response();
       r.addRedirect(appUrl('call_again'));
       res.send(r.toXML());
