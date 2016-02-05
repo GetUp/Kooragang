@@ -4,20 +4,7 @@ const bodyParser = require('body-parser');
 const app = express();
 const webhooks = require('./webhooks');
 
-const objection = require('objection');
-const db = require('knex')({ client: 'pg',
-  connection: process.env.DATABASE_URL || 'postgres://localhost:5432/cte' });
-const Model = objection.Model;
-Model.knex(db);
-
-class Log extends Model {
-  static get tableName() { return 'logs' };
-}
-
-class SurveyResult extends Model {
-  static get tableName() { return 'survey_results' };
-}
-
+const { Log, SurveyResult } = require('../models');
 
 const welcomeMessage = 'https://dl.dropboxusercontent.com/u/404666/getup/kooragang/welcome7.mp3';
 const briefingMessage = 'http://f.cl.ly/items/1a1d3q2D430Y43041d1h/briefing.mp3';

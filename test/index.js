@@ -1,8 +1,7 @@
 const app = require('../dialer');
 const request = require('supertest')(app);
 const expect = require('expect.js');
-const pgp = require('pg-promise')();
-const db = pgp(process.env.DATABASE_URL || 'postgres://localhost:5432/cte');
+const { Log, SurveyResult } = require('../models');
 
 describe('survey question', () => {
   it('is asked when the caller has a conversation longer than 10s', (done) => {
@@ -33,7 +32,7 @@ describe('survey question', () => {
 });
 
 describe('survey question persistance', () => {
-  beforeEach((done) => db.none('TRUNCATE survey_results;').then(done).catch(done))
+  beforeEach((done) => SurveyResult.query().truncate().nodeify(done))
 
   it('is persisted with user details', (done) => {
     const UUID = "fakeUUID"
@@ -48,7 +47,8 @@ describe('survey question persistance', () => {
       .end((err, res) => {
         if (err) return done(err);
 
-        db.query(`SELECT * FROM survey_results WHERE callee_uuid='${UUID}'`)
+        SurveyResult.query()
+          .where('callee_uuid', UUID)
           .then((data) => {
             expect(data).to.have.length(1);
             expect(data[0].callee_uuid).to.be(UUID);
@@ -61,7 +61,7 @@ describe('survey question persistance', () => {
 });
 
 describe('log persistance', () => {
-  beforeEach((done) => db.none('TRUNCATE logs;').then(done).catch(done))
+  beforeEach((done) => Log.query().truncate().nodeify(done))
 
   it('is persisted', (done) => {
     const payload = { Digits: '2' };
@@ -72,7 +72,7 @@ describe('log persistance', () => {
       .end((err, res) => {
         if (err) return done(err);
 
-        db.query(`SELECT * FROM logs`)
+        Log.query()
           .then((data) => {
             expect(data).to.have.length(1);
             expect(data[0].body).to.eql(payload);
