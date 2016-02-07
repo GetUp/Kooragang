@@ -4,6 +4,10 @@ exports.up = function(knex, Promise) {
       t.bigincrements('id').primary();
       t.timestamp('created_at').defaultTo(knex.fn.now());
 
+      t.string('UUID');
+      t.string('url');
+      t.json('params');
+      t.json('headers');
       t.json('body');
     })
     .createTable('survey_results', (t) => {

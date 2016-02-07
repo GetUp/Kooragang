@@ -31,7 +31,7 @@ describe('survey question', () => {
   });
 });
 
-describe('survey question persistance', () => {
+describe('survey question persistence', () => {
   beforeEach((done) => SurveyResult.query().truncate().nodeify(done))
 
   it('is persisted with user details', (done) => {
@@ -60,28 +60,36 @@ describe('survey question persistance', () => {
   });
 });
 
-describe('log persistance', () => {
+describe('logging', () => {
   beforeEach((done) => Log.query().truncate().nodeify(done))
 
-  it('is persisted', (done) => {
-    const payload = { Digits: '2' };
-    request
-      .post(`/log`)
-      .type('form')
-      .send(payload)
-      .end((err, res) => {
-        if (err) return done(err);
+  const UUID = 'asdfghjkl';
+  const payload = { callUUID: UUID };
+  const endpoints = app._router.stack
+    .filter(r => r.route).map(r => r.route.path);
 
-        Log.query()
-          .then((data) => {
-            expect(data).to.have.length(1);
-            expect(data[0].body).to.eql(payload);
-            done();
-          })
-          .catch(done);
-      });
+  endpoints.forEach(endpoint => {
+    it(`occurs for ${endpoint}`, (done) => {
+      request
+        .post(endpoint)
+        .type('form')
+        .send(payload)
+        .end((err, res) => {
+          if (err) return done(err);
 
-  });
+          Log.query()
+            .then((data) => {
+              expect(data).to.have.length(1);
+              expect(data[0].UUID).to.equal(UUID);
+              expect(data[0].url).to.equal(endpoint);
+              expect(data[0].body).to.eql(payload);
+              done();
+            })
+            .catch(done);
+        });
+
+    });
+  })
 });
 
 describe('routing', () => {

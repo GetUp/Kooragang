@@ -25,6 +25,8 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use((req, res, next) => log(req, next));
+
 const appUrl = endpoint => `${host}/${endpoint}`;
 const logUrl = () => appUrl('log');
 
@@ -91,7 +93,7 @@ app.post('/survey', (req, res) => {
   webhooks(`sessions/${req.body.From}`, {session: 'active', status: 'survey'});
 
   const surveyResponse = r.addGetDigits({
-    action: appUrl(`survey_result?q=rsvp&calleeUUID=${req.query.DialBLegUUID}&calleeNumber=${req.query.DialBLegTo}`),
+    action: appUrl(`survey_result?q=rsvp&calleeUUID=${req.query.calleeUUID}&calleeNumber=${req.query.calleeNumber}`),
     redirect: true,
     retries: 2,
     validDigits: ['1', '2']
@@ -143,14 +145,13 @@ app.post('/feedback', (req, res) => {
   res.send(r.toXML());
 });
 
-const log = (body, cb) => { Log.query().insert({body}).nodeify(cb) }
+const log = ({url, params, headers, body}, cb) => {
+  const UUID = body.callUUID;
+  Log.query().insert({UUID, url, params, headers, body}).nodeify(cb)
+};
 
-app.post('/log', (req, res) => {
-  log(req.body, (err, result) => {
-    if (err) return res.send(err);
-    res.sendStatus(200);
-  });
-});
+// already logged in middleware
+app.post('/log', (req, res) => res.sendStatus(200));
 
 app.post('/survey_result', (req, res, next) => {
   const data = {
