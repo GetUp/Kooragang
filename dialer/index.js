@@ -42,9 +42,9 @@ app.post('/connect', (req, res) => {
   const params = {
     action: appUrl('call'),
     method: 'POST',
-    timeout: '5',
-    numDigits: '1',
-    retries: '1'
+    timeout: 5,
+    numDigits: 1,
+    retries: 1
   };
   const getdigits = r.addGetDigits(params);
   getdigits.addPlay(welcomeMessage);
@@ -65,7 +65,7 @@ app.post('/call', (req, res) => {
   } else {
     const callee = retrieveCallee();
     r.addSpeakAU(`You're about to call ${callee.name} from ${callee.location}`);
-    r.addSpeakAU('Press star at any time to hang up the call.');
+    r.addSpeakAU('To hang up the call at any time, press star.');
     const d = r.addDial({
       action: appUrl('hangup'),
       callbackUrl: logUrl(),
@@ -96,9 +96,11 @@ app.post('/survey', (req, res) => {
     action: appUrl(`survey_result?q=rsvp&calleeUUID=${req.query.calleeUUID}&calleeNumber=${req.query.calleeNumber}`),
     redirect: true,
     retries: 2,
-    validDigits: ['1', '2']
+    validDigits: [1, 2, 3, 7, 9]
   });
-  surveyResponse.addSpeakAU('Did the person agree to your question. Press 1 for yes or 2 for no');
+  surveyResponse.addSpeakAU('Are they coming to your GetTogether? For no, press 1. For maybe, press 2. For yes, press 3.');
+  surveyResponse.addSpeakAU('If we should call them back at a later time, press 7.');
+  surveyResponse.addSpeakAU('If the number was incorrect, press 9.');
 
   res.send(r.toXML());
 });
@@ -107,10 +109,10 @@ app.post('/call_again', (req, res) => {
   const r = plivo.Response();
   const callAgain = r.addGetDigits({
     action: appUrl('call'),
-    timeout: '60',
+    timeout: 60,
     numDigits: 1
   });
-  callAgain.addSpeakAU('Press 1 when you\'re ready to call again or press star to finish your calling session.');
+  callAgain.addSpeakAU('When you\'re ready to call again, press 1. To finish your calling session, press star.');
 
   r.addRedirect(appUrl('disconnect'));
 
@@ -128,7 +130,7 @@ app.post('/disconnect', (req, res) => {
     timeout: 5,
     retries: 2
   });
-  feedback.addSpeakAU('Press 1 to give feedback about your calling session or simply hang up.');
+  feedback.addSpeakAU('To give feedback about your calling session, press 1. Otherwise, you can hang up - thanks again for calling. We hope to see you again soon!');
 
   res.send(r.toXML());
 });
