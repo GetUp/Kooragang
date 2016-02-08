@@ -77,7 +77,7 @@ describe('survey question persistence', () => {
 });
 
 describe('logging', () => {
-  beforeEach((done) => Log.query().truncate().nodeify(done))
+  beforeEach((done) => Log.raw('truncate logs restart identity cascade').nodeify(done));
 
   const UUID = 'asdfghjkl';
   const payload = { CallUUID: UUID };
@@ -115,6 +115,24 @@ describe('logging', () => {
       })
       .catch(done);
     });
+  });
+
+  it('returns the log id so we can associate it w/ other things', (done) => {
+    request
+      .post('/survey_result')
+      .type('form')
+      .send(payload)
+      .end((err, res) => {
+        if (err) return done(err);
+
+        SurveyResult.query()
+          .then((data) => {
+            expect(data).to.have.length(1);
+            expect(data[0].log_id).to.equal('1');
+            done();
+          })
+          .catch(done);
+      });
   });
 });
 

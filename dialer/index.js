@@ -25,7 +25,12 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use((req, res, next) => log(req, next));
+app.use((req, res, next) => {
+  log(req, (err, result) => {
+    res.locals.log_id = result.id;
+    next();
+  })
+});
 
 const appUrl = endpoint => `${host}/${endpoint}`;
 
@@ -151,6 +156,7 @@ const answer = (digit) => {
 
 app.post('/survey_result', (req, res, next) => {
   const data = {
+    log_id: res.locals.log_id,
     caller_uuid: req.body.CallUUID,
     callee_uuid: req.query.calleeUUID,
     callee_number: req.query.calleeNumber,
@@ -196,7 +202,7 @@ app.post('/feedback', (req, res) => {
 const log = ({method, url, body, query, params, headers}, cb) => {
   if (method === 'GET') return cb();
   const UUID = body.CallUUID;
-  Log.query().insert({UUID, url, body, query, params, headers}).nodeify(cb)
+  Log.query().insert({UUID, url, body, query, params, headers}).nodeify(cb);
 };
 
 // already logged in middleware

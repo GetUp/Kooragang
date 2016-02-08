@@ -13,9 +13,9 @@ exports.up = function(knex, Promise) {
     })
     .createTable('survey_results', (t) => {
       t.increments();
+      t.bigInteger('log_id').references('id').inTable('logs');
       t.timestamp('created_at').defaultTo(knex.fn.now());
       t.timestamp('updated_at').defaultTo(knex.fn.now());
-
       t.string('caller_uuid');
       t.string('callee_uuid');
       t.string('callee_number');
