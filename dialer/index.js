@@ -38,6 +38,13 @@ app.post('/connect', (req, res) => {
   const r = plivo.Response();
   r.addWait({length: 2});
 
+  // r.addRecord({
+  //   action: appUrl('log'),
+  //   maxLength: 60*60,
+  //   recordSession: true,
+  //   redirect: false
+  // });
+
   const params = {
     action: appUrl('call'),
     method: 'POST',
