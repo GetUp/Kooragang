@@ -70,7 +70,8 @@ app.post('/call', (req, res) => {
     const d = r.addDial({
       action: appUrl('hangup'),
       callbackUrl: logUrl(),
-      hangupOnStar: true
+      hangupOnStar: true,
+      timeout: 30
     });
     d.addNumber(callee.number);
     webhooks(`sessions/${req.body.From}`, Object.assign({session: 'active', status: 'calling', call: callee}));
