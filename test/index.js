@@ -4,7 +4,7 @@ const expect = require('expect.js');
 const { Log, SurveyResult } = require('../models');
 
 describe('survey question', () => {
-  it('is asked when the caller has a conversation longer than 10s', (done) => {
+  it.skip('is asked when the caller has a conversation longer than 10s', (done) => {
     const long_convo = { DialBLegDuration: "11" };
     request
       .post('/hangup')
@@ -17,7 +17,7 @@ describe('survey question', () => {
       .end(done);
   });
 
-  it('is not asked when the caller has a conversation of 10s or shorter', (done) => {
+  it.skip('is not asked when the caller has a conversation of 10s or shorter', (done) => {
     const short_convo = { DialBLegDuration: "1" };
     request
       .post('/hangup')

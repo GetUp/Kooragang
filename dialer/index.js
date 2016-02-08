@@ -81,7 +81,7 @@ app.post('/call', (req, res) => {
 app.post('/hangup', (req, res) => {
   const r = plivo.Response();
   r.addPlay(callEndBeep);
-  if (parseInt(req.body.DialBLegDuration) <= 10) {
+  if (false) { // need a way to detect call length; log arrives after this route is hit
     r.addSpeakAU('short call detected; calling again');
     r.addRedirect(appUrl('call_again'));
   }
