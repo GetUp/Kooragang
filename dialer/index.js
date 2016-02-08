@@ -94,7 +94,8 @@ app.post('/call_again', (req, res) => {
   const r = plivo.Response();
   const callAgain = r.addGetDigits({
     action: appUrl('call'),
-    timeout: 60,
+    timeout: 10,
+    retries: 6,
     numDigits: 1
   });
   callAgain.addSpeakAU('When you\'re ready to call again, press 1. To finish your calling session, press star.');
