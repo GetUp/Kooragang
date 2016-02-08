@@ -93,19 +93,29 @@ describe('logging', () => {
         .end((err, res) => {
           if (err) return done(err);
 
-          Log.query()
-            .then((data) => {
-              expect(data).to.have.length(1);
-              expect(data[0].UUID).to.equal(UUID);
-              expect(data[0].url).to.equal(endpoint);
-              expect(data[0].body).to.eql(payload);
-              done();
-            })
-            .catch(done);
+          Log.query().then((data) => {
+            expect(data).to.have.length(1);
+            expect(data[0].UUID).to.equal(UUID);
+            expect(data[0].url).to.equal(endpoint);
+            expect(data[0].body).to.eql(payload);
+            done();
+          })
+          .catch(done);
         });
-
     });
-  })
+  });
+
+  it('does not occur for GET requests', (done) => {
+    request.get('/').end((err, res) => {
+      if (err) return done(err);
+
+      Log.query().then((data) => {
+        expect(data).to.have.length(0);
+        done();
+      })
+      .catch(done);
+    });
+  });
 });
 
 describe('routing', () => {

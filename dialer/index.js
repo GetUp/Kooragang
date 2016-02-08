@@ -193,7 +193,8 @@ app.post('/feedback', (req, res) => {
   res.send(r.toXML());
 });
 
-const log = ({url, body, query, params, headers}, cb) => {
+const log = ({method, url, body, query, params, headers}, cb) => {
+  if (method === 'GET') return cb();
   const UUID = body.CallUUID;
   Log.query().insert({UUID, url, body, query, params, headers}).nodeify(cb)
 };
