@@ -44,7 +44,8 @@ app.post('/connect', (req, res) => {
     method: 'POST',
     timeout: 5,
     numDigits: 1,
-    retries: 1
+    retries: 1,
+    validDigits: [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]
   };
   const getdigits = r.addGetDigits(params);
   getdigits.addPlay(welcomeMessage);
@@ -88,23 +89,6 @@ app.post('/hangup', (req, res) => {
   res.send(r.toXML());
 });
 
-app.post('/survey', (req, res) => {
-  const r = plivo.Response();
-  webhooks(`sessions/${req.body.From}`, {session: 'active', status: 'survey'});
-
-  const surveyResponse = r.addGetDigits({
-    action: appUrl(`survey_result?q=rsvp&calleeUUID=${req.query.calleeUUID}&calleeNumber=${req.query.calleeNumber}`),
-    redirect: true,
-    retries: 2,
-    validDigits: [1, 2, 3, 7, 9]
-  });
-  surveyResponse.addSpeakAU('Are they coming to your GetTogether? For no, press 1. For maybe, press 2. For yes, press 3.');
-  surveyResponse.addSpeakAU('If we should call them back at a later time, press 7.');
-  surveyResponse.addSpeakAU('If the number was incorrect, press 9.');
-
-  res.send(r.toXML());
-});
-
 app.post('/call_again', (req, res) => {
   const r = plivo.Response();
   const callAgain = r.addGetDigits({
@@ -117,6 +101,51 @@ app.post('/call_again', (req, res) => {
   r.addRedirect(appUrl('disconnect'));
 
   res.send(r.toXML());
+});
+
+app.post('/survey', (req, res) => {
+  const r = plivo.Response();
+  webhooks(`sessions/${req.body.From}`, {session: 'active', status: 'survey'});
+
+  const surveyResponse = r.addGetDigits({
+    action: appUrl(`survey_result?q=rsvp&calleeUUID=${req.query.calleeUUID}&calleeNumber=${req.query.calleeNumber}`),
+    redirect: true,
+    retries: 10,
+    numDigits: 1,
+    validDigits: [1, 2, 3, 7, 9]
+  });
+  surveyResponse.addSpeakAU('Are they coming to your GetTogether? For no, press 1. For maybe, press 2. For yes, press 3.');
+  surveyResponse.addSpeakAU('If we should call them back at a later time, press 7.');
+  surveyResponse.addSpeakAU('If the number was incorrect, press 9.');
+  surveyResponse.addSpeakAU('To hear these options again, press hash.');
+
+  res.send(r.toXML());
+});
+
+const answer = (digit) => {
+  const options = {
+    '1': 'no',
+    '2': 'maybe',
+    '3': 'yes',
+    '7': 'call_back',
+    '9': 'number_incorrect'
+  };
+  return options[digit];
+}
+
+app.post('/survey_result', (req, res, next) => {
+  const data = {
+    callee_uuid: req.query.calleeUUID,
+    callee_number: req.query.calleeNumber,
+    question: req.query.q,
+    answer: answer(req.body.Digits)
+  }
+  SurveyResult.query().insert(data).then(() => {
+      const r = plivo.Response();
+      r.addRedirect(appUrl('call_again'));
+      res.send(r.toXML());
+    })
+    .catch(next);
 });
 
 app.post('/disconnect', (req, res) => {
@@ -148,27 +177,12 @@ app.post('/feedback', (req, res) => {
 });
 
 const log = ({url, params, headers, body}, cb) => {
-  const UUID = body.callUUID;
+  const UUID = body.CallUUID;
   Log.query().insert({UUID, url, params, headers, body}).nodeify(cb)
 };
 
 // already logged in middleware
 app.post('/log', (req, res) => res.sendStatus(200));
-
-app.post('/survey_result', (req, res, next) => {
-  const data = {
-    callee_uuid: req.query.calleeUUID,
-    callee_number: req.query.calleeNumber,
-    question: req.query.q,
-    answer: req.body.Digits
-  }
-  SurveyResult.query().insert(data).then(() => {
-      const r = plivo.Response();
-      r.addRedirect(appUrl('call_again'));
-      res.send(r.toXML());
-    })
-    .catch(next);
-});
 
 let count = 0;
 const callees = [

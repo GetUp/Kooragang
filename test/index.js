@@ -56,7 +56,23 @@ describe('survey question persistence', () => {
           })
           .catch(done);
       });
+  });
 
+  it('stores the answer, not the digit', (done) => {
+    request
+      .post('/survey_result')
+      .type('form')
+      .send({ Digits: '2' })
+      .end((err, res) => {
+        if (err) return done(err);
+
+        SurveyResult.query().then((data) => {
+          expect(data).to.have.length(1);
+          expect(data[0].answer).to.be('maybe');
+          done();
+        })
+        .catch(done);
+      });
   });
 });
 
@@ -64,7 +80,7 @@ describe('logging', () => {
   beforeEach((done) => Log.query().truncate().nodeify(done))
 
   const UUID = 'asdfghjkl';
-  const payload = { callUUID: UUID };
+  const payload = { CallUUID: UUID };
   const endpoints = app._router.stack
     .filter(r => r.route).map(r => r.route.path);
 
