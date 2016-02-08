@@ -137,6 +137,7 @@ const answer = (digit) => {
 
 app.post('/survey_result', (req, res, next) => {
   const data = {
+    caller_uuid: req.body.CallUUID,
     callee_uuid: req.query.calleeUUID,
     callee_number: req.query.calleeNumber,
     question: req.query.q,
@@ -178,9 +179,9 @@ app.post('/feedback', (req, res) => {
   res.send(r.toXML());
 });
 
-const log = ({url, params, headers, body}, cb) => {
+const log = ({url, body, query, params, headers}, cb) => {
   const UUID = body.CallUUID;
-  Log.query().insert({UUID, url, params, headers, body}).nodeify(cb)
+  Log.query().insert({UUID, url, body, query, params, headers}).nodeify(cb)
 };
 
 // already logged in middleware

@@ -6,15 +6,17 @@ exports.up = function(knex, Promise) {
 
       t.string('UUID');
       t.string('url');
+      t.json('body');
+      t.json('query');
       t.json('params');
       t.json('headers');
-      t.json('body');
     })
     .createTable('survey_results', (t) => {
       t.increments();
       t.timestamp('created_at').defaultTo(knex.fn.now());
       t.timestamp('updated_at').defaultTo(knex.fn.now());
 
+      t.string('caller_uuid');
       t.string('callee_uuid');
       t.string('callee_number');
       t.string('question');
