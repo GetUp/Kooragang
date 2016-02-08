@@ -115,9 +115,9 @@ describe('routing', () => {
       .end(done);
   });
 
-  it('call should "action" to hangup & callback to log', (done) => {
+  it('/call redirects to hangup & calls back to log', (done) => {
     request.post('/call')
-      .expect(/action="http:\/\/127.0.0.1\/hangup/)
+      .expect(/Redirect\>http:\/\/127.0.0.1\/hangup/)
       .expect(/callbackUrl="http:\/\/127.0.0.1\/log/)
       .end(done);
   });

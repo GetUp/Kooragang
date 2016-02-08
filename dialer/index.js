@@ -28,7 +28,6 @@ app.use((req, res, next) => {
 app.use((req, res, next) => log(req, next));
 
 const appUrl = endpoint => `${host}/${endpoint}`;
-const logUrl = () => appUrl('log');
 
 app.get('/', (req, res, next) => {
   res.set('Content-Type', 'application/json');
@@ -68,12 +67,14 @@ app.post('/call', (req, res) => {
     r.addSpeakAU(`You're about to call ${callee.name} from ${callee.location}`);
     r.addSpeakAU('To hang up the call at any time, press star.');
     const d = r.addDial({
-      action: appUrl('hangup'),
-      callbackUrl: logUrl(),
+      callbackUrl: appUrl('log'),
       hangupOnStar: true,
-      timeout: 30
+      timeout: 30,
+      redirect: false
     });
     d.addNumber(callee.number);
+    r.addPlay(callEndBeep);
+    r.addRedirect(appUrl('hangup'));
     webhooks(`sessions/${req.body.From}`, Object.assign({session: 'active', status: 'calling', call: callee}));
   }
   res.send(r.toXML());
@@ -81,7 +82,6 @@ app.post('/call', (req, res) => {
 
 app.post('/hangup', (req, res) => {
   const r = plivo.Response();
-  r.addPlay(callEndBeep);
   if (false) { // need a way to detect call length; log arrives after this route is hit
     r.addSpeakAU('short call detected; calling again');
     r.addRedirect(appUrl('call_again'));
@@ -171,7 +171,7 @@ app.post('/feedback', (req, res) => {
   const r = plivo.Response();
   r.addSpeakAU('Please leave a short 30 second message after the beep. If you\'d like a response, be sure to leave your name and number.');
   r.addRecord({
-    action: logUrl(),
+    action: appUrl('log'),
     maxLength: 30,
     redirect: false
   });
