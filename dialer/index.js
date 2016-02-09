@@ -26,6 +26,7 @@ app.use((req, res, next) => {
 });
 
 app.use((req, res, next) => {
+  if (req.method === 'GET') return next();
   log(req, (err, result) => {
     res.locals.log_id = result.id;
     next();
@@ -34,10 +35,7 @@ app.use((req, res, next) => {
 
 const appUrl = endpoint => `${host}/${endpoint}`;
 
-app.get('/', (req, res, next) => {
-  res.set('Content-Type', 'application/json');
-  Log.query().limit(100).orderBy('id', 'desc').then(res.send.bind(res));
-});
+app.get('/', (req, res) => res.send('<_-.-_>I\'m awake.</_-.-_>'));
 
 app.post('/connect', (req, res) => {
   const r = plivo.Response();
