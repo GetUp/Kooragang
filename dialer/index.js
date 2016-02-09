@@ -210,10 +210,8 @@ app.post('/log', (req, res) => res.sendStatus(200));
 
 let count = 0;
 const callees = [
-  {name: 'Community Caller 1', location: 'GetUp Office', number: '+61 455024575'},
-  {name: 'Kajute', location: 'Melbourne', number: '+61 2 8317 6364'}, // success
-  {name: 'a busy person', location: 'somewhere at work', number: '+61 2 8318 0746'},  // no thanks
-  {name: 'a rude person', location: 'somewhere', number: '+61 2 8318 0738'}, // hangup
+  {name: 'Chris', location: 'Chermside', number: '+61 455 024 575'},
+  {name: 'Robyn', location: 'Manly West', number: '+61 455 023 874'},
 ];
 
 function retrieveCallee() {
