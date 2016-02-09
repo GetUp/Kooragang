@@ -48,24 +48,46 @@ app.post('/connect', (req, res) => {
   //   redirect: false
   // });
 
+  r.addSpeakAU('Hi! Thanks for agreeing to call other GetUp members for the Solar Supercharge Social Event.');
+  r.addPlay('http://www.xamuel.com/blank-mp3-files/quartersec.mp3');
+  r.addSpeakAU('If you\'ve heard the briefing before, press 1 at any time to skip straight to calling.');
+
   const params = {
     action: appUrl('call'),
     method: 'POST',
     timeout: 5,
     numDigits: 1,
-    retries: 1,
-    validDigits: [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]
+    retries: 10,
+    validDigits: [1]
   };
-  const getdigits = r.addGetDigits(params);
-  getdigits.addSpeakAU('Welcome to the GetUp calling tool. If you\'ve heard the briefing before, press 1 at any time to skip straight to calling.');
-  getdigits.addPlay('http://www.xamuel.com/blank-mp3-files/3sec.mp3');
-  getdigits.addSpeakAU('In this session, you\'ll be calling active GetUp members who live near Queensland to ask if they\'d be interested in attending a conference on solar power that is being jointly organised by Solar Citizens and GetUp');
-  getdigits.addSpeakAU('You may like to tell them about the interesting speakers who will be appearing at the conference, among other things.');
-  getdigits.addSpeakAU('It\'s important to be very polite and listen, but also aware that the more calls you can make, the more people will hear about this fantastic local opportunity for supporting a transition to renewable energy technologies in Queensland.');
-  getdigits.addSpeakAU('After this message, you\'ll dive straight into calling.  After each call, there\'ll be a voice prompt to record the result of the call and you\'ll be given the opportunity to call another member or finish your session.');
-  getdigits.addSpeakAU('Thank you very much for helping to spread the word about the Solar Supercharge National Action Summit.');
-  // getdigits.addPlay(welcomeMessage);
-  // getdigits.addPlay(briefingMessage);
+
+  const briefing = r.addGetDigits(params);
+  briefing.addPlay('http://www.xamuel.com/blank-mp3-files/halfsec.mp3');
+  briefing.addSpeakAU('In this session, you\'ll be calling GetUp members who\'ve volunteered within the past year and live in Brisbane.');
+  briefing.addPlay('http://www.xamuel.com/blank-mp3-files/quartersec.mp3');
+  briefing.addSpeakAU('You\'ll be inviting them to attend the "Solar Supercharge Social Event" this coming Sunday.');
+
+  briefing.addPlay('http://www.xamuel.com/blank-mp3-files/halfsec.mp3');
+  briefing.addSpeakAU('The event will be hosted by GetUp\'s National Director, Paul Oosting and GetUp\'s Renewable Energy Campaigner, Miriam Lions.');
+  briefing.addPlay('http://www.xamuel.com/blank-mp3-files/quartersec.mp3');
+  briefing.addSpeakAU('The event will be for the most committed GetUp members to hear all about the plans for the upcoming federal election.');
+  briefing.addPlay('http://www.xamuel.com/blank-mp3-files/quartersec.mp3');
+  briefing.addSpeakAU('The event will be on Sunday night, February 14th, between 6pm and 7 30pm at "Irish Murphy\'s" pub in Queen Street Mall, Brisbane.');
+
+  briefing.addPlay('http://www.xamuel.com/blank-mp3-files/halfsec.mp3');
+  briefing.addSpeakAU('During the calls, it\'s important to be very polite and listen.  However, be aware that the more calls you can make, the more people will hear about this fantastic opportunity to support renewable energy.');
+  briefing.addPlay('http://www.xamuel.com/blank-mp3-files/quartersec.mp3');
+  briefing.addSpeakAU('After this message, you\'ll dive straight into calling.  After each call, there\'ll be a voice prompt to record the result of the call, and you\'ll be given the opportunity to call another member, or finish your session.');
+  briefing.addPlay('http://www.xamuel.com/blank-mp3-files/quartersec.mp3');
+  briefing.addSpeakAU('If the call goes straight to voicemail, don\'t worry about leaving a message.');
+  briefing.addPlay('http://www.xamuel.com/blank-mp3-files/quartersec.mp3');
+  briefing.addSpeakAU('Thank you very much for helping to spread the word about the Solar Supercharge Social Event.');
+
+  briefing.addPlay('http://www.xamuel.com/blank-mp3-files/halfsec.mp3');
+  briefing.addSpeakAU('This message will automatically replay until you press 1 on your phone key pad.');
+
+  // briefing.addPlay(welcomeMessage);
+  // briefing.addPlay(briefingMessage);
 
   r.addRedirect(appUrl('call'));
   // console.log()
@@ -133,7 +155,7 @@ app.post('/survey', (req, res) => {
     numDigits: 1,
     validDigits: [1, 2, 3, 7, 9]
   });
-  surveyResponse.addSpeakAU('Are they coming to the summit? For "no", press 1. For "maybe", press 2. For "yes", press 3.');
+  surveyResponse.addSpeakAU('Are they coming to the event? For "no", press 1. For "maybe", press 2. For "yes", press 3.');
   surveyResponse.addSpeakAU('If we should call them back at a later time, press 7.');
   surveyResponse.addSpeakAU('If the number was incorrect, press 9.');
   surveyResponse.addSpeakAU('To hear these options again, press hash.');
@@ -208,8 +230,8 @@ app.post('/log', (req, res) => res.sendStatus(200));
 
 let count = 0;
 const callees = [
-  {name: 'Chris', location: 'Chermside', number: '+61 455 024 575'},
-  {name: 'Robyn', location: 'Manly West', number: '+61 455 023 874'},
+  {name: 'Robin', location: 'Chermside', number: '+61 459 262 556'},
+  {name: 'Chris', location: 'Manly West', number: '+61 459 263 861'},
 ];
 
 function retrieveCallee() {
