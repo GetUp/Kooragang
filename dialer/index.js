@@ -36,7 +36,7 @@ const appUrl = endpoint => `${host}/${endpoint}`;
 
 app.get('/', (req, res, next) => {
   res.set('Content-Type', 'application/json');
-  Log.query().orderBy('id', 'desc').then(res.send.bind(res));
+  Log.query().limit(100).orderBy('id', 'desc').then(res.send.bind(res));
 });
 
 app.post('/connect', (req, res) => {
