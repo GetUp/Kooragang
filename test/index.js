@@ -1,7 +1,55 @@
 const app = require('../dialer');
 const request = require('supertest')(app);
 const expect = require('expect.js');
-const { Log, SurveyResult } = require('../models');
+const { Callee, Log, SurveyResult } = require('../models');
+
+const alice = {
+  first_name: 'alice',
+  phone_number: '+61299999999',
+  location: 'drummoyne'
+};
+const bob = {
+  first_name: 'bob',
+  phone_number: '+61288888888',
+  location: 'balmain'
+};
+
+describe('Callee model', () => {
+  beforeEach(done => Callee.raw('truncate callees restart identity cascade').nodeify(done));
+
+  describe('with no callees', () => {
+    it('gracefully handles no available callees', (done) => {
+      request.post('/call')
+        .expect(/no more numbers left to call/)
+        .end(done)
+    });
+  });
+
+  describe('with one callee', () => {
+    beforeEach(done => Callee.query().insert(alice).nodeify(done));
+    it('is callable', (done) => {
+      request.post('/call')
+        .expect(/alice/)
+        .expect(/drummoyne/)
+        .expect(/Number>\+61299999999/)
+        .end(done)
+    });
+  });
+
+  describe('with alice already called once', () => {
+    // beforeEach(done => Callee.query().insert(bob).nodeify(done));
+    beforeEach(done => request.post('/call').end(done))
+
+    it('cannot be called twice', (done) => {
+      request.post('/call')
+        .expect(/^((?!alice).)*$/)
+        .end(done)
+    });
+  });
+
+  it('stores call records');
+  it('allows callees to be called again after 7 days')
+});
 
 describe('survey question', () => {
   it.skip('is asked when the caller has a conversation longer than 10s', (done) => {
@@ -143,10 +191,11 @@ describe('routing', () => {
       .end(done);
   });
 
+  beforeEach(done => Callee.query().insert(alice).nodeify(done));
   it('/call redirects to hangup & calls back to log', (done) => {
     request.post('/call')
       .expect(/Redirect\>http:\/\/127.0.0.1\/hangup/)
-      .expect(/callbackUrl="http:\/\/127.0.0.1\/log/)
+      .expect(/callbackUrl="http:\/\/127.0.0.1\/call_log/)
       .end(done);
   });
 });

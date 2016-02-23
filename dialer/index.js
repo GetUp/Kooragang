@@ -1,10 +1,12 @@
 const express = require('express');
 const plivo = require('plivo');
 const bodyParser = require('body-parser');
+const async = require('async');
+const moment = require('moment');
 const app = express();
 const webhooks = require('./webhooks');
 
-const { Log, SurveyResult } = require('../models');
+const { Call, Callee, Log, SurveyResult } = require('../models');
 
 const welcomeMessage = 'https://dl.dropboxusercontent.com/u/404666/getup/kooragang/welcome7.mp3';
 const briefingMessage = 'http://f.cl.ly/items/1a1d3q2D430Y43041d1h/briefing.mp3';
@@ -95,28 +97,53 @@ app.post('/connect', (req, res) => {
   webhooks(`sessions/${req.query.From}`, { session: 'active', status: 'welcome message', call: {} });
 });
 
-app.post('/call', (req, res) => {
+app.post('/call', (req, res, next) => {
   const r = plivo.Response();
 
   // terminate the calling loop?
   if (req.body.Digits === '*') {
     r.addRedirect(appUrl('disconnect'));
-  } else {
-    const callee = retrieveCallee();
-    r.addSpeakAU(`You're about to call ${callee.name} from ${callee.location}`);
+    return res.send(r.toXML());
+  }
+
+  async.auto({
+    findCallee: (cb) => {
+      Callee.query()
+        .whereNull('last_called_at')
+        .orWhere('last_called_at', '<', moment().subtract(7, 'days'))
+        .first()
+        .nodeify((err, row) => {
+          if (err) return cb(err);
+          if (row) return cb(null, row);
+
+          r.addSpeakAU('Sorry, there are no more numbers left to call.')
+          r.addRedirect(appUrl('disconnect'));
+          res.send(r.toXML());
+        });
+    },
+    markCallee: ['findCallee', (cb, results) => {
+      Callee.query()
+        .patchAndFetchById(results.findCallee.id, {last_called_at: new Date})
+        .nodeify(cb);
+    }]
+  }, (err, results) => {
+    if (err) return next(err);
+
+    const callee = results.markCallee;
+    r.addSpeakAU(`You're about to call ${callee.first_name} from ${callee.location}`);
     r.addSpeakAU('To hang up the call at any time, press star.');
     const d = r.addDial({
-      callbackUrl: appUrl('log'),
+      callbackUrl: appUrl(`call_log?destination=${callee.phone_number}`),
       hangupOnStar: true,
       timeout: 30,
       redirect: false
     });
-    d.addNumber(callee.number);
+    d.addNumber(callee.phone_number);
     r.addPlay(callEndBeep);
     r.addRedirect(appUrl('hangup'));
     webhooks(`sessions/${req.body.From}`, Object.assign({session: 'active', status: 'calling', call: callee}));
-  }
-  res.send(r.toXML());
+    res.send(r.toXML());
+  });
 });
 
 app.post('/hangup', (req, res) => {
@@ -227,16 +254,5 @@ const log = ({method, url, body, query, params, headers}, cb) => {
 
 // already logged in middleware
 app.post('/log', (req, res) => res.sendStatus(200));
-
-let count = 0;
-const callees = [
-  {name: 'Robin', location: 'Chermside', number: '+61 459 262 556'},
-  {name: 'Chris', location: 'Manly West', number: '+61 459 263 861'},
-];
-
-function retrieveCallee() {
-  count += 1
-  return callees[count % callees.length];
-}
 
 module.exports = app;
