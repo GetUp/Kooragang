@@ -1,8 +1,8 @@
 const request = require('request');
 const path = require('path');
 
-const webhooks = (process.env.WEBHOOKS || '').split(',')
-console.log(`using webhooks ${webhooks.join(', ')}`);
+const webhooks = (process.env.WEBHOOKS || '').split(',').filter(Boolean);
+if (webhooks.length) console.log(`using webhooks ${webhooks.join(', ')}`);
 
 module.exports = (endpoint, data) => {
   webhooks.forEach( webhook => {
