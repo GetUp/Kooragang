@@ -13,7 +13,6 @@
     "camelcase": 2,
     "dot-notation": 2,
     "curly": 2,
-    "comma-dangle": [2, "never"],
     "no-cond-assign": [2, "always"],
     "no-constant-condition": 1,
     "no-dupe-keys": 2,
