@@ -139,6 +139,7 @@ app.post('/call', (req, res, next) => {
     r.addSpeakAU(`You're about to call ${callee.first_name} from ${callee.location}`);
     r.addSpeakAU('To hang up the call at any time, press star.');
     const d = r.addDial({
+      action: appUrl(`call_log?callee_number=${callee.phone_number}`),
       callbackUrl: appUrl(`call_log?callee_number=${callee.phone_number}`),
       hangupOnStar: true,
       timeout: 30,
