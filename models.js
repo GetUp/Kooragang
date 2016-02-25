@@ -7,11 +7,11 @@ const Model = require('objection').Model;
 Model.knex(knex);
 
 class Call extends Model {
-  static get tableName() { return 'calls' };
+  static get tableName() { return 'calls' }
 }
 
 class Callee extends Model {
-  static get tableName() { return 'callees' };
+  static get tableName() { return 'callees' }
 
   static get relationMappings() {
     return {
@@ -28,11 +28,11 @@ class Callee extends Model {
 }
 
 class Log extends Model {
-  static get tableName() { return 'logs' };
+  static get tableName() { return 'logs' }
 }
 
 class SurveyResult extends Model {
-  static get tableName() { return 'survey_results' };
+  static get tableName() { return 'survey_results' }
 }
 
 module.exports = {
