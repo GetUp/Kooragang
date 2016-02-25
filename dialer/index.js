@@ -8,8 +8,8 @@ const webhooks = require('./webhooks');
 
 const { Call, Callee, Log, SurveyResult } = require('../models');
 
-const welcomeMessage = 'https://dl.dropboxusercontent.com/u/404666/getup/kooragang/welcome7.mp3';
-const briefingMessage = 'http://f.cl.ly/items/1a1d3q2D430Y43041d1h/briefing.mp3';
+// const welcomeMessage = 'https://dl.dropboxusercontent.com/u/404666/getup/kooragang/welcome7.mp3';
+// const briefingMessage = 'http://f.cl.ly/items/1a1d3q2D430Y43041d1h/briefing.mp3';
 const callEndBeep = 'https://dl.dropboxusercontent.com/u/404666/getup/kooragang/call_end_beep.wav';
 
 app.use(bodyParser.urlencoded({extended: true}));
@@ -26,6 +26,12 @@ app.use((req, res, next) => {
   res.set('Content-Type', 'text/xml');
   next();
 });
+
+const log = ({method, url, body, query, params, headers}, cb) => {
+  if (method === 'GET') return cb();
+  const UUID = body.CallUUID;
+  Log.query().insert({UUID, url, body, query, params, headers}).nodeify(cb);
+};
 
 app.use((req, res, next) => {
   if (req.method === 'GET') return next();
@@ -225,11 +231,10 @@ app.post('/survey_result', (req, res, next) => {
     answer: answer(req.body.Digits)
   }
   SurveyResult.query().insert(data).then(() => {
-      const r = plivo.Response();
-      r.addRedirect(appUrl('call_again'));
-      res.send(r.toXML());
-    })
-    .catch(next);
+    const r = plivo.Response();
+    r.addRedirect(appUrl('call_again'));
+    res.send(r.toXML());
+  }).catch(next);
 });
 
 app.post('/disconnect', (req, res) => {
@@ -259,12 +264,6 @@ app.post('/feedback', (req, res) => {
   r.addSpeakAU('Thanks again for calling. We hope to see you again soon!');
   res.send(r.toXML());
 });
-
-const log = ({method, url, body, query, params, headers}, cb) => {
-  if (method === 'GET') return cb();
-  const UUID = body.CallUUID;
-  Log.query().insert({UUID, url, body, query, params, headers}).nodeify(cb);
-};
 
 // already logged in middleware
 app.post('/log', (req, res) => res.sendStatus(200));

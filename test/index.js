@@ -83,17 +83,16 @@ describe('/call_log', () => {
       done();
     }).catch(done);
   });
-
 });
 
 
 describe('survey question', () => {
   it.skip('is asked when the caller has a conversation longer than 10s', (done) => {
-    const long_convo = { DialBLegDuration: "11" };
+    const longConvo = { DialBLegDuration: '11' };
     request
       .post('/hangup')
       .type('form')
-      .send(long_convo)
+      .send(longConvo)
       .expect(200)
       .expect('Content-Type', /xml/)
       .expect(/^((?!call_again).)*$/)
@@ -102,11 +101,11 @@ describe('survey question', () => {
   });
 
   it.skip('is not asked when the caller has a conversation of 10s or shorter', (done) => {
-    const short_convo = { DialBLegDuration: "1" };
+    const shortConvo = { DialBLegDuration: '1' };
     request
       .post('/hangup')
       .type('form')
-      .send(short_convo)
+      .send(shortConvo)
       .expect(200)
       .expect('Content-Type', /xml/)
       .expect(/call_again/)
@@ -119,8 +118,8 @@ describe('survey question persistence', () => {
   beforeEach((done) => SurveyResult.query().truncate().nodeify(done))
 
   it('is persisted with user details', (done) => {
-    const UUID = "fakeUUID"
-    const DialBLegTo = "61299999999"
+    const UUID = 'fakeUUID'
+    const DialBLegTo = '61299999999'
     request
       .post(`/survey_result?q=rsvp&calleeUUID=${UUID}&calleeNumber=${DialBLegTo}`)
       .type('form')
