@@ -167,14 +167,19 @@ app.post('/call_log', (req, res, next) => {
   }).catch(next);
 });
 
-app.post('/hangup', (req, res) => {
+app.post('/hangup', (req, res, next) => {
   const r = plivo.Response();
-  if (false) { // need a way to detect call length; log arrives after this route is hit
-    r.addSpeakAU('short call detected; calling again');
-    r.addRedirect(appUrl('call_again'));
-  }
-  r.addRedirect(appUrl(`survey?calleeUUID=${req.body.DialBLegUUID}&calleeNumber=${req.body.DialBLegTo}`));
-  res.send(r.toXML());
+  const conditions = {status: 'answer', callee_number: req.body.DialBLegTo};
+  Call.query().where(conditions).orderBy('created_at', 'desc').first()
+    .then(call => {
+      if (call && call.created_at < moment().subtract(10, 'seconds')) {
+        r.addRedirect(appUrl(`survey?calleeUUID=${req.body.DialBLegUUID}&calleeNumber=${req.body.DialBLegTo}`));
+      } else {
+        r.addSpeakAU('short call detected; calling again');
+        r.addRedirect(appUrl('call_again'));
+      }
+      res.send(r.toXML());
+    }).catch(next);
 });
 
 app.post('/call_again', (req, res) => {

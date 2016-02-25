@@ -85,32 +85,46 @@ describe('/call_log', () => {
   });
 });
 
+describe('/hangup', () => {
+  const payload = { DialBLegTo: '61400999000' };
+  const call = (startTime) => {
+    return {
+      created_at: startTime.toDate(),
+      status: 'answer',
+      callee_number: payload.DialBLegTo,
+    }
+  };
 
-describe('survey question', () => {
-  it.skip('is asked when the caller has a conversation longer than 10s', (done) => {
-    const longConvo = { DialBLegDuration: '11' };
-    request
-      .post('/hangup')
-      .type('form')
-      .send(longConvo)
-      .expect(200)
-      .expect('Content-Type', /xml/)
-      .expect(/^((?!call_again).)*$/)
-      .expect(/survey/)
-      .end(done);
+  describe('with a long duration call', () => {
+    const record = call(moment().subtract(10, 'seconds'));
+    beforeEach(done => Call.query().insert(record).nodeify(done))
+
+    it('prompts for survey answers', (done) => {
+      request.post('/hangup')
+        .type('form')
+        .send(payload)
+        .expect(200)
+        .expect('Content-Type', /xml/)
+        .expect(/^((?!call_again).)*$/)
+        .expect(/survey/)
+        .end(done);
+    });
   });
 
-  it.skip('is not asked when the caller has a conversation of 10s or shorter', (done) => {
-    const shortConvo = { DialBLegDuration: '1' };
-    request
-      .post('/hangup')
-      .type('form')
-      .send(shortConvo)
-      .expect(200)
-      .expect('Content-Type', /xml/)
-      .expect(/call_again/)
-      .expect(/survey/)
-      .end(done);
+  describe('with a short duration call', () => {
+    const record = call(moment().subtract(9, 'seconds'));
+    beforeEach(done => Call.query().insert(record).nodeify(done))
+
+    it('skips the survey; just calls again', (done) => {
+      request.post('/hangup')
+        .type('form')
+        .send(payload)
+        .expect(200)
+        .expect('Content-Type', /xml/)
+        .expect(/^((?!survey).)*$/)
+        .expect(/call_again/)
+        .end(done);
+    });
   });
 });
 
