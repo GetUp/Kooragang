@@ -1,20 +1,22 @@
 const app = require('../dialer');
 const request = require('supertest')(app);
 const expect = require('expect.js');
-const { Callee, Log, SurveyResult } = require('../models');
+const timekeeper = require('timekeeper');
+const moment = require('moment');
+const { Call, Callee, Log, SurveyResult } = require('../models');
 
 const alice = {
   first_name: 'alice',
-  phone_number: '+61299999999',
+  phone_number: '61299999999',
   location: 'drummoyne'
 };
 const bob = {
   first_name: 'bob',
-  phone_number: '+61288888888',
+  phone_number: '61288888888',
   location: 'balmain'
 };
 
-describe('Callee model', () => {
+describe('/call', () => {
   beforeEach(done => Callee.raw('truncate callees restart identity cascade').nodeify(done));
 
   describe('with no callees', () => {
@@ -31,25 +33,59 @@ describe('Callee model', () => {
       request.post('/call')
         .expect(/alice/)
         .expect(/drummoyne/)
-        .expect(/Number>\+61299999999/)
+        .expect(/Number>61299999999/)
         .end(done)
     });
   });
 
   describe('with alice already called once', () => {
-    // beforeEach(done => Callee.query().insert(bob).nodeify(done));
+    beforeEach(done => Callee.query().insert(alice).nodeify(done));
     beforeEach(done => request.post('/call').end(done))
 
-    it('cannot be called twice', (done) => {
+    it('doesn\'t call alice twice', (done) => {
       request.post('/call')
         .expect(/^((?!alice).)*$/)
+        .expect(/no more numbers left to call/)
         .end(done)
     });
   });
 
-  it('stores call records');
-  it('allows callees to be called again after 7 days')
+  describe('after 7 days', () => {
+    beforeEach(done => Callee.query().insert(alice).nodeify(done));
+    beforeEach(done => {
+      timekeeper.travel(moment().subtract(7, 'days').toDate());
+      request.post('/call').end(() => {
+        timekeeper.reset();
+        done();
+      });
+    });
+
+    it('allows callees to be called again', (done) => {
+      request.post('/call').expect(/alice/).end(done)
+    });
+  })
 });
+
+describe('/call_log', () => {
+  beforeEach(done => Call.query().truncate().nodeify(done));
+  beforeEach(done => Callee.query().insert(alice).nodeify(done));
+  beforeEach(done => {
+    request.post(`/call_log?callee_number=${alice.phone_number}`)
+      .type('form')
+      .send({DialBLegTo: alice.phone_number})
+      .end(done)
+  });
+
+  it('stores call records', (done) => {
+    Call.query().then(data => {
+      expect(data).to.have.length(1);
+      expect(data[0].callee_number).to.be(alice.phone_number);
+      done();
+    }).catch(done);
+  });
+
+});
+
 
 describe('survey question', () => {
   it.skip('is asked when the caller has a conversation longer than 10s', (done) => {

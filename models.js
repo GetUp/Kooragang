@@ -6,6 +6,10 @@ const Model = require('objection').Model;
 
 Model.knex(knex);
 
+class Call extends Model {
+  static get tableName() { return 'calls' };
+}
+
 class Callee extends Model {
   static get tableName() { return 'callees' };
 
@@ -23,10 +27,6 @@ class Callee extends Model {
   }
 }
 
-class Call extends Model {
-  static get tableName() { return 'calls' };
-}
-
 class Log extends Model {
   static get tableName() { return 'logs' };
 }
@@ -36,6 +36,7 @@ class SurveyResult extends Model {
 }
 
 module.exports = {
+  Call,
   Callee,
   Log,
   SurveyResult,

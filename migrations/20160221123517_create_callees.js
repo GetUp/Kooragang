@@ -12,7 +12,8 @@ exports.up = function(knex, Promise) {
     })
     .createTable('calls', (t) => {
       t.increments();
-      t.bigInteger('callee_id').references('id').inTable('callees');
+      t.bigInteger('log_id').references('id').inTable('logs');
+      t.integer('callee_id').references('id').inTable('callees');
       t.timestamp('created_at').defaultTo(knex.fn.now());
       t.timestamp('updated_at').defaultTo(knex.fn.now());
       t.string('status');

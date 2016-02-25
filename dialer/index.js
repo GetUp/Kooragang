@@ -133,7 +133,7 @@ app.post('/call', (req, res, next) => {
     r.addSpeakAU(`You're about to call ${callee.first_name} from ${callee.location}`);
     r.addSpeakAU('To hang up the call at any time, press star.');
     const d = r.addDial({
-      callbackUrl: appUrl(`call_log?destination=${callee.phone_number}`),
+      callbackUrl: appUrl(`call_log?callee_number=${callee.phone_number}`),
       hangupOnStar: true,
       timeout: 30,
       redirect: false
@@ -144,6 +144,20 @@ app.post('/call', (req, res, next) => {
     webhooks(`sessions/${req.body.From}`, Object.assign({session: 'active', status: 'calling', call: callee}));
     res.send(r.toXML());
   });
+});
+
+app.post('/call_log', (req, res, next) => {
+  Callee.query().where({phone_number: req.query.callee_number}).first().then(callee => {
+    Call.query().insert({
+      log_id: res.locals.log_id,
+      callee_id: callee.id,
+      status: req.body.DialBLegStatus,
+      caller_uuid: req.body.DialALegUUID,
+      caller_number: req.body.DialBLegFrom,
+      callee_uuid: req.body.DialBLegUUID,
+      callee_number: req.body.DialBLegTo
+    }).nodeify(next);
+  }).catch(next);
 });
 
 app.post('/hangup', (req, res) => {
