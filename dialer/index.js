@@ -219,7 +219,7 @@ app.post('/survey', (req, res) => {
     numDigits: 1,
     validDigits: [1, 2, 3, 7, 9]
   });
-  surveyResponse.addSpeakAU('Are they coming to your GetTogether? For "no", press 1. For "maybe", press 2. For "yes", press 3.');
+  surveyResponse.addSpeakAU('Are they coming to your GetTogether? For "yes", press 1. For "no", press 2. For "maybe", press 3.');
   surveyResponse.addSpeakAU('If we should call them back at a later time, press 7.');
   surveyResponse.addSpeakAU('If the number was incorrect, press 9.');
   surveyResponse.addSpeakAU('To hear these options again, press hash.');
@@ -229,9 +229,9 @@ app.post('/survey', (req, res) => {
 
 const answer = (digit) => {
   const options = {
-    '1': 'no',
-    '2': 'maybe',
-    '3': 'yes',
+    '1': 'yes',
+    '2': 'no',
+    '3': 'maybe',
     '7': 'call_back',
     '9': 'number_incorrect'
   };

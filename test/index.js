@@ -159,7 +159,7 @@ describe('survey question persistence', () => {
     request
       .post('/survey_result')
       .type('form')
-      .send({ Digits: '2' })
+      .send({ Digits: '3' })
       .end((err, res) => {
         if (err) return done(err);
 
