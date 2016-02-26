@@ -19,7 +19,7 @@ const bob = {
 describe('/call', () => {
   beforeEach(done => Callee.raw('truncate callees restart identity cascade').nodeify(done));
 
-  describe('with no callees', () => {
+  context('with no callees', () => {
     it('gracefully handles no available callees', (done) => {
       request.post('/call')
         .expect(/no more numbers left to call/)
@@ -27,7 +27,7 @@ describe('/call', () => {
     });
   });
 
-  describe('with one callee', () => {
+  context('with one callee', () => {
     beforeEach(done => Callee.query().insert(alice).nodeify(done));
     it('is callable', (done) => {
       request.post('/call')
@@ -38,7 +38,7 @@ describe('/call', () => {
     });
   });
 
-  describe('with alice already called once', () => {
+  context('with alice already called once', () => {
     beforeEach(done => Callee.query().insert(alice).nodeify(done));
     beforeEach(done => request.post('/call').end(done))
 
@@ -50,7 +50,7 @@ describe('/call', () => {
     });
   });
 
-  describe('after 7 days', () => {
+  context('after 7 days', () => {
     beforeEach(done => Callee.query().insert(alice).nodeify(done));
     beforeEach(done => {
       timekeeper.travel(moment().subtract(7, 'days').toDate());
@@ -95,7 +95,7 @@ describe('/hangup', () => {
     }
   };
 
-  describe('with a long duration call', () => {
+  context('with a long duration call', () => {
     const record = call(moment().subtract(10, 'seconds'));
     beforeEach(done => Call.query().insert(record).nodeify(done))
 
@@ -111,7 +111,7 @@ describe('/hangup', () => {
     });
   });
 
-  describe('with a short duration call', () => {
+  context('with a short duration call', () => {
     const record = call(moment().subtract(9, 'seconds'));
     beforeEach(done => Call.query().insert(record).nodeify(done))
 
