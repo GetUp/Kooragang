@@ -18,7 +18,7 @@ app.use(bodyParser.urlencoded({extended: true}));
 
 const response = Object.getPrototypeOf(plivo.Response());
 response.addSpeakAU = function(text) {
-  this.addSpeak(text, {language: 'en-AU', voice: 'MAN'});
+  this.addSpeak(text, {language: 'en-GB', voice: 'MAN'});
 };
 
 let host;
@@ -40,7 +40,7 @@ app.use((req, res, next) => {
   log(req, (err, result) => {
     res.locals.log_id = result.id;
     next();
-  })
+  });
 });
 
 const appUrl = endpoint => `${host}/${endpoint}`;
@@ -61,6 +61,8 @@ app.post('/connect', (req, res) => {
 
   r.addSpeakAU('Hi! Thanks for agreeing to call other GetUp members to invite them to your GetTogether.');
   r.addPlay(quarterSec);
+  r.addSpeakAU('If you\'ve heard the briefing before, press 1 at any time to skip straight to calling.');
+  r.addPlay(halfSec);
 
   const briefing = r.addGetDigits({
     action: appUrl('call'),
@@ -70,35 +72,35 @@ app.post('/connect', (req, res) => {
     retries: 10,
     validDigits: [1]
   });
-  briefing.addSpeakAU('If you\'ve heard the briefing before, press 1 at any time to skip straight to calling.');
-  briefing.addPlay(halfSec);
 
   // session overview
   briefing.addSpeakAU('In this session, you\'ll be calling GetUp members who live near you.');
   briefing.addPlay(quarterSec);
-  briefing.addSpeakAU('You\'ll be inviting them to attend your GetTogether on the 19th or 20th of March.');
+  briefing.addSpeakAU('You\'ll be inviting them to attend your GetTogether, on the 19th, or 20th of March.');
   briefing.addPlay(halfSec);
 
   // session content
-  briefing.addSpeakAU('Tell them about the purpose of the event: to discuss our election strategy.');
+  briefing.addSpeakAU('Tell them about the purpose of the event.  That is, to discuss GetUp\'s election strategy.');
   briefing.addPlay(quarterSec);
   briefing.addSpeakAU('Make sure to let them know the details of the event.');
   briefing.addPlay(quarterSec);
-  briefing.addSpeakAU('Also be sure to tell them how fun it will be to meet people in their local area with similar values.');
+  briefing.addSpeakAU('Also, be sure to tell them how fun it will be, to meet people in their local area with similar values.');
   briefing.addPlay(halfSec);
 
   // guidelines / process
-  briefing.addSpeakAU('During the calls, it\'s important to be very polite and listen.  However, be aware that the more calls you can make, the more people will hear about your GetTogether.');
+  briefing.addSpeakAU('During the calls, it\'s important to be very polite and listen.  However, be aware that the more calls you can make, the more people will hear about the Get Together.');
   briefing.addPlay(quarterSec);
   briefing.addSpeakAU('After this message, you\'ll begin calling.');
   briefing.addPlay(quarterSec);
   briefing.addSpeakAU('After each call, there\'ll be a voice prompt to record the result of the call.');
   briefing.addPlay(quarterSec);
-  briefing.addSpeakAU('If the call is very short, we won\'t ask you the result.');
+  briefing.addSpeakAU('If the call is very short, we won\'t ask you for the result.');
   briefing.addPlay(quarterSec);
-  briefing.addSpeakAU('If the call goes straight to voicemail, don\'t worry about leaving a message, just press star to proceed to the next call.');
+  briefing.addSpeakAU('If the call goes straight to voicemail, don\'t worry about leaving a message, just press star, to proceed to the next call.');
   briefing.addPlay(halfSec);
   briefing.addSpeakAU('You\'ll then be given the opportunity to call another member, or finish your session.');
+  briefing.addPlay(quarterSec);
+  briefing.addSpeakAU('Remember, don\'t hangup *your* phone.  When the call ends, just press star, or alternatively, wait for the other person to hang up.');
   briefing.addPlay(quarterSec);
   briefing.addSpeakAU('Thank you very much for helping with our election effort!');
 
