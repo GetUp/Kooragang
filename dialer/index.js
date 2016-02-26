@@ -90,7 +90,7 @@ app.post('/connect', (req, res) => {
   // guidelines / process
   briefing.addSpeakAU('During the calls, it\'s important to be very polite and listen.  However, be aware that the more calls you can make, the more people will hear about your GetTogether.');
   briefing.addPlay(quarterSec);
-  briefing.addSpeakAU('After this message, you\'ll dive straight into calling.');
+  briefing.addSpeakAU('After this message, you\'ll begin calling.');
   briefing.addPlay(quarterSec);
   briefing.addSpeakAU('After each call, there\'ll be a voice prompt to record the result of the call.');
   briefing.addPlay(quarterSec);
@@ -219,7 +219,7 @@ app.post('/survey', (req, res) => {
     numDigits: 1,
     validDigits: [1, 2, 3, 7, 9]
   });
-  surveyResponse.addSpeakAU('Are they coming to the event? For "no", press 1. For "maybe", press 2. For "yes", press 3.');
+  surveyResponse.addSpeakAU('Are they coming to your GetTogether? For "no", press 1. For "maybe", press 2. For "yes", press 3.');
   surveyResponse.addSpeakAU('If we should call them back at a later time, press 7.');
   surveyResponse.addSpeakAU('If the number was incorrect, press 9.');
   surveyResponse.addSpeakAU('To hear these options again, press hash.');
