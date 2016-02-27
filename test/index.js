@@ -3,7 +3,13 @@ const request = require('supertest')(app);
 const expect = require('expect.js');
 const timekeeper = require('timekeeper');
 const moment = require('moment');
-const { Call, Callee, Log, SurveyResult } = require('../models');
+const {
+  Call,
+  Callee,
+  Caller,
+  Log,
+  SurveyResult
+} = require('../models');
 
 const alice = {
   first_name: 'alice',
@@ -15,6 +21,34 @@ const bob = {
   phone_number: '61288888888',
   location: 'balmain'
 };
+
+describe('/connect', () => {
+  beforeEach(done => Caller.query().truncate().nodeify(done));
+  const payload = { From: alice.phone_number };
+
+  context('with an unapproved number', () => {
+    it('directs them to contact us', (done) => {
+      request.post('/connect')
+        .type('form')
+        .send(payload)
+        .expect(/recognise the number/)
+        .end(done)
+    });
+  });
+
+  context('with an approved number', () => {
+    beforeEach(done => Caller.query().insert(alice).nodeify(done));
+
+    it('plays the briefing message', (done) => {
+      request.post('/connect')
+        .type('form')
+        .send(payload)
+        .expect(/Hi alice/)
+        .end(done)
+    });
+  });
+
+});
 
 describe('/call', () => {
   beforeEach(done => Callee.raw('truncate callees restart identity cascade').nodeify(done));
@@ -234,12 +268,6 @@ describe('logging', () => {
 });
 
 describe('routing', () => {
-  it('connect should redirect to call', (done) => {
-    request.post('/connect')
-      .expect(/Redirect\>http:\/\/127.0.0.1\/call/)
-      .end(done);
-  });
-
   beforeEach(done => Callee.query().insert(alice).nodeify(done));
   it('/call redirects to hangup & calls back to log', (done) => {
     request.post('/call')

@@ -6,7 +6,13 @@ const moment = require('moment');
 const app = express();
 const webhooks = require('./webhooks');
 
-const { Call, Callee, Log, SurveyResult } = require('../models');
+const {
+  Call,
+  Callee,
+  Caller,
+  Log,
+  SurveyResult
+} = require('../models');
 
 // const welcomeMessage = 'https://dl.dropboxusercontent.com/u/404666/getup/kooragang/welcome7.mp3';
 // const briefingMessage = 'http://f.cl.ly/items/1a1d3q2D430Y43041d1h/briefing.mp3';
@@ -47,7 +53,7 @@ const appUrl = endpoint => `${host}/${endpoint}`;
 
 app.get('/', (req, res) => res.send('<_-.-_>I\'m awake.</_-.-_>'));
 
-app.post('/connect', (req, res) => {
+app.post('/connect', (req, res, next) => {
   const r = plivo.Response();
   r.addWait({length: 2});
 
@@ -59,61 +65,72 @@ app.post('/connect', (req, res) => {
   //   redirect: false
   // });
 
-  r.addSpeakAU('Hi! Thanks for agreeing to call other GetUp members to invite them to your GetTogether.');
-  r.addPlay(quarterSec);
-  r.addSpeakAU('If you\'ve heard the briefing before, press 1 at any time to skip straight to calling.');
-  r.addPlay(halfSec);
+  Caller.query().where({phone_number: req.body.From}).first().then(caller => {
+    if (!caller) {
+      r.addSpeakAU('Hi there! We don\'t recognise the number you\'re calling from.');
+      r.addSpeakAU('We\'re currently in beta, so only approved callers can use this system.');
+      r.addSpeakAU('If you\'d like to help out, please send an email to: take-action, at get up, dot org, dot ay u.');
+      r.addSpeakAU('That address again: take-action, at get up, dot org, dot ay u.');
+      r.addSpeakAU('Thanks and goodbye.');
+      return res.send(r.toXML());
+    }
 
-  const briefing = r.addGetDigits({
-    action: appUrl('call'),
-    method: 'POST',
-    timeout: 5,
-    numDigits: 1,
-    retries: 10,
-    validDigits: [1]
-  });
+    r.addSpeakAU(`Hi ${caller.first_name}! Thanks for agreeing to call other GetUp members to invite them to your GetTogether.`);
+    r.addPlay(quarterSec);
+    r.addSpeakAU('If you\'ve heard the briefing before, press 1 at any time to skip straight to calling.');
+    r.addPlay(halfSec);
 
-  // session overview
-  briefing.addSpeakAU('In this session, you\'ll be calling GetUp members who live near you.');
-  briefing.addPlay(quarterSec);
-  briefing.addSpeakAU('You\'ll be inviting them to attend your GetTogether, on the 19th, or 20th of March.');
-  briefing.addPlay(halfSec);
+    const briefing = r.addGetDigits({
+      action: appUrl('call'),
+      method: 'POST',
+      timeout: 5,
+      numDigits: 1,
+      retries: 10,
+      validDigits: [1]
+    });
 
-  // session content
-  briefing.addSpeakAU('Tell them about the purpose of the event.  That is, to discuss GetUp\'s election strategy.');
-  briefing.addPlay(quarterSec);
-  briefing.addSpeakAU('Make sure to let them know the details of the event.');
-  briefing.addPlay(quarterSec);
-  briefing.addSpeakAU('Also, be sure to tell them how fun it will be, to meet people in their local area with similar values.');
-  briefing.addPlay(halfSec);
+    // session overview
+    briefing.addSpeakAU('In this session, you\'ll be calling GetUp members who live near you.');
+    briefing.addPlay(quarterSec);
+    briefing.addSpeakAU('You\'ll be inviting them to attend your GetTogether, on the 19th, or 20th of March.');
+    briefing.addPlay(halfSec);
 
-  // guidelines / process
-  briefing.addSpeakAU('During the calls, it\'s important to be very polite and listen.  However, be aware that the more calls you can make, the more people will hear about the Get Together.');
-  briefing.addPlay(quarterSec);
-  briefing.addSpeakAU('After this message, you\'ll begin calling.');
-  briefing.addPlay(quarterSec);
-  briefing.addSpeakAU('After each call, there\'ll be a voice prompt to record the result of the call.');
-  briefing.addPlay(quarterSec);
-  briefing.addSpeakAU('If the call is very short, we won\'t ask you for the result.');
-  briefing.addPlay(quarterSec);
-  briefing.addSpeakAU('If the call goes straight to voicemail, don\'t worry about leaving a message, just press star, to proceed to the next call.');
-  briefing.addPlay(halfSec);
-  briefing.addSpeakAU('You\'ll then be given the opportunity to call another member, or finish your session.');
-  briefing.addPlay(quarterSec);
-  briefing.addSpeakAU('Remember, don\'t hangup *your* phone.  When the call ends, just press star, or alternatively, wait for the other person to hang up.');
-  briefing.addPlay(quarterSec);
-  briefing.addSpeakAU('Thank you very much for helping with our election effort!');
+    // session content
+    briefing.addSpeakAU('Tell them about the purpose of the event.  That is, to discuss GetUp\'s election strategy.');
+    briefing.addPlay(quarterSec);
+    briefing.addSpeakAU('Make sure to let them know the details of the event.');
+    briefing.addPlay(quarterSec);
+    briefing.addSpeakAU('Also, be sure to tell them how fun it will be, to meet people in their local area with similar values.');
+    briefing.addPlay(halfSec);
 
-  briefing.addPlay(halfSec);
-  briefing.addSpeakAU('This message will automatically replay until you press 1 on your phone key pad.');
+    // guidelines / process
+    briefing.addSpeakAU('During the calls, it\'s important to be very polite and listen.  However, be aware that the more calls you can make, the more people will hear about the Get Together.');
+    briefing.addPlay(quarterSec);
+    briefing.addSpeakAU('After this message, you\'ll begin calling.');
+    briefing.addPlay(quarterSec);
+    briefing.addSpeakAU('After each call, there\'ll be a voice prompt to record the result of the call.');
+    briefing.addPlay(quarterSec);
+    briefing.addSpeakAU('If the call is very short, we won\'t ask you for the result.');
+    briefing.addPlay(quarterSec);
+    briefing.addSpeakAU('If the call goes straight to voicemail, don\'t worry about leaving a message, just press star, to proceed to the next call.');
+    briefing.addPlay(halfSec);
+    briefing.addSpeakAU('You\'ll then be given the opportunity to call another member, or finish your session.');
+    briefing.addPlay(quarterSec);
+    briefing.addSpeakAU('Remember, don\'t hangup *your* phone.  When the call ends, just press star, or alternatively, wait for the other person to hang up.');
+    briefing.addPlay(quarterSec);
+    briefing.addSpeakAU('Thank you very much for helping with our election effort!');
 
-  // briefing.addPlay(welcomeMessage);
-  // briefing.addPlay(briefingMessage);
+    briefing.addPlay(halfSec);
+    briefing.addSpeakAU('This message will automatically replay until you press 1 on your phone key pad.');
 
-  r.addRedirect(appUrl('call'));
-  // console.log()
-  res.send(r.toXML());
-  webhooks(`sessions/${req.query.From}`, { session: 'active', status: 'welcome message', call: {} });
+    // briefing.addPlay(welcomeMessage);
+    // briefing.addPlay(briefingMessage);
+
+    r.addRedirect(appUrl('call'));
+    // console.log()
+    res.send(r.toXML());
+    webhooks(`sessions/${req.query.From}`, { session: 'active', status: 'welcome message', call: {} });
+  }).catch(next);
 });
 
 app.post('/call', (req, res, next) => {

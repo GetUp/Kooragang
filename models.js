@@ -27,6 +27,23 @@ class Callee extends Model {
   }
 }
 
+class Caller extends Model {
+  static get tableName() { return 'callers' }
+
+  static get relationMappings() {
+    return {
+      calls: {
+        relation: Model.OneToManyRelation,
+        modelClass: Call,
+        join: {
+          from: 'callers.id',
+          to: 'calls.caller_id'
+        }
+      }
+    }
+  }
+}
+
 class Log extends Model {
   static get tableName() { return 'logs' }
 }
@@ -38,6 +55,7 @@ class SurveyResult extends Model {
 module.exports = {
   Call,
   Callee,
+  Caller,
   Log,
   SurveyResult,
 };
