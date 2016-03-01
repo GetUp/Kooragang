@@ -81,7 +81,7 @@ app.post('/connect', (req, res, next) => {
     r.addPlay(halfSec);
 
     const briefing = r.addGetDigits({
-      action: appUrl('call'),
+      action: appUrl(`call?caller_number=${caller.phone_number}`),
       method: 'POST',
       timeout: 5,
       numDigits: 1,
@@ -126,7 +126,7 @@ app.post('/connect', (req, res, next) => {
     // briefing.addPlay(welcomeMessage);
     // briefing.addPlay(briefingMessage);
 
-    r.addRedirect(appUrl('call'));
+    r.addRedirect(appUrl(`call?caller_number=${caller.phone_number}`));
     // console.log()
     res.send(r.toXML());
     webhooks(`sessions/${req.query.From}`, { session: 'active', status: 'welcome message', call: {} });
@@ -145,8 +145,11 @@ app.post('/call', (req, res, next) => {
   async.auto({
     findCallee: (cb) => {
       Callee.query()
-        .whereNull('last_called_at')
-        .orWhere('last_called_at', '<', moment().subtract(7, 'days'))
+        .where({caller: req.query.caller_number})
+        .andWhere(function() {
+          this.whereNull('last_called_at')
+            .orWhere('last_called_at', '<', moment().subtract(7, 'days'))
+        })
         .first()
         .nodeify((err, row) => {
           if (err) return cb(err);
@@ -177,7 +180,7 @@ app.post('/call', (req, res, next) => {
     });
     d.addNumber(callee.phone_number);
     r.addPlay(callEndBeep);
-    r.addRedirect(appUrl('hangup'));
+    r.addRedirect(appUrl(`hangup?caller_number=${req.query.caller_number}`));
     webhooks(`sessions/${req.body.From}`, Object.assign({session: 'active', status: 'calling', call: callee}));
     res.send(r.toXML());
   });
@@ -203,10 +206,9 @@ app.post('/hangup', (req, res, next) => {
   Call.query().where(conditions).orderBy('created_at', 'desc').first()
     .then(call => {
       if (call && call.created_at < moment().subtract(10, 'seconds')) {
-        r.addRedirect(appUrl(`survey?calleeUUID=${req.body.DialBLegUUID}&calleeNumber=${req.body.DialBLegTo}`));
+        r.addRedirect(appUrl(`survey?caller_number=${req.query.caller_number}&calleeUUID=${req.body.DialBLegUUID}&calleeNumber=${req.body.DialBLegTo}`));
       } else {
-        r.addSpeakAU('short call detected; calling again');
-        r.addRedirect(appUrl('call_again'));
+        r.addRedirect(appUrl(`call_again?caller_number=${req.query.caller_number}`));
       }
       res.send(r.toXML());
     }).catch(next);
@@ -215,7 +217,7 @@ app.post('/hangup', (req, res, next) => {
 app.post('/call_again', (req, res) => {
   const r = plivo.Response();
   const callAgain = r.addGetDigits({
-    action: appUrl('call'),
+    action: appUrl(`call?caller_number=${req.query.caller_number}`),
     timeout: 10,
     retries: 6,
     numDigits: 1
@@ -232,13 +234,13 @@ app.post('/survey', (req, res) => {
   webhooks(`sessions/${req.body.From}`, {session: 'active', status: 'survey'});
 
   const surveyResponse = r.addGetDigits({
-    action: appUrl(`survey_result?q=rsvp&calleeUUID=${req.query.calleeUUID}&calleeNumber=${req.query.calleeNumber}`),
+    action: appUrl(`survey_result?q=rsvp&caller_number=${req.query.caller_number}&calleeUUID=${req.query.calleeUUID}&calleeNumber=${req.query.calleeNumber}`),
     redirect: true,
     retries: 10,
     numDigits: 1,
     validDigits: [1, 2, 3, 7, 9]
   });
-  surveyResponse.addSpeakAU('Are they coming to your GetTogether? For "yes", press 1. For "no", press 2. For "maybe", press 3.');
+  surveyResponse.addSpeakAU('Are they coming to your Get Together? For "yes", press 1. For "no", press 2. For "maybe", press 3.');
   surveyResponse.addSpeakAU('If we should call them back at a later time, press 7.');
   surveyResponse.addSpeakAU('If the number was incorrect, press 9.');
   surveyResponse.addSpeakAU('To hear these options again, press hash.');
@@ -268,7 +270,7 @@ app.post('/survey_result', (req, res, next) => {
   }
   SurveyResult.query().insert(data).then(() => {
     const r = plivo.Response();
-    r.addRedirect(appUrl('call_again'));
+    r.addRedirect(appUrl(`call_again?caller_number=${req.query.caller_number}`));
     res.send(r.toXML());
   }).catch(next);
 });

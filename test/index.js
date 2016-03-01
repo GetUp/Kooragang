@@ -11,20 +11,26 @@ const {
   SurveyResult
 } = require('../models');
 
-const alice = {
-  first_name: 'alice',
-  phone_number: '61299999999',
-  location: 'drummoyne'
-};
-const bob = {
+const caller = {
   first_name: 'bob',
   phone_number: '61288888888',
   location: 'balmain'
 };
+const associatedCallee = {
+  first_name: 'chris',
+  phone_number: '61277777777',
+  location: 'rozelle',
+  caller: '61288888888'
+};
+const unassociatedCallee = {
+  first_name: 'alice',
+  phone_number: '61299999999',
+  location: 'drummoyne'
+};
 
 describe('/connect', () => {
   beforeEach(done => Caller.query().truncate().nodeify(done));
-  const payload = { From: alice.phone_number };
+  const payload = { From: caller.phone_number };
 
   context('with an unapproved number', () => {
     it('directs them to contact us', (done) => {
@@ -37,83 +43,67 @@ describe('/connect', () => {
   });
 
   context('with an approved number', () => {
-    beforeEach(done => Caller.query().insert(alice).nodeify(done));
+    beforeEach(done => Caller.query().insert(caller).nodeify(done));
 
     it('plays the briefing message', (done) => {
       request.post('/connect')
         .type('form')
         .send(payload)
-        .expect(/Hi alice/)
+        .expect(/Hi bob/)
         .end(done)
     });
   });
-
 });
 
 describe('/call', () => {
   beforeEach(done => Callee.raw('truncate callees restart identity cascade').nodeify(done));
 
-  context('with no callees', () => {
-    it('gracefully handles no available callees', (done) => {
-      request.post('/call')
-        .expect(/no more numbers left to call/)
-        .end(done)
-    });
-  });
+  context('with an approved caller', () => {
+    beforeEach(done => Caller.query().insert(caller).nodeify(done));
 
-  context('with one callee', () => {
-    beforeEach(done => Callee.query().insert(alice).nodeify(done));
-    it('is callable', (done) => {
-      request.post('/call')
-        .expect(/alice/)
-        .expect(/drummoyne/)
-        .expect(/Number>61299999999/)
-        .end(done)
-    });
-  });
+    context('and only one associated callee', () => {
+      beforeEach(done => Callee.query().insert(unassociatedCallee).nodeify(done));
+      beforeEach(done => Callee.query().insert(associatedCallee).nodeify(done));
 
-  context('with alice already called once', () => {
-    beforeEach(done => Callee.query().insert(alice).nodeify(done));
-    beforeEach(done => request.post('/call').end(done))
+      context('which has already been called', () => {
+        beforeEach(done => request.post(`/call?caller_number=${caller.phone_number}`).expect(/chris/).end(done));
 
-    it('doesn\'t call alice twice', (done) => {
-      request.post('/call')
-        .expect(/^((?!alice).)*$/)
-        .expect(/no more numbers left to call/)
-        .end(done)
-    });
-  });
+        it('will not call again', (done) => {
+          request.post('/call').expect(/no more numbers left to call/).end(done)
+        });
+      });
 
-  context('after 7 days', () => {
-    beforeEach(done => Callee.query().insert(alice).nodeify(done));
-    beforeEach(done => {
-      timekeeper.travel(moment().subtract(7, 'days').toDate());
-      request.post('/call').end(() => {
-        timekeeper.reset();
-        done();
+      context('after 7 days', () => {
+        beforeEach(done => {
+          timekeeper.travel(moment().subtract(7, 'days').toDate());
+          request.post(`/call?caller_number=${caller.phone_number}`).end(() => {
+            timekeeper.reset();
+            done();
+          });
+        });
+
+        it('allows callees to be called again', (done) => {
+          request.post(`/call?caller_number=${caller.phone_number}`).expect(/chris/).end(done)
+        });
       });
     });
-
-    it('allows callees to be called again', (done) => {
-      request.post('/call').expect(/alice/).end(done)
-    });
-  })
+  });
 });
 
 describe('/call_log', () => {
   beforeEach(done => Call.query().truncate().nodeify(done));
-  beforeEach(done => Callee.query().insert(alice).nodeify(done));
+  beforeEach(done => Callee.query().insert(unassociatedCallee).nodeify(done));
   beforeEach(done => {
-    request.post(`/call_log?callee_number=${alice.phone_number}`)
+    request.post(`/call_log?callee_number=${unassociatedCallee.phone_number}`)
       .type('form')
-      .send({DialBLegTo: alice.phone_number})
+      .send({DialBLegTo: unassociatedCallee.phone_number})
       .end(done)
   });
 
   it('stores call records', (done) => {
     Call.query().then(data => {
       expect(data).to.have.length(1);
-      expect(data[0].callee_number).to.be(alice.phone_number);
+      expect(data[0].callee_number).to.be(unassociatedCallee.phone_number);
       done();
     }).catch(done);
   });
@@ -268,9 +258,10 @@ describe('logging', () => {
 });
 
 describe('routing', () => {
-  beforeEach(done => Callee.query().insert(alice).nodeify(done));
-  it('/call redirects to hangup & calls back to log', (done) => {
-    request.post('/call')
+  beforeEach(done => Callee.query().insert(caller).nodeify(done));
+  beforeEach(done => Callee.query().insert(associatedCallee).nodeify(done));
+  it('/call redirects to hangup & calls back to call_log', (done) => {
+    request.post(`/call?caller_number=${caller.phone_number}`)
       .expect(/Redirect\>http:\/\/127.0.0.1\/hangup/)
       .expect(/callbackUrl="http:\/\/127.0.0.1\/call_log/)
       .end(done);
