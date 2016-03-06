@@ -14,6 +14,7 @@ exports.up = function(knex, Promise) {
       t.increments();
       t.timestamp('created_at').defaultTo(knex.fn.now());
       t.timestamp('updated_at').defaultTo(knex.fn.now());
+      t.string('external_id');
       t.string('first_name');
       t.string('phone_number');
       t.string('location');
