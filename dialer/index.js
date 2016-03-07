@@ -145,21 +145,24 @@ app.post('/call', (req, res, next) => {
 
   async.auto({
     findCallee: (cb) => {
-      Callee.query()
-        .where({caller: req.query.caller_number})
+      const cleanedNumber = '\'61\' || right(regexp_replace(phone_number, \'[^\\\d]\', \'\', \'g\'),9)';
+      const calleeQuery = Callee.query()
+        .select('callees.*', Callee.raw(`${cleanedNumber} as cleaned_number`))
+        .whereRaw(`length(${cleanedNumber}) = 11`)
+        .andWhere({caller: req.query.caller_number})
         .andWhere(function() {
           this.whereNull('last_called_at')
             .orWhere('last_called_at', '<', moment().subtract(7, 'days'))
         })
-        .first()
-        .nodeify((err, row) => {
-          if (err) return cb(err);
-          if (row) return cb(null, row);
+        .first();
+      calleeQuery.nodeify((err, row) => {
+        if (err) return cb(err);
+        if (row) return cb(null, row);
 
-          r.addSpeakAU('Sorry, there are no more numbers left to call.')
-          r.addRedirect(appUrl('disconnect'));
-          res.send(r.toXML());
-        });
+        r.addSpeakAU('Sorry, there are no more numbers left to call.')
+        r.addRedirect(appUrl('disconnect'));
+        res.send(r.toXML());
+      });
     },
     markCallee: ['findCallee', (cb, results) => {
       Callee.query()
@@ -169,17 +172,17 @@ app.post('/call', (req, res, next) => {
   }, (err, results) => {
     if (err) return next(err);
 
-    const callee = results.markCallee;
+    const callee = results.findCallee;
     r.addSpeakAU(`You're about to call ${callee.first_name} from ${callee.location}`);
     r.addSpeakAU('To hang up the call at any time, press star.');
     const d = r.addDial({
-      action: appUrl(`call_log?callee_number=${callee.phone_number}`),
-      callbackUrl: appUrl(`call_log?callee_number=${callee.phone_number}`),
+      action: appUrl(`call_log?callee_number=${callee.cleaned_number}`),
+      callbackUrl: appUrl(`call_log?callee_number=${callee.cleaned_number}`),
       hangupOnStar: true,
       timeout: 30,
       redirect: false
     });
-    d.addNumber(callee.phone_number);
+    d.addNumber(callee.cleaned_number);
     r.addPlay(callEndBeep);
     r.addRedirect(appUrl(`hangup?caller_number=${req.query.caller_number}`));
     webhooks(`sessions/${req.body.From}`, Object.assign({session: 'active', status: 'calling', call: callee}));
