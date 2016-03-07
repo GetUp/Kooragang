@@ -65,7 +65,8 @@ app.post('/connect', (req, res, next) => {
   //   redirect: false
   // });
 
-  Caller.query().where({phone_number: req.body.From}).first().then(caller => {
+  const callerNumber = req.body.From.replace(/[^\d]/g, '').slice(-9);
+  Caller.query().where('phone_number', 'like', '%' + callerNumber).first().then(caller => {
     if (!caller) {
       r.addSpeakAU('Hi there! We don\'t recognise the number you\'re calling from.');
       r.addSpeakAU('We\'re currently in beta, so only approved callers can use this system.');

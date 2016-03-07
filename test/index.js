@@ -52,6 +52,16 @@ describe('/connect', () => {
         .expect(/Hi bob/)
         .end(done)
     });
+
+    context('with an irregular caller id', () => {
+      it('still identifies our caller', (done) => {
+        request.post('/connect')
+          .type('form')
+          .send({ From: '02 8888 8888' })
+          .expect(/Hi bob/)
+          .end(done)
+      });
+    });
   });
 });
 
