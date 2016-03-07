@@ -76,9 +76,9 @@ app.post('/connect', (req, res, next) => {
       return res.send(r.toXML());
     }
 
-    r.addSpeakAU(`Hi ${caller.first_name}! Thanks for agreeing to call other GetUp members to invite them to your GetTogether.`);
-    r.addPlay(quarterSec);
-    r.addSpeakAU('If you\'ve heard the briefing before, press 1 at any time to skip straight to calling.');
+    r.addSpeakAU(`Hi ${caller.first_name}! Thanks for taking the time to call other GetUp members to invite them to your GetTogether.`);
+    // r.addPlay(quarterSec);
+    // r.addSpeakAU('If you\'ve heard the briefing before, press 1 at any time to skip straight to calling.');
     r.addPlay(halfSec);
 
     const briefing = r.addGetDigits({
@@ -91,35 +91,35 @@ app.post('/connect', (req, res, next) => {
     });
 
     // session overview
-    briefing.addSpeakAU('In this session, you\'ll be calling GetUp members who live near you.');
+    briefing.addSpeakAU('Today, you\'ll be calling GetUp members who live in your local area.');
     briefing.addPlay(quarterSec);
-    briefing.addSpeakAU('You\'ll be inviting them to attend your GetTogether, on the 19th, or 20th of March.');
+    briefing.addSpeakAU('Your aim is to invite them to attend your GetTogether, on the 19th, or 20th of March.');
     briefing.addPlay(halfSec);
 
     // session content
-    briefing.addSpeakAU('Tell them about the purpose of the event.  That is, to discuss GetUp\'s election strategy.');
+    briefing.addSpeakAU('Tell them that you are holding a local event to discuss GetUp\'s election strategy.');
     briefing.addPlay(quarterSec);
-    briefing.addSpeakAU('Make sure to let them know the details of the event.');
+    briefing.addSpeakAU('Tell them it\'s a great chance to meet other GetUp members in their local area.');
     briefing.addPlay(quarterSec);
-    briefing.addSpeakAU('Also, be sure to tell them how fun it will be, to meet people in their local area with similar values.');
+    briefing.addSpeakAU('Make sure you let them know the details of the event.');
     briefing.addPlay(halfSec);
 
     // guidelines / process
     briefing.addSpeakAU('During the calls, it\'s important to be very polite and listen.  However, be aware that the more calls you can make, the more people will hear about the Get Together.');
     briefing.addPlay(quarterSec);
-    briefing.addSpeakAU('After this message, you\'ll begin calling.');
+    briefing.addSpeakAU('After this message, the first call will begin automatically.');
     briefing.addPlay(quarterSec);
-    briefing.addSpeakAU('After each call, there\'ll be a voice prompt to record the result of the call.');
+    briefing.addSpeakAU('After each call, you will be asked to record the outcome of the call.');
+    briefing.addPlay(quarterSec);
+    briefing.addSpeakAU('Remember, don\'t hangup *your* phone.  When the call ends, just press star, or wait for the other person to hang up.');
+    briefing.addPlay(quarterSec);
+    briefing.addSpeakAU('You\'ll then be given the opportunity to call another member, or finish your session.');
     briefing.addPlay(quarterSec);
     briefing.addSpeakAU('If the call is very short, we won\'t ask you for the result.');
     briefing.addPlay(quarterSec);
     briefing.addSpeakAU('If the call goes straight to voicemail, don\'t worry about leaving a message, just press star, to proceed to the next call.');
     briefing.addPlay(halfSec);
-    briefing.addSpeakAU('You\'ll then be given the opportunity to call another member, or finish your session.');
-    briefing.addPlay(quarterSec);
-    briefing.addSpeakAU('Remember, don\'t hangup *your* phone.  When the call ends, just press star, or alternatively, wait for the other person to hang up.');
-    briefing.addPlay(quarterSec);
-    briefing.addSpeakAU('Thank you very much for helping with our election effort!');
+    briefing.addSpeakAU('Thank you very much for being part of this experiment.  Happy recruiting!');
 
     briefing.addPlay(halfSec);
     briefing.addSpeakAU('This message will automatically replay until you press 1 on your phone key pad.');
