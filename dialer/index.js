@@ -308,7 +308,7 @@ app.post('/feedback', (req, res) => {
   r.addSpeakAU('Please leave a short 30 second message after the beep. If you\'d like a response, be sure to leave your name and number.');
   r.addRecord({
     action: appUrl('log'),
-    maxLength: 30,
+    maxLength: 60,
     redirect: false
   });
   r.addSpeakAU('Thanks again for calling. We hope to see you again soon!');
