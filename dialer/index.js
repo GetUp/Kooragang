@@ -53,6 +53,15 @@ const appUrl = endpoint => `${host}/${endpoint}`;
 
 app.get('/', (req, res) => res.send('<_-.-_>I\'m awake.</_-.-_>'));
 
+const unapprovedCaller = (r, res) => {
+  r.addSpeakAU('Hi there! We don\'t recognise the number you\'re calling from.');
+  r.addSpeakAU('We\'re currently in beta, so only approved callers can use this system.');
+  r.addSpeakAU('If you\'d like to help out, please send an email to: take-action, at get up, dot org, dot ay u.');
+  r.addSpeakAU('That address again: take-action, at get up, dot org, dot ay u.');
+  r.addSpeakAU('Thanks and goodbye.');
+  return res.send(r.toXML());
+}
+
 app.post('/connect', (req, res, next) => {
   const r = plivo.Response();
   r.addWait({length: 2});
@@ -65,17 +74,16 @@ app.post('/connect', (req, res, next) => {
   //   redirect: false
   // });
 
-  const callerNumber = req.body.From.replace(/[^\d]/g, '').slice(-9);
-  Caller.query().where('phone_number', 'like', '%' + callerNumber).first().then(caller => {
-    if (!caller) {
-      r.addSpeakAU('Hi there! We don\'t recognise the number you\'re calling from.');
-      r.addSpeakAU('We\'re currently in beta, so only approved callers can use this system.');
-      r.addSpeakAU('If you\'d like to help out, please send an email to: take-action, at get up, dot org, dot ay u.');
-      r.addSpeakAU('That address again: take-action, at get up, dot org, dot ay u.');
-      r.addSpeakAU('Thanks and goodbye.');
-      return res.send(r.toXML());
-    }
+  async.waterfall([(cb) => {
+    const callerNumber = req.body.From.replace(/[^\d]/g, '').slice(-9);
+    if (callerNumber.length !== 9) { return unapprovedCaller(r, res); }
 
+    const callerQuery = Caller.query().where('phone_number', 'like', '%' + callerNumber).first();
+    callerQuery.then(caller => {
+      if (!caller) return unapprovedCaller(r, res);
+      cb(null, caller);
+    }).catch(next);
+  }, (caller) => {
     r.addSpeakAU(`Hi ${caller.first_name}! Thanks for taking the time to call other GetUp members to invite them to your GetTogether.`);
     // r.addPlay(quarterSec);
     // r.addSpeakAU('If you\'ve heard the briefing before, press 1 at any time to skip straight to calling.');
@@ -131,7 +139,7 @@ app.post('/connect', (req, res, next) => {
     // console.log()
     res.send(r.toXML());
     webhooks(`sessions/${req.query.From}`, { session: 'active', status: 'welcome message', call: {} });
-  }).catch(next);
+  }]);
 });
 
 app.post('/call', (req, res, next) => {

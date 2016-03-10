@@ -30,21 +30,10 @@ const unassociatedCallee = {
 
 describe('/connect', () => {
   beforeEach(done => Caller.query().truncate().nodeify(done));
-  const payload = { From: caller.phone_number };
-
-  context('with an unapproved number', () => {
-    it('directs them to contact us', (done) => {
-      request.post('/connect')
-        .type('form')
-        .send(payload)
-        .expect(/recognise the number/)
-        .end(done)
-    });
-  });
+  beforeEach(done => Caller.query().insert(caller).nodeify(done));
 
   context('with an approved number', () => {
-    beforeEach(done => Caller.query().insert(caller).nodeify(done));
-
+    const payload = { From: caller.phone_number };
     it('plays the briefing message', (done) => {
       request.post('/connect')
         .type('form')
@@ -52,15 +41,38 @@ describe('/connect', () => {
         .expect(/Hi bob/)
         .end(done)
     });
+  });
 
-    context('with an irregular caller id', () => {
-      it('still identifies our caller', (done) => {
-        request.post('/connect')
-          .type('form')
-          .send({ From: '02 8888 8888' })
-          .expect(/Hi bob/)
-          .end(done)
-      });
+  context('with an irregular, but approved, caller id', () => {
+    const payload = { From: '02 8888 8888' };
+    it('still identifies our caller', (done) => {
+      request.post('/connect')
+        .type('form')
+        .send(payload)
+        .expect(/Hi bob/)
+        .end(done)
+    });
+  });
+
+  context('with an unapproved number', () => {
+    const payload = { From: '61266666666' };
+    it('directs them to contact us', (done) => {
+      request.post('/connect')
+        .type('form')
+        .send(payload)
+        .expect(/only approved callers/)
+        .end(done)
+    });
+  });
+
+  context('with a private number', () => {
+    const payload = { From: 'anonymous' };
+    it('directs them to contact us', (done) => {
+      request.post('/connect')
+        .type('form')
+        .send(payload)
+        .expect(/only approved callers/)
+        .end(done)
     });
   });
 });
