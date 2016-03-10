@@ -76,7 +76,7 @@ app.post('/connect', (req, res, next) => {
 
   async.waterfall([(cb) => {
     const callerNumber = req.body.From.replace(/[^\d]/g, '').slice(-9);
-    if (callerNumber.length !== 9) { return unapprovedCaller(r, res); }
+    if (callerNumber.length !== 9) return unapprovedCaller(r, res);
 
     const callerQuery = Caller.query().where('phone_number', 'like', '%' + callerNumber).first();
     callerQuery.then(caller => {
