@@ -24,7 +24,7 @@ const associatedCallee = {
 };
 const unassociatedCallee = {
   first_name: 'alice',
-  phone_number: '61299999999',
+  phone_number: '+612 9999-9999',
   location: 'drummoyne'
 };
 
@@ -116,16 +116,16 @@ describe('/call_log', () => {
   beforeEach(done => Call.query().truncate().nodeify(done));
   beforeEach(done => Callee.query().insert(unassociatedCallee).nodeify(done));
   beforeEach(done => {
-    request.post(`/call_log?callee_number=${unassociatedCallee.phone_number}`)
+    request.post(`/call_log?callee_number=61299999999`)
       .type('form')
-      .send({DialBLegTo: unassociatedCallee.phone_number})
+      .send({DialBLegTo: '61299999999'})
       .end(done)
   });
 
   it('stores call records', (done) => {
     Call.query().then(data => {
       expect(data).to.have.length(1);
-      expect(data[0].callee_number).to.be(unassociatedCallee.phone_number);
+      expect(data[0].callee_number).to.be('61299999999');
       done();
     }).catch(done);
   });

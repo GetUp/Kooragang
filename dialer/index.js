@@ -199,7 +199,9 @@ app.post('/call', (req, res, next) => {
 });
 
 app.post('/call_log', (req, res, next) => {
-  Callee.query().where({phone_number: req.query.callee_number}).first().then(callee => {
+  const cleanedNumber = '\'61\' || right(regexp_replace(phone_number, \'[^\\\d]\', \'\', \'g\'),9)';
+  const calleeQuery = Callee.query().whereRaw(`${cleanedNumber} = '${req.query.callee_number}'`).first();
+  calleeQuery.then(callee => {
     Call.query().insert({
       log_id: res.locals.log_id,
       callee_id: callee.id,
