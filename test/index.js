@@ -132,6 +132,7 @@ describe('/call_log', () => {
 });
 
 describe('/hangup', () => {
+  beforeEach(done => Call.query().truncate().nodeify(done));
   const payload = { DialBLegTo: '61400999000' };
   const call = (startTime) => {
     return {
@@ -169,6 +170,19 @@ describe('/hangup', () => {
         .expect('Content-Type', /xml/)
         .expect(/^((?!survey).)*$/)
         .expect(/call_again/)
+        .end(done);
+    });
+  });
+
+  context('without a call_log record', () => {
+    it('defaults to prompting for survey answers', (done) => {
+      request.post('/hangup')
+        .type('form')
+        .send(payload)
+        .expect(200)
+        .expect('Content-Type', /xml/)
+        .expect(/^((?!call_again).)*$/)
+        .expect(/survey/)
         .end(done);
     });
   });
