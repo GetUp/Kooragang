@@ -143,7 +143,7 @@ describe('/hangup', () => {
   };
 
   context('with a long duration call', () => {
-    const record = call(moment().subtract(5, 'seconds'));
+    const record = call(moment().subtract(10, 'seconds'));
     beforeEach(done => Call.query().insert(record).nodeify(done))
 
     it('prompts for survey answers', (done) => {
@@ -159,7 +159,7 @@ describe('/hangup', () => {
   });
 
   context('with a short duration call', () => {
-    const record = call(moment().subtract(4, 'seconds'));
+    const record = call(moment().subtract(9, 'seconds'));
     beforeEach(done => Call.query().insert(record).nodeify(done))
 
     it('skips the survey; just calls again', (done) => {

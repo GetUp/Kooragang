@@ -219,7 +219,7 @@ app.post('/hangup', (req, res, next) => {
   const conditions = {status: 'answer', callee_number: req.body.DialBLegTo};
   Call.query().where(conditions).orderBy('created_at', 'desc').first()
     .then(call => {
-      if (call && call.created_at > moment().subtract(5, 'seconds')) {
+      if (call && call.created_at > moment().subtract(10, 'seconds')) {
         r.addRedirect(appUrl(`call_again?caller_number=${req.query.caller_number}`));
       } else {
         r.addRedirect(appUrl(`survey?caller_number=${req.query.caller_number}&calleeUUID=${req.body.DialBLegUUID}&calleeNumber=${req.body.DialBLegTo}`));
