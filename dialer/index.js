@@ -216,16 +216,22 @@ app.post('/call_log', (req, res, next) => {
 
 app.post('/hangup', (req, res, next) => {
   const r = plivo.Response();
+
+  if (req.body.CallStatus !== 'completed') {
+    r.addRedirect(appUrl(`call_again?caller_number=${req.query.caller_number}`));
+    return res.send(r.toXML());
+  }
+
   const conditions = {status: 'answer', callee_number: req.body.DialBLegTo};
-  Call.query().where(conditions).orderBy('created_at', 'desc').first()
-    .then(call => {
-      if (call && call.created_at > moment().subtract(10, 'seconds')) {
-        r.addRedirect(appUrl(`call_again?caller_number=${req.query.caller_number}`));
-      } else {
-        r.addRedirect(appUrl(`survey?caller_number=${req.query.caller_number}&calleeUUID=${req.body.DialBLegUUID}&calleeNumber=${req.body.DialBLegTo}`));
-      }
-      res.send(r.toXML());
-    }).catch(next);
+  const callQuery = Call.query().where(conditions).orderBy('created_at', 'desc').first();
+  callQuery.then(call => {
+    if (call && call.created_at > moment().subtract(10, 'seconds')) {
+      r.addRedirect(appUrl(`call_again?caller_number=${req.query.caller_number}`));
+    } else {
+      r.addRedirect(appUrl(`survey?caller_number=${req.query.caller_number}&calleeUUID=${req.body.DialBLegUUID}&calleeNumber=${req.body.DialBLegTo}`));
+    }
+    res.send(r.toXML());
+  }).catch(next);
 });
 
 app.post('/call_again', (req, res) => {

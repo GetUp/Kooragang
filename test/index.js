@@ -133,12 +133,12 @@ describe('/call_log', () => {
 
 describe('/hangup', () => {
   beforeEach(done => Call.query().truncate().nodeify(done));
-  const payload = { DialBLegTo: '61400999000' };
+  const number = '61400999000';
   const call = (startTime) => {
     return {
       created_at: startTime.toDate(),
       status: 'answer',
-      callee_number: payload.DialBLegTo,
+      callee_number: number,
     }
   };
 
@@ -149,9 +149,7 @@ describe('/hangup', () => {
     it('prompts for survey answers', (done) => {
       request.post('/hangup')
         .type('form')
-        .send(payload)
-        .expect(200)
-        .expect('Content-Type', /xml/)
+        .send({ DialBLegTo: number, CallStatus: 'completed' })
         .expect(/^((?!call_again).)*$/)
         .expect(/survey/)
         .end(done);
@@ -165,9 +163,7 @@ describe('/hangup', () => {
     it('skips the survey; just calls again', (done) => {
       request.post('/hangup')
         .type('form')
-        .send(payload)
-        .expect(200)
-        .expect('Content-Type', /xml/)
+        .send({ DialBLegTo: number, CallStatus: 'completed' })
         .expect(/^((?!survey).)*$/)
         .expect(/call_again/)
         .end(done);
@@ -178,11 +174,20 @@ describe('/hangup', () => {
     it('defaults to prompting for survey answers', (done) => {
       request.post('/hangup')
         .type('form')
-        .send(payload)
-        .expect(200)
-        .expect('Content-Type', /xml/)
+        .send({ DialBLegTo: number, CallStatus: 'completed' })
         .expect(/^((?!call_again).)*$/)
         .expect(/survey/)
+        .end(done);
+    });
+  });
+
+  context('without a completed call', () => {
+    it('skips the survey; just calls again', (done) => {
+      request.post('/hangup')
+        .type('form')
+        .send({ DialBLegTo: number, CallStatus: 'no-answer' })
+        .expect(/^((?!survey).)*$/)
+        .expect(/call_again/)
         .end(done);
     });
   });
