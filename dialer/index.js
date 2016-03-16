@@ -67,12 +67,12 @@ app.post('/connect', (req, res, next) => {
   r.addWait({length: 2});
 
   // uncomment this to record the entire call
-  // r.addRecord({
-  //   action: appUrl('log'),
-  //   maxLength: 60*60,
-  //   recordSession: true,
-  //   redirect: false
-  // });
+  r.addRecord({
+    action: appUrl('log'),
+    maxLength: 60*60,
+    recordSession: true,
+    redirect: false
+  });
 
   async.waterfall([(cb) => {
     const callerNumber = req.body.From.replace(/[^\d]/g, '').slice(-9);
