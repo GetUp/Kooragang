@@ -14,7 +14,7 @@ const {
   SurveyResult
 } = require('../models');
 
-// const welcomeMessage = 'https://dl.dropboxusercontent.com/u/404666/getup/kooragang/welcome7.mp3';
+const welcomeMessage = 'https://dl.dropboxusercontent.com/u/404666/getup/kooragang/welcome_hospital_petition_delivery.wav';
 // const briefingMessage = 'http://f.cl.ly/items/1a1d3q2D430Y43041d1h/briefing.mp3';
 const quarterSec = 'http://www.xamuel.com/blank-mp3-files/quartersec.mp3';
 const halfSec = 'http://www.xamuel.com/blank-mp3-files/halfsec.mp3';
@@ -84,11 +84,6 @@ app.post('/connect', (req, res, next) => {
       cb(null, caller);
     }).catch(next);
   }, (caller) => {
-    r.addSpeakAU(`Hi ${caller.first_name}! Thanks for taking the time to call other GetUp members to invite them to your GetTogether.`);
-    // r.addPlay(quarterSec);
-    // r.addSpeakAU('If you\'ve heard the briefing before, press 1 at any time to skip straight to calling.');
-    r.addPlay(halfSec);
-
     const briefing = r.addGetDigits({
       action: appUrl(`call?caller_number=${caller.phone_number}`),
       method: 'POST',
@@ -98,41 +93,7 @@ app.post('/connect', (req, res, next) => {
       validDigits: [1]
     });
 
-    // session overview
-    briefing.addSpeakAU('Today, you\'ll be calling GetUp members who live in your local area.');
-    briefing.addPlay(quarterSec);
-    briefing.addSpeakAU('Your aim is to invite them to attend your GetTogether, on the 19th, or 20th of March.');
-    briefing.addPlay(halfSec);
-
-    // session content
-    briefing.addSpeakAU('Tell them that you are holding a local event to discuss GetUp\'s election strategy.');
-    briefing.addPlay(quarterSec);
-    briefing.addSpeakAU('Tell them it\'s a great chance to meet other GetUp members in their local area.');
-    briefing.addPlay(quarterSec);
-    briefing.addSpeakAU('Make sure you let them know the details of the event.');
-    briefing.addPlay(halfSec);
-
-    // guidelines / process
-    briefing.addSpeakAU('During the calls, it\'s important to be very polite and listen.  However, be aware that the more calls you can make, the more people will hear about the Get Together.');
-    briefing.addPlay(quarterSec);
-    briefing.addSpeakAU('After this message, the first call will begin automatically.');
-    briefing.addPlay(quarterSec);
-    briefing.addSpeakAU('After each call, you will be asked to record the outcome of the call.');
-    briefing.addPlay(quarterSec);
-    briefing.addSpeakAU('Remember, don\'t hangup *your* phone.  When the call ends, just press star, or wait for the other person to hang up.');
-    briefing.addPlay(quarterSec);
-    briefing.addSpeakAU('You\'ll then be given the opportunity to call another member, or finish your session.');
-    briefing.addPlay(quarterSec);
-    briefing.addSpeakAU('If the call is very short, we won\'t ask you for the result.');
-    briefing.addPlay(quarterSec);
-    briefing.addSpeakAU('If the call goes straight to voicemail, don\'t worry about leaving a message, just press star, to proceed to the next call.');
-    briefing.addPlay(halfSec);
-    briefing.addSpeakAU('Thank you very much for being part of this experiment.  Happy recruiting!');
-
-    briefing.addPlay(halfSec);
-    briefing.addSpeakAU('This message will automatically replay until you press 1 on your phone key pad.');
-
-    // briefing.addPlay(welcomeMessage);
+    briefing.addPlay(welcomeMessage);
     // briefing.addPlay(briefingMessage);
 
     r.addRedirect(appUrl(`call?caller_number=${caller.phone_number}`));
@@ -260,7 +221,7 @@ app.post('/survey', (req, res) => {
     numDigits: 1,
     validDigits: [1, 2, 3, 7, 9]
   });
-  surveyResponse.addSpeakAU('Are they coming to your Get Together. For "yes", press 1. For "no", press 2. For "maybe", press 3.');
+  surveyResponse.addSpeakAU('Are they coming to your petition delivery. For "yes", press 1. For "no", press 2. For "maybe", press 3.');
   surveyResponse.addSpeakAU('If we should call them back at a later time, press 7.');
   surveyResponse.addSpeakAU('If the number was incorrect, press 9.');
   surveyResponse.addSpeakAU('To hear these options again, press hash.');
