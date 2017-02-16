@@ -66,7 +66,7 @@ describe('/connect', () => {
   });
 
   context('with a private number', () => {
-    const payload = { From: 'anonymous' };
+    const payload = { From: 'no one we know' };
     it('directs them to contact us', (done) => {
       request.post('/connect')
         .type('form')
@@ -84,7 +84,6 @@ describe('/call', () => {
     beforeEach(done => Caller.query().insert(caller).nodeify(done));
 
     context('and only one associated callee', () => {
-      beforeEach(done => Callee.query().insert(unassociatedCallee).nodeify(done));
       beforeEach(done => Callee.query().insert(associatedCallee).nodeify(done));
 
       context('which has already been called', () => {
@@ -220,7 +219,7 @@ describe('survey question persistence', () => {
       });
   });
 
-  it('stores the answer, not the digit', (done) => {
+  it('stores the digit', (done) => {
     request
       .post('/survey_result')
       .type('form')
@@ -230,7 +229,7 @@ describe('survey question persistence', () => {
 
         SurveyResult.query().then((data) => {
           expect(data).to.have.length(1);
-          expect(data[0].answer).to.be('maybe');
+          expect(data[0].answer).to.be('3');
           done();
         })
         .catch(done);

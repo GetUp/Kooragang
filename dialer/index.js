@@ -27,7 +27,7 @@ response.addSpeakAU = function(text) {
   this.addSpeak(text, {language: 'en-GB', voice: 'MAN'});
 };
 
-let host;
+let host= process.env.BASE_URL;
 
 app.use((req, res, next) => {
   if (!host) host = `${req.protocol}://${req.hostname}`;
@@ -59,7 +59,7 @@ const unapprovedCaller = (r, res) => {
   r.addSpeakAU('If you\'d like to help out, please send an email to: take-action, at get up, dot org, dot ay u.');
   r.addSpeakAU('That address again: take-action, at get up, dot org, dot ay u.');
   r.addSpeakAU('Thanks and goodbye.');
-  return res.send(r.toXML());
+  res.send(r.toXML());
 }
 
 app.post('/connect', (req, res, next) => {
@@ -74,16 +74,12 @@ app.post('/connect', (req, res, next) => {
     redirect: false
   });
 
-  async.waterfall([(cb) => {
-    const callerNumber = req.body.From.replace(/[^\d]/g, '').slice(-9);
-    if (callerNumber.length !== 9) return unapprovedCaller(r, res);
+  const callerNumber = req.body.From.replace(/\s/g, '').slice(-9);
+  const callerQuery = Caller.query().where('phone_number', 'like', '%' + callerNumber).first();
+  callerQuery.then(caller => {
+      console.error(caller)
+    if (!caller) return unapprovedCaller(r, res);
 
-    const callerQuery = Caller.query().where('phone_number', 'like', '%' + callerNumber).first();
-    callerQuery.then(caller => {
-      if (!caller) return unapprovedCaller(r, res);
-      cb(null, caller);
-    }).catch(next);
-  }, (caller) => {
     const briefing = r.addGetDigits({
       action: appUrl(`call?caller_number=${caller.phone_number}`),
       method: 'POST',
@@ -93,14 +89,27 @@ app.post('/connect', (req, res, next) => {
       validDigits: [1]
     });
 
-    briefing.addPlay(welcomeMessage);
-    // briefing.addPlay(briefingMessage);
+    briefing.addSpeakAU(`Hi ${caller.first_name}! Welcome to the GetUp Power Dialer tool. Today you will be making calls about the Adani campaign.`);
+    briefing.addPlay(halfSec);
+    briefing.addSpeakAU('You should have a document in front of you with the script and the reference codes for each survey question.');
+    briefing.addPlay(quarterSec);
+    briefing.addSpeakAU('If not, please hang up and contact the campaign coordinator and call back when you have the instructions you need.');
+    briefing.addPlay(halfSec);
+    briefing.addPlay(halfSec);
+
+    briefing.addSpeakAU('Remember, don\'t hangup *your* phone.  When the call ends, just press star, or wait for the other person to hang up.');
+    briefing.addPlay(quarterSec);
+    briefing.addSpeakAU('Thank you very much for being part of this campaign. Let\'s get started!');
+
+    briefing.addPlay(halfSec);
+    briefing.addSpeakAU('This message will automatically replay until you press 1 on your phone key pad.');
 
     r.addRedirect(appUrl(`call?caller_number=${caller.phone_number}`));
     // console.log()
-    res.send(r.toXML());
     webhooks(`sessions/${req.query.From}`, { session: 'active', status: 'welcome message', call: {} });
-  }]);
+    console.error(r.toXML())
+    res.send(r.toXML());
+  }).catch(next);
 });
 
 app.post('/call', (req, res, next) => {
@@ -118,7 +127,6 @@ app.post('/call', (req, res, next) => {
       const calleeQuery = Callee.query()
         .select('callees.*', Callee.raw(`${cleanedNumber} as cleaned_number`))
         .whereRaw(`length(${cleanedNumber}) = 11`)
-        .andWhere({caller: req.query.caller_number})
         .andWhere(function() {
           this.whereNull('last_called_at')
             .orWhere('last_called_at', '<', moment().subtract(7, 'days'))
@@ -142,7 +150,7 @@ app.post('/call', (req, res, next) => {
     if (err) return next(err);
 
     const callee = results.findCallee;
-    r.addSpeakAU(`You're about to call ${callee.first_name} from ${callee.location}`);
+    r.addSpeakAU(`Connecting to ${callee.first_name}`);
     r.addSpeakAU('To hang up the call at any time, press star.');
     const d = r.addDial({
       action: appUrl(`call_log?callee_number=${callee.cleaned_number}`),
@@ -221,24 +229,10 @@ app.post('/survey', (req, res) => {
     numDigits: 1,
     validDigits: [1, 2, 3, 7, 9]
   });
-  surveyResponse.addSpeakAU('Are they coming to your petition delivery. For "yes", press 1. For "no", press 2. For "maybe", press 3.');
-  surveyResponse.addSpeakAU('If we should call them back at a later time, press 7.');
-  surveyResponse.addSpeakAU('If the number was incorrect, press 9.');
-  surveyResponse.addSpeakAU('To hear these options again, press hash.');
+  surveyResponse.addSpeakAU('Enter the answer code');
 
   res.send(r.toXML());
 });
-
-const answer = (digit) => {
-  const options = {
-    '1': 'yes',
-    '2': 'no',
-    '3': 'maybe',
-    '7': 'call_back',
-    '9': 'number_incorrect'
-  };
-  return options[digit];
-}
 
 app.post('/survey_result', (req, res, next) => {
   const data = {
@@ -247,7 +241,7 @@ app.post('/survey_result', (req, res, next) => {
     callee_uuid: req.query.calleeUUID,
     callee_number: req.query.calleeNumber,
     question: req.query.q,
-    answer: answer(req.body.Digits)
+    answer: req.body.Digits
   }
   SurveyResult.query().insert(data).then(() => {
     const r = plivo.Response();
