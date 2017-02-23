@@ -87,7 +87,7 @@ describe('/call', () => {
       beforeEach(done => Callee.query().insert(associatedCallee).nodeify(done));
 
       context('which has already been called', () => {
-        beforeEach(done => request.post(`/call?caller_number=${caller.phone_number}`).expect(/chris/).end(done));
+        beforeEach(done => request.post(`/call?caller_number=${caller.phone_number}`).expect(/resuming/i).end(done));
 
         it('will not call again', (done) => {
           request.post('/call').expect(/no more numbers left to call/).end(done)
@@ -104,7 +104,7 @@ describe('/call', () => {
         });
 
         it('allows callees to be called again', (done) => {
-          request.post(`/call?caller_number=${caller.phone_number}`).expect(/chris/).end(done)
+          request.post(`/call?caller_number=${caller.phone_number}`).expect(/resuming/i).end(done)
         });
       });
     });
@@ -219,17 +219,17 @@ describe('survey question persistence', () => {
       });
   });
 
-  it('stores the digit', (done) => {
+  it('stores the code for the digit', (done) => {
     request
       .post('/survey_result')
       .type('form')
-      .send({ Digits: '3' })
+      .send({ Digits: '6' })
       .end((err, res) => {
         if (err) return done(err);
 
         SurveyResult.query().then((data) => {
           expect(data).to.have.length(1);
-          expect(data[0].answer).to.be('3');
+          expect(data[0].answer).to.be('undecided');
           done();
         })
         .catch(done);

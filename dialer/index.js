@@ -38,6 +38,7 @@ app.use((req, res, next) => {
 const log = ({method, url, body, query, params, headers}, cb) => {
   if (method === 'GET') return cb();
   const UUID = body.CallUUID;
+  if (process.env.NODE_ENV === 'test') console.error('REQUEST', {UUID, url, body, query, params, headers})
   Log.query().insert({UUID, url, body, query, params, headers}).nodeify(cb);
 };
 
@@ -62,6 +63,20 @@ const unapprovedCaller = (r, res) => {
   res.send(r.toXML());
 }
 
+const answer = (digit) => {
+  return {
+    '1': 'machine',
+    '2': 'no answer',
+    '3': 'callback',
+    '4': 'not interested',
+    '5': 'disagree',
+    '6': 'undecided',
+    '7': 'agree',
+    '8': 'take action',
+    '9': 'error'
+  }[digit];
+}
+
 app.post('/connect', (req, res, next) => {
   const r = plivo.Response();
   r.addWait({length: 2});
@@ -77,7 +92,6 @@ app.post('/connect', (req, res, next) => {
   const callerNumber = req.body.From.replace(/\s/g, '').slice(-9);
   const callerQuery = Caller.query().where('phone_number', 'like', '%' + callerNumber).first();
   callerQuery.then(caller => {
-      console.error(caller)
     if (!caller) return unapprovedCaller(r, res);
 
     const briefing = r.addGetDigits({
@@ -105,9 +119,7 @@ app.post('/connect', (req, res, next) => {
     briefing.addSpeakAU('This message will automatically replay until you press 1 on your phone key pad.');
 
     r.addRedirect(appUrl(`call?caller_number=${caller.phone_number}`));
-    // console.log()
     webhooks(`sessions/${req.query.From}`, { session: 'active', status: 'welcome message', call: {} });
-    console.error(r.toXML())
     res.send(r.toXML());
   }).catch(next);
 });
@@ -150,11 +162,13 @@ app.post('/call', (req, res, next) => {
     if (err) return next(err);
 
     const callee = results.findCallee;
-    r.addSpeakAU(`Connecting to ${callee.first_name}`);
+    r.addSpeakAU('Resuming calling.');
     r.addSpeakAU('To hang up the call at any time, press star.');
     const d = r.addDial({
       action: appUrl(`call_log?callee_number=${callee.cleaned_number}`),
       callbackUrl: appUrl(`call_log?callee_number=${callee.cleaned_number}`),
+      confirmSound: appUrl(`confirm_sound?callee_number=${callee.cleaned_number}`),
+      confirmKey: '#',
       hangupOnStar: true,
       timeout: 30,
       redirect: false
@@ -165,6 +179,16 @@ app.post('/call', (req, res, next) => {
     webhooks(`sessions/${req.body.From}`, Object.assign({session: 'active', status: 'calling', call: callee}));
     res.send(r.toXML());
   });
+});
+
+app.post('/confirm_sound', (req, res, next) => {
+  const cleanedNumber = '\'61\' || right(regexp_replace(phone_number, \'[^\\\d]\', \'\', \'g\'),9)';
+  const calleeQuery = Callee.query().whereRaw(`${cleanedNumber} = '${req.query.callee_number}'`).first();
+  calleeQuery.then(callee => {
+    const r = plivo.Response();
+    r.addSpeakAU(`Press hash to connect to ${callee.first_name}`);
+    res.send(r.toXML());
+  }).catch(next);
 });
 
 app.post('/call_log', (req, res, next) => {
@@ -241,7 +265,7 @@ app.post('/survey_result', (req, res, next) => {
     callee_uuid: req.query.calleeUUID,
     callee_number: req.query.calleeNumber,
     question: req.query.q,
-    answer: req.body.Digits
+    answer: answer(req.body.Digits)
   }
   SurveyResult.query().insert(data).then(() => {
     const r = plivo.Response();
