@@ -3,6 +3,7 @@ const request = require('supertest')(app);
 const expect = require('expect.js');
 const timekeeper = require('timekeeper');
 const moment = require('moment');
+const nock = require('nock');
 const {
   Call,
   Callee,
@@ -32,7 +33,17 @@ describe('/connect', () => {
   beforeEach(done => Caller.query().truncate().nodeify(done));
   beforeEach(done => Caller.query().insert(caller).nodeify(done));
 
+  const mockConferenceResponseWithStatus = (status) => {
+    return () => {
+      nock('https://api.plivo.com')
+        .get(/612/)
+        .query(true)
+        .reply(status, status.toString())
+    };
+  };
+
   context('with an approved number', () => {
+    beforeEach(mockConferenceResponseWithStatus(404));
     const payload = { From: caller.phone_number };
     it('plays the briefing message', (done) => {
       request.post('/connect')
@@ -44,6 +55,7 @@ describe('/connect', () => {
   });
 
   context('with an irregular, but approved, caller id', () => {
+    beforeEach(mockConferenceResponseWithStatus(404));
     const payload = { From: '02 8888 8888' };
     it('still identifies our caller', (done) => {
       request.post('/connect')
@@ -75,7 +87,28 @@ describe('/connect', () => {
         .end(done)
     });
   });
+
+  context('with an existing conference for this user', () => {
+    beforeEach(mockConferenceResponseWithStatus(200));
+    const payload = { From: caller.phone_number };
+    it('directs them to check if theyre online elsewhere', (done) => {
+      request.post('/connect')
+        .type('form')
+        .send(payload)
+        .expect(/conference exists/)
+        .end(done)
+    });
+  });
+
 });
+
+/*
+describe('/conference', () => {
+  it('should put them in a conference', (done) => {
+    request.post(`/conference?caller_number=${caller.phone_number}`).expect(/<Conference>/i).end(done);
+  });
+});
+*/
 
 describe('/call', () => {
   beforeEach(done => Callee.raw('truncate callees restart identity cascade').nodeify(done));
@@ -246,6 +279,7 @@ describe('logging', () => {
     .filter(r => r.route).map(r => r.route.path);
 
   endpoints.forEach(endpoint => {
+    if (endpoint === '/connect') return;
     it(`occurs for ${endpoint}`, (done) => {
       request
         .post(endpoint)

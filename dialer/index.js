@@ -5,6 +5,8 @@ const async = require('async');
 const moment = require('moment');
 const app = express();
 const webhooks = require('./webhooks');
+const promisfy = require("es6-promisify");
+const api = plivo.RestAPI({ authId: process.env.API_ID || 'test', authToken: process.env.API_TOKEN || 'test'});
 
 const {
   Call,
@@ -14,8 +16,6 @@ const {
   SurveyResult
 } = require('../models');
 
-const welcomeMessage = 'https://dl.dropboxusercontent.com/u/404666/getup/kooragang/welcome_hospital_petition_delivery.wav';
-// const briefingMessage = 'http://f.cl.ly/items/1a1d3q2D430Y43041d1h/briefing.mp3';
 const quarterSec = 'http://www.xamuel.com/blank-mp3-files/quartersec.mp3';
 const halfSec = 'http://www.xamuel.com/blank-mp3-files/halfsec.mp3';
 const callEndBeep = 'https://dl.dropboxusercontent.com/u/404666/getup/kooragang/call_end_beep.wav';
@@ -38,7 +38,7 @@ app.use((req, res, next) => {
 const log = ({method, url, body, query, params, headers}, cb) => {
   if (method === 'GET') return cb();
   const UUID = body.CallUUID;
-  if (process.env.NODE_ENV === 'test') console.error('REQUEST', {UUID, url, body, query, params, headers})
+  if (process.env.NODE_ENV === 'development') console.error('REQUEST', {UUID, url, body, query, params, headers})
   Log.query().insert({UUID, url, body, query, params, headers}).nodeify(cb);
 };
 
@@ -77,52 +77,68 @@ const answer = (digit) => {
   }[digit];
 }
 
-app.post('/connect', (req, res, next) => {
+app.post('/connect', async (req, res, next) => {
   const r = plivo.Response();
   r.addWait({length: 2});
 
-  // uncomment this to record the entire call
-  r.addRecord({
-    action: appUrl('log'),
-    maxLength: 60*60,
-    recordSession: true,
-    redirect: false
-  });
+  if (process.env.RECORD_CALLS === 'true') {
+    r.addRecord({
+      action: appUrl('log'),
+      maxLength: 60*60,
+      recordSession: true,
+      redirect: false
+    });
+  }
 
   const callerNumber = req.body.From.replace(/\s/g, '').slice(-9);
-  const callerQuery = Caller.query().where('phone_number', 'like', '%' + callerNumber).first();
-  callerQuery.then(caller => {
-    if (!caller) return unapprovedCaller(r, res);
+  caller = await Caller.query().where('phone_number', 'like', '%' + callerNumber).first();
+  if (!caller) return unapprovedCaller(r, res);
+  const conferenceName = caller.phone_number;
+  try{
+    await promisfy(api.get_live_conference)({conference_id: conferenceName});
+  }catch(err){
+    if (err !== 404) return next(`${conferenceName} conference exists with status ${err}`);
+  }
 
-    const briefing = r.addGetDigits({
-      action: appUrl(`call?caller_number=${caller.phone_number}`),
-      method: 'POST',
-      timeout: 5,
-      numDigits: 1,
-      retries: 10,
-      validDigits: [1]
-    });
+  const briefing = r.addGetDigits({
+    action: appUrl(`call?caller_number=${caller.phone_number}`),
+    method: 'POST',
+    timeout: 5,
+    numDigits: 1,
+    retries: 10,
+    validDigits: [1]
+  });
 
-    briefing.addSpeakAU(`Hi ${caller.first_name}! Welcome to the GetUp Power Dialer tool. Today you will be making calls about the Adani campaign.`);
-    briefing.addPlay(halfSec);
-    briefing.addSpeakAU('You should have a document in front of you with the script and the reference codes for each survey question.');
-    briefing.addPlay(quarterSec);
-    briefing.addSpeakAU('If not, please hang up and contact the campaign coordinator and call back when you have the instructions you need.');
-    briefing.addPlay(halfSec);
-    briefing.addPlay(halfSec);
+  briefing.addSpeakAU(`Hi ${caller.first_name}! Welcome to the GetUp Power Dialer tool. Today you will be making calls about the Adani campaign.`);
+  briefing.addPlay(halfSec);
+  briefing.addSpeakAU('You should have a document in front of you with the script and the reference codes for each survey question.');
+  briefing.addPlay(quarterSec);
+  briefing.addSpeakAU('If not, please hang up and contact the campaign coordinator and call back when you have the instructions you need.');
+  briefing.addPlay(halfSec);
+  briefing.addPlay(halfSec);
 
-    briefing.addSpeakAU('Remember, don\'t hangup *your* phone.  When the call ends, just press star, or wait for the other person to hang up.');
-    briefing.addPlay(quarterSec);
-    briefing.addSpeakAU('Thank you very much for being part of this campaign. Let\'s get started!');
+  briefing.addSpeakAU('Remember, don\'t hangup *your* phone.  When the call ends, just press star, or wait for the other person to hang up.');
+  briefing.addPlay(quarterSec);
+  briefing.addSpeakAU('Thank you very much for being part of this campaign. Let\'s get started!');
 
-    briefing.addPlay(halfSec);
-    briefing.addSpeakAU('This message will automatically replay until you press 1 on your phone key pad.');
+  briefing.addPlay(halfSec);
+  briefing.addSpeakAU('This message will automatically replay until you press 1 on your phone key pad.');
 
-    r.addRedirect(appUrl(`call?caller_number=${caller.phone_number}`));
-    webhooks(`sessions/${req.query.From}`, { session: 'active', status: 'welcome message', call: {} });
-    res.send(r.toXML());
-  }).catch(next);
+  r.addRedirect(appUrl(`conference?caller_number=${caller.phone_number}`));
+  webhooks(`sessions/${req.query.From}`, { session: 'active', status: 'welcome message', call: {} });
+  res.send(r.toXML());
 });
+
+/*
+app.post('/conference', (req, res, next) => {
+  const r = plivo.Response();
+  const caller= req.query.caller_number;
+  r.addConference({
+    //endConferenceOnExit: true,
+  })
+});
+*/
+
 
 app.post('/call', (req, res, next) => {
   const r = plivo.Response();
