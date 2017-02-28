@@ -3,9 +3,9 @@ const plivo = require('plivo');
 const bodyParser = require('body-parser');
 const async = require('async');
 const moment = require('moment');
+const _ = require('lodash');
 const app = express();
-const webhooks = require('./webhooks');
-const promisfy = require("es6-promisify");
+const promisfy = require('es6-promisify');
 const api = plivo.RestAPI({ authId: process.env.API_ID || 'test', authToken: process.env.API_TOKEN || 'test'});
 
 const {
@@ -13,7 +13,8 @@ const {
   Callee,
   Caller,
   Log,
-  SurveyResult
+  SurveyResult,
+  transaction
 } = require('../models');
 
 const quarterSec = 'http://www.xamuel.com/blank-mp3-files/quartersec.mp3';
@@ -38,7 +39,7 @@ app.use((req, res, next) => {
 const log = ({method, url, body, query, params, headers}, cb) => {
   if (method === 'GET') return cb();
   const UUID = body.CallUUID;
-  if (process.env.NODE_ENV === 'development') console.error('REQUEST', {UUID, url, body, query, params, headers})
+  if (process.env.NODE_ENV === 'development') console.error('REQUEST', {UUID, url, body})
   Log.query().insert({UUID, url, body, query, params, headers}).nodeify(cb);
 };
 
@@ -77,6 +78,55 @@ const answer = (digit) => {
   }[digit];
 }
 
+app.post('/answer', async ({body, query}, res, next) => {
+  const r = plivo.Response();
+
+  const name = query.name;
+  const callerTransaction = await transaction.start(Caller.knex());
+  const caller = await Caller.bindTransaction(callerTransaction).query()
+    .where({status: 'available'}).orderBy('updated_at').first();
+  if (caller) {
+    await Caller.query().patchAndFetchById(caller.id, {status: 'connecting'});
+    await callerTransaction.commit()
+    await Call.query().insert({
+      log_id: res.locals.log_id,
+      caller_id: caller.id,
+      callee_id: query.callee_id,
+      status: 'answered',
+      callee_call_uuid: body.CallUUID
+    });
+    if (name) {
+      await promisfy(api.speak_conference_member)({
+        conference_id: caller.phone_number,
+        member_id: caller.conference_member_id,
+        text: name,
+        language: 'en-GB', voice: 'MAN'
+      });
+    }
+    r.addConference(caller.phone_number, {startConferenceOnEnter: false, stayAlone: false, callbackUrl: appUrl(`conference_event/callee?caller_number=${caller.phone_number}`)});
+    res.send(r.toXML());
+  } else {
+    await callerTransaction.commit()
+    next(`No callers available. Dropping call to ${body.to} (${body.CallUUID})`)
+  }
+});
+
+app.post('/hangup', async ({body, query}, res, next) => {
+  const call = await Call.query().where({callee_call_uuid: body.CallUUID}).first();
+  if (call){
+    await Call.query().where({callee_call_uuid: body.CallUUID})
+      .patch({ended_at: new Date(), status: body.CallStatus, duration: body.Duration});
+  }else{
+    await Call.query().insert({
+      callee_call_uuid: body.CallUUID, callee_id: query.callee_id,
+      ended_at: new Date(),
+      status: body.CallStatus, duration: body.Duration
+    });
+  }
+  return next();
+});
+
+
 app.post('/connect', async (req, res, next) => {
   const r = plivo.Response();
   r.addWait({length: 2});
@@ -90,18 +140,13 @@ app.post('/connect', async (req, res, next) => {
     });
   }
 
-  const callerNumber = req.body.From.replace(/\s/g, '').slice(-9);
-  caller = await Caller.query().where('phone_number', 'like', '%' + callerNumber).first();
+  const sip = req.body.From.match(/sip:(\w+)@/);
+  const callerNumber = sip ? sip[1] : req.body.From.replace(/\s/g, '').slice(-9);
+  const  caller = await Caller.query().where('phone_number', 'like', '%' + callerNumber).first();
   if (!caller) return unapprovedCaller(r, res);
-  const conferenceName = caller.phone_number;
-  try{
-    await promisfy(api.get_live_conference)({conference_id: conferenceName});
-  }catch(err){
-    if (err !== 404) return next(`${conferenceName} conference exists with status ${err}`);
-  }
 
   const briefing = r.addGetDigits({
-    action: appUrl(`call?caller_number=${caller.phone_number}`),
+    action: appUrl(`ready?caller_number=${caller.phone_number}&start=1`),
     method: 'POST',
     timeout: 5,
     numDigits: 1,
@@ -109,190 +154,123 @@ app.post('/connect', async (req, res, next) => {
     validDigits: [1]
   });
 
-  briefing.addSpeakAU(`Hi ${caller.first_name}! Welcome to the GetUp Power Dialer tool. Today you will be making calls about the Adani campaign.`);
+  briefing.addSpeakAU(`Hi ${caller.first_name}! Welcome to the GetUp Dialer tool. Today you will be making calls about the Adani campaign.`);
   briefing.addPlay(halfSec);
-  briefing.addSpeakAU('You should have a document in front of you with the script and the reference codes for each survey question.');
+  briefing.addSpeakAU('You should have a document with the script and the reference codes for each survey question.');
   briefing.addPlay(quarterSec);
-  briefing.addSpeakAU('If not, please hang up and contact the campaign coordinator and call back when you have the instructions you need.');
+  briefing.addSpeakAU('If not, please hang up and get the instructions you need from the campaign coordinator.');
   briefing.addPlay(halfSec);
   briefing.addPlay(halfSec);
 
-  briefing.addSpeakAU('Remember, don\'t hangup *your* phone.  When the call ends, just press star, or wait for the other person to hang up.');
-  briefing.addPlay(quarterSec);
-  briefing.addSpeakAU('Thank you very much for being part of this campaign. Let\'s get started!');
+  briefing.addSpeakAU('Thank you very much for being part of this campaign. Press 1 to get started!');
 
   briefing.addPlay(halfSec);
+  briefing.addWait({length: 6})
   briefing.addSpeakAU('This message will automatically replay until you press 1 on your phone key pad.');
 
-  r.addRedirect(appUrl(`conference?caller_number=${caller.phone_number}`));
-  webhooks(`sessions/${req.query.From}`, { session: 'active', status: 'welcome message', call: {} });
   res.send(r.toXML());
 });
 
-/*
-app.post('/conference', (req, res, next) => {
+app.post('/ready', (req, res, next) => {
   const r = plivo.Response();
-  const caller= req.query.caller_number;
-  r.addConference({
-    //endConferenceOnExit: true,
-  })
-});
-*/
+  const caller_number = req.query.caller_number;
 
-
-app.post('/call', (req, res, next) => {
-  const r = plivo.Response();
-
-  // terminate the calling loop?
   if (req.body.Digits === '*') {
     r.addRedirect(appUrl('disconnect'));
     return res.send(r.toXML());
   }
 
-  async.auto({
-    findCallee: (cb) => {
-      const cleanedNumber = '\'61\' || right(regexp_replace(phone_number, \'[^\\\d]\', \'\', \'g\'),9)';
-      const calleeQuery = Callee.query()
-        .select('callees.*', Callee.raw(`${cleanedNumber} as cleaned_number`))
-        .whereRaw(`length(${cleanedNumber}) = 11`)
-        .andWhere(function() {
-          this.whereNull('last_called_at')
-            .orWhere('last_called_at', '<', moment().subtract(7, 'days'))
-        })
-        .first();
-      calleeQuery.nodeify((err, row) => {
-        if (err) return cb(err);
-        if (row) return cb(null, row);
-
-        r.addSpeakAU('Sorry, there are no more numbers left to call.')
-        r.addRedirect(appUrl('disconnect'));
-        res.send(r.toXML());
-      });
-    },
-    markCallee: ['findCallee', (cb, results) => {
-      Callee.query()
-        .patchAndFetchById(results.findCallee.id, {last_called_at: new Date})
-        .nodeify(cb);
-    }]
-  }, (err, results) => {
-    if (err) return next(err);
-
-    const callee = results.findCallee;
-    r.addSpeakAU('Resuming calling.');
-    r.addSpeakAU('To hang up the call at any time, press star.');
-    const d = r.addDial({
-      action: appUrl(`call_log?callee_number=${callee.cleaned_number}`),
-      callbackUrl: appUrl(`call_log?callee_number=${callee.cleaned_number}`),
-      confirmSound: appUrl(`confirm_sound?callee_number=${callee.cleaned_number}`),
-      confirmKey: '#',
-      hangupOnStar: true,
-      timeout: 30,
-      redirect: false
-    });
-    d.addNumber(callee.cleaned_number);
-    r.addPlay(callEndBeep);
-    r.addRedirect(appUrl(`hangup?caller_number=${req.query.caller_number}`));
-    webhooks(`sessions/${req.body.From}`, Object.assign({session: 'active', status: 'calling', call: callee}));
-    res.send(r.toXML());
-  });
-});
-
-app.post('/confirm_sound', (req, res, next) => {
-  const cleanedNumber = '\'61\' || right(regexp_replace(phone_number, \'[^\\\d]\', \'\', \'g\'),9)';
-  const calleeQuery = Callee.query().whereRaw(`${cleanedNumber} = '${req.query.callee_number}'`).first();
-  calleeQuery.then(callee => {
-    const r = plivo.Response();
-    r.addSpeakAU(`Press hash to connect to ${callee.first_name}`);
-    res.send(r.toXML());
-  }).catch(next);
-});
-
-app.post('/call_log', (req, res, next) => {
-  const cleanedNumber = '\'61\' || right(regexp_replace(phone_number, \'[^\\\d]\', \'\', \'g\'),9)';
-  const calleeQuery = Callee.query().whereRaw(`${cleanedNumber} = '${req.query.callee_number}'`).first();
-  calleeQuery.then(callee => {
-    Call.query().insert({
-      log_id: res.locals.log_id,
-      callee_id: callee.id,
-      status: req.body.DialBLegStatus,
-      caller_uuid: req.body.DialALegUUID,
-      caller_number: req.body.DialBLegFrom,
-      callee_uuid: req.body.DialBLegUUID,
-      callee_number: req.body.DialBLegTo
-    }).nodeify(next);
-  }).catch(next);
-});
-
-app.post('/hangup', (req, res, next) => {
-  const r = plivo.Response();
-
-  if (req.body.CallStatus !== 'completed') {
-    r.addRedirect(appUrl(`call_again?caller_number=${req.query.caller_number}`));
-    return res.send(r.toXML());
+  r.addSpeakAU('You are now in the call queue. We will connect you to a call shortly.')
+  if (req.query.start) {
+    r.addPlay(quarterSec);
+    r.addSpeakAU('Remember, don\'t hangup *your* phone. Press star to end a call. Or wait for the other person to hang up.');
   }
+  r.addConference(caller_number, {
+    waitSound: appUrl('hold_music'),
+    maxMembers: 2,
+    timeLimit: 60 * 120,
+    callbackUrl: appUrl(`conference_event/caller?caller_number=${caller_number}`),
+    hangupOnStar: 'true',
+    action: appUrl(`survey?caller_number=${caller_number}`)
+  });
+  res.send(r.toXML());
+});
 
-  const conditions = {status: 'answer', callee_number: req.body.DialBLegTo};
-  const callQuery = Call.query().where(conditions).orderBy('created_at', 'desc').first();
-  callQuery.then(call => {
-    if (call && call.created_at > moment().subtract(10, 'seconds')) {
-      r.addRedirect(appUrl(`call_again?caller_number=${req.query.caller_number}`));
-    } else {
-      r.addRedirect(appUrl(`survey?caller_number=${req.query.caller_number}&calleeUUID=${req.body.DialBLegUUID}&calleeNumber=${req.body.DialBLegTo}`));
-    }
-    res.send(r.toXML());
-  }).catch(next);
+app.post('/hold_music', (req, res) => {
+  const r = plivo.Response();
+  _(1).range(7)
+    .each(i => r.addPlay(`http://holdmusic.io/public/welcome-pack/welcome-pack-${i}.mp3`) )
+  res.send(r.toXML());
+});
+
+app.post('/conference_event/callee', async ({query, body}, res, next) => {
+  if (body.ConferenceAction === 'enter'){
+    await Call.query().where({callee_call_uuid: body.CallUUID}).patch({
+      conference_uuid: body.ConferenceUUID,
+      status: 'connected', connected_at: new Date()
+    });
+  }
+  res.sendStatus(200);
+});
+
+app.post('/conference_event/caller', async ({query, body}, res, next) => {
+  const conference_member_id = body.ConferenceMemberID;
+  if (body.ConferenceAction === 'enter') {
+    await Caller.query().where({phone_number: query.caller_number})
+      .patch({status: body.ConferenceAction === 'enter' ? 'available' : null, conference_member_id});
+  }
+  res.sendStatus(200);
 });
 
 app.post('/call_again', (req, res) => {
   const r = plivo.Response();
   const callAgain = r.addGetDigits({
-    action: appUrl(`call?caller_number=${req.query.caller_number}`),
+    action: appUrl(`ready?caller_number=${req.query.caller_number}`),
     timeout: 10,
-    retries: 6,
+    retries: 10,
     numDigits: 1
   });
-  callAgain.addSpeakAU('When you\'re ready to call again, press 1. To finish your calling session, press star.');
-
+  callAgain.addSpeakAU('Press 1 to resume callling. To finish your calling session, press star.');
   r.addRedirect(appUrl('disconnect'));
-
   res.send(r.toXML());
 });
 
-app.post('/survey', (req, res) => {
+app.post('/survey', async (req, res) => {
   const r = plivo.Response();
-  webhooks(`sessions/${req.body.From}`, {session: 'active', status: 'survey'});
+  r.addSpeakAU('The call has ended.');
+
+  const call = await Call.query().where({conference_uuid: req.body.ConferenceUUID}).first();
+  if (!call) {
+    r.addSpeakAU('No survey required.');
+    return res.send(r.toXML());
+  }
 
   const surveyResponse = r.addGetDigits({
-    action: appUrl(`survey_result?q=rsvp&caller_number=${req.query.caller_number}&calleeUUID=${req.query.calleeUUID}&calleeNumber=${req.query.calleeNumber}`),
+    action: appUrl(`survey_result?q=rsvp&caller_number=${req.query.caller_number}&call_id=${call.id}`),
     redirect: true,
     retries: 10,
     numDigits: 1,
     validDigits: [1, 2, 3, 7, 9]
   });
   surveyResponse.addSpeakAU('Enter the answer code');
-
   res.send(r.toXML());
 });
 
-app.post('/survey_result', (req, res, next) => {
+app.post('/survey_result', async (req, res, next) => {
+  const r = plivo.Response();
   const data = {
     log_id: res.locals.log_id,
-    caller_uuid: req.body.CallUUID,
-    callee_uuid: req.query.calleeUUID,
-    callee_number: req.query.calleeNumber,
+    call_id: req.query.call_id,
     question: req.query.q,
     answer: answer(req.body.Digits)
   }
-  SurveyResult.query().insert(data).then(() => {
-    const r = plivo.Response();
-    r.addRedirect(appUrl(`call_again?caller_number=${req.query.caller_number}`));
-    res.send(r.toXML());
-  }).catch(next);
+  await SurveyResult.query().insert(data);
+  r.addRedirect(appUrl(`call_again?caller_number=${req.query.caller_number}`));
+  res.send(r.toXML());
 });
 
 app.post('/disconnect', (req, res) => {
   const r = plivo.Response();
-  webhooks(`session/${req.body.From}`, {session: 'active', status: 'feedback', call: {}});
 
   r.addSpeakAU('Thank you very much for calling.');
 

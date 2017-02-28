@@ -1,5 +1,6 @@
 const app = require('../dialer');
 const request = require('supertest')(app);
+const requestp = require('supertest-as-promised')(app);
 const expect = require('expect.js');
 const timekeeper = require('timekeeper');
 const moment = require('moment');
@@ -30,20 +31,11 @@ const unassociatedCallee = {
 };
 
 describe('/connect', () => {
-  beforeEach(done => Caller.query().truncate().nodeify(done));
+  beforeEach(done => Call.query().delete().nodeify(done));
+  beforeEach(done => Caller.query().delete().nodeify(done));
   beforeEach(done => Caller.query().insert(caller).nodeify(done));
 
-  const mockConferenceResponseWithStatus = (status) => {
-    return () => {
-      nock('https://api.plivo.com')
-        .get(/612/)
-        .query(true)
-        .reply(status, status.toString())
-    };
-  };
-
   context('with an approved number', () => {
-    beforeEach(mockConferenceResponseWithStatus(404));
     const payload = { From: caller.phone_number };
     it('plays the briefing message', (done) => {
       request.post('/connect')
@@ -55,7 +47,6 @@ describe('/connect', () => {
   });
 
   context('with an irregular, but approved, caller id', () => {
-    beforeEach(mockConferenceResponseWithStatus(404));
     const payload = { From: '02 8888 8888' };
     it('still identifies our caller', (done) => {
       request.post('/connect')
@@ -77,6 +68,20 @@ describe('/connect', () => {
     });
   });
 
+  context('with a sip number', () => {
+    const sipCaller = {
+      first_name: 'alice',
+      phone_number: 'alice123'
+    };
+    beforeEach(async () => Caller.query().insert(sipCaller));
+    it('should strip out sip details for caller number', () => {
+      return request.post('/connect')
+        .type('form')
+        .send({From: `sip:${sipCaller.phone_number}@phone.plivo.com`})
+        .expect(/alice123/i);
+    });
+  });
+
   context('with a private number', () => {
     const payload = { From: 'no one we know' };
     it('directs them to contact us', (done) => {
@@ -87,257 +92,204 @@ describe('/connect', () => {
         .end(done)
     });
   });
-
-  context('with an existing conference for this user', () => {
-    beforeEach(mockConferenceResponseWithStatus(200));
-    const payload = { From: caller.phone_number };
-    it('directs them to check if theyre online elsewhere', (done) => {
-      request.post('/connect')
-        .type('form')
-        .send(payload)
-        .expect(/conference exists/)
-        .end(done)
-    });
-  });
-
 });
 
-/*
-describe('/conference', () => {
+describe('/ready', () => {
   it('should put them in a conference', (done) => {
-    request.post(`/conference?caller_number=${caller.phone_number}`).expect(/<Conference>/i).end(done);
+    request.post(`/ready?caller_number=11111`).expect(/<Conference/i).end(done);
   });
-});
-*/
 
-describe('/call', () => {
-  beforeEach(done => Callee.raw('truncate callees restart identity cascade').nodeify(done));
+  it('should use the caller number as the conference name', (done) => {
+    request.post(`/ready?caller_number=11111`).expect(/>11111<\/Conference/i).end(done);
+  });
 
-  context('with an approved caller', () => {
-    beforeEach(done => Caller.query().insert(caller).nodeify(done));
+  context('with start=1 passed', () => {
+    it('should give extra instructions', (done) => {
+      request.post(`/ready?caller_number=11111&start=1`).expect(/press star/i).end(done);
+    });
+  });
 
-    context('and only one associated callee', () => {
-      beforeEach(done => Callee.query().insert(associatedCallee).nodeify(done));
-
-      context('which has already been called', () => {
-        beforeEach(done => request.post(`/call?caller_number=${caller.phone_number}`).expect(/resuming/i).end(done));
-
-        it('will not call again', (done) => {
-          request.post('/call').expect(/no more numbers left to call/).end(done)
-        });
-      });
-
-      context('after 7 days', () => {
-        beforeEach(done => {
-          timekeeper.travel(moment().subtract(7, 'days').toDate());
-          request.post(`/call?caller_number=${caller.phone_number}`).end(() => {
-            timekeeper.reset();
-            done();
-          });
-        });
-
-        it('allows callees to be called again', (done) => {
-          request.post(`/call?caller_number=${caller.phone_number}`).expect(/resuming/i).end(done)
-        });
-      });
+  context('with * pressed', () => {
+    it('should redirect them to disconnect', async () => {
+      return requestp.post(`/ready?caller_number=11111&start=1`)
+        .type('form').send({Digits: '*'})
+        .expect(/disconnect/i)
     });
   });
 });
 
-describe('/call_log', () => {
-  beforeEach(done => Call.query().truncate().nodeify(done));
-  beforeEach(done => Callee.query().insert(unassociatedCallee).nodeify(done));
-  beforeEach(done => {
-    request.post(`/call_log?callee_number=61299999999`)
-      .type('form')
-      .send({DialBLegTo: '61299999999'})
-      .end(done)
+describe('/hold_music', () => {
+  it('should return a list of mp3', (done) => {
+    request.post('/hold_music').expect(/welcome-pack-6.mp3/i).end(done);
+  });
+});
+
+describe('/conference_event/caller', () => {
+  beforeEach(async () => Caller.query().delete());
+  beforeEach(async () => await Caller.query().insert(caller));
+
+  context('with caller entering the conference', () => {
+    it('should update the caller to be available and recorder the conference_member_id', async () => {
+      await requestp.post(`/conference_event/caller?caller_number=${caller.phone_number}`)
+        .type('form')
+        .send({ConferenceAction: 'enter', ConferenceFirstMember: 'true', ConferenceMemberID: '11'})
+      let updatedCaller = await Caller.query().first();
+      expect(updatedCaller.status).to.be('available');
+      expect(updatedCaller.conference_member_id).to.be('11');
+    })
   });
 
-  it('stores call records', (done) => {
-    Call.query().then(data => {
-      expect(data).to.have.length(1);
-      expect(data[0].callee_number).to.be('61299999999');
-      done();
-    }).catch(done);
+  context('with caller exiting the conference', () => {
+    it('should update the caller to be available', async () => {
+      await requestp.post(`/conference_event/caller?caller_number=${caller.phone_number}`)
+        .type('form')
+        .send({ConferenceAction: 'exit', ConferenceFirstMember: 'true'})
+      let updatedCaller = await Caller.query().first();
+      expect(updatedCaller.status).to.be(null);
+    })
+  });
+});
+
+describe('/conference_event/callee', () => {
+  const callee_call_uuid = '111';
+  const conference_uuid = '222';
+  const status = 'connected';
+  const callee = associatedCallee;
+  beforeEach(async () => Call.query().truncate());
+  beforeEach(async () => Callee.query().delete());
+  beforeEach(async () => await Callee.query().insert(callee));
+  beforeEach(async () => Caller.query().delete());
+  beforeEach(async () => await Caller.query().insert(caller));
+  beforeEach(async () => await Call.query().insert({callee_call_uuid}));
+
+  context('with enter event', () => {
+    it('should create a Call entry', async () => {
+      await requestp.post(`/conference_event/callee?caller_number=${caller.phone_number}`)
+        .type('form')
+        .send({
+          ConferenceAction: 'enter', To: callee.phone_number,
+          CallUUID: callee_call_uuid, ConferenceUUID: conference_uuid
+        });
+      const call = await Call.query().where({
+        status,
+        callee_call_uuid, conference_uuid
+      }).first();
+      expect(call).to.be.an(Call);
+    })
+  });
+});
+
+describe('/answer', () => {
+  context('with a called picked up', () => {
+    const CallStatus = 'in-progress';
+
+    context('with no conferences on the line', () => {
+      beforeEach(async () => Caller.query().delete());
+      xit('should record the delay');
+      xit('should delay the call and retry and increment counter');
+      context('with retry counter above max', () => {
+        xit('should drop the call');
+      });
+      it('TODO: drop the call for now', () => {
+        return requestp.post('/answer')
+          .type('form').send({CallStatus})
+          .expect(500)
+      });
+    });
+
+    context('with conferences but everyone is busy with someone', () => {
+      xit('should delay the call and retry and increment counter');
+    });
+
+    context('with available member', () => {
+      const conference_member_id = '1111';
+      const call_uuid = '2222';
+      let callee;
+      let mockedApiCall;
+      beforeEach(async () => Call.query().truncate());
+      beforeEach(async () => Caller.query().insert(caller));
+      beforeEach(async () => Callee.query().insert(associatedCallee));
+      beforeEach(async () => {
+        callee = await Callee.query().where({phone_number: associatedCallee.phone_number}).first();
+      });
+      beforeEach(async () => {
+        return Caller.query().where({phone_number: caller.phone_number})
+          .patch({status: 'available', conference_member_id})
+      });
+      beforeEach(() => {
+        mockedApiCall = nock('https://api.plivo.com')
+          .post(/\/Conference\/61288888888\/Member\/1111\/Speak/, (body) => {
+             return body.text === 'Bridger';
+          })
+          .query(true)
+          .reply(200);
+      });
+
+      it('should add the caller to the conference', () => {
+        return requestp.post(`/answer?name=Bridger&callee_id=${callee.id}`)
+          .type('form').send({CallStatus, CallUUID: call_uuid})
+          .expect(/61288888888<\/Conference/)
+      });
+
+      it('should speak the callee\'s name in the conference', (done) => {
+        request.post(`/answer?name=Bridger&callee_id=${callee.id}`)
+          .type('form').send({CallStatus, CallUUID: call_uuid})
+          .end(err => {
+            mockedApiCall.done();
+            done(err);
+          });
+      });
+
+      it('should create a call record', () => {
+        return requestp.post(`/answer?name=Bridger&callee_id=${callee.id}`)
+          .type('form').send({CallStatus, CallUUID: call_uuid})
+          .then(async () => {
+            const call = await Call.query().where({callee_id: callee.id, callee_call_uuid: call_uuid}).first();
+            expect(call).to.be.an(Call);
+          });
+      });
+    });
   });
 });
 
 describe('/hangup', () => {
-  beforeEach(done => Call.query().truncate().nodeify(done));
-  const number = '61400999000';
-  const call = (startTime) => {
-    return {
-      created_at: startTime.toDate(),
-      status: 'answer',
-      callee_number: number,
-    }
-  };
+  const CallUUID = '111';
 
-  context('with a long duration call', () => {
-    const record = call(moment().subtract(10, 'seconds'));
-    beforeEach(done => Call.query().insert(record).nodeify(done))
-
-    it('prompts for survey answers', (done) => {
-      request.post('/hangup')
-        .type('form')
-        .send({ DialBLegTo: number, CallStatus: 'completed' })
-        .expect(/^((?!call_again).)*$/)
-        .expect(/survey/)
-        .end(done);
+  context('with a hangup before answered', () => {
+    const CallStatus = 'no-answer';
+    let callee;
+    beforeEach(async () => Call.query().truncate());
+    beforeEach(async () => Callee.query().delete());
+    beforeEach(async () => {
+      callee = await Callee.query().insert(associatedCallee);
     });
-  });
 
-  context('with a short duration call', () => {
-    const record = call(moment().subtract(9, 'seconds'));
-    beforeEach(done => Call.query().insert(record).nodeify(done))
-
-    it('skips the survey; just calls again', (done) => {
-      request.post('/hangup')
-        .type('form')
-        .send({ DialBLegTo: number, CallStatus: 'completed' })
-        .expect(/^((?!survey).)*$/)
-        .expect(/call_again/)
-        .end(done);
-    });
-  });
-
-  context('without a call_log record', () => {
-    it('defaults to prompting for survey answers', (done) => {
-      request.post('/hangup')
-        .type('form')
-        .send({ DialBLegTo: number, CallStatus: 'completed' })
-        .expect(/^((?!call_again).)*$/)
-        .expect(/survey/)
-        .end(done);
-    });
-  });
-
-  context('without a completed call', () => {
-    it('skips the survey; just calls again', (done) => {
-      request.post('/hangup')
-        .type('form')
-        .send({ DialBLegTo: number, CallStatus: 'no-answer' })
-        .expect(/^((?!survey).)*$/)
-        .expect(/call_again/)
-        .end(done);
-    });
-  });
-});
-
-describe('survey question persistence', () => {
-  beforeEach((done) => SurveyResult.query().truncate().nodeify(done))
-
-  it('is persisted with user details', (done) => {
-    const UUID = 'fakeUUID'
-    const DialBLegTo = '61299999999'
-    request
-      .post(`/survey_result?q=rsvp&calleeUUID=${UUID}&calleeNumber=${DialBLegTo}`)
-      .type('form')
-      .send({ Digits: '2' })
-      .expect(200)
-      .expect('Content-Type', /xml/)
-      .expect(/call_again/)
-      .end((err, res) => {
-        if (err) return done(err);
-
-        SurveyResult.query()
-          .where('callee_uuid', UUID)
-          .then((data) => {
-            expect(data).to.have.length(1);
-            expect(data[0].callee_uuid).to.be(UUID);
-            done();
-          })
-          .catch(done);
-      });
-  });
-
-  it('stores the code for the digit', (done) => {
-    request
-      .post('/survey_result')
-      .type('form')
-      .send({ Digits: '6' })
-      .end((err, res) => {
-        if (err) return done(err);
-
-        SurveyResult.query().then((data) => {
-          expect(data).to.have.length(1);
-          expect(data[0].answer).to.be('undecided');
-          done();
-        })
-        .catch(done);
-      });
-  });
-});
-
-describe('logging', () => {
-  beforeEach((done) => Log.raw('truncate logs restart identity cascade').nodeify(done));
-
-  const UUID = 'asdfghjkl';
-  const payload = { CallUUID: UUID };
-  const endpoints = app._router.stack
-    .filter(r => r.route).map(r => r.route.path);
-
-  endpoints.forEach(endpoint => {
-    if (endpoint === '/connect') return;
-    it(`occurs for ${endpoint}`, (done) => {
-      request
-        .post(endpoint)
-        .type('form')
-        .send(payload)
-        .end((err, res) => {
-          if (err) return done(err);
-
-          Log.query().then((data) => {
-            expect(data).to.have.length(1);
-            expect(data[0].UUID).to.equal(UUID);
-            expect(data[0].url).to.equal(endpoint);
-            expect(data[0].body).to.eql(payload);
-            done();
-          })
-          .catch(done);
+    it('should record the call was hungup with the status and duration', async () => {
+      return requestp.post(`/hangup?name=Bridger&callee_id=${callee.id}`)
+        .type('form').send({CallStatus, CallUUID, Duration: '10'})
+        .then(async () => {
+          const call = await Call.query()
+            .where({status: CallStatus, callee_call_uuid: CallUUID, duration: 10})
+            .first();
+          expect(call).to.be.an(Call);
         });
     });
   });
 
-  it('does not occur for GET requests', (done) => {
-    request.get('/').end((err, res) => {
-      if (err) return done(err);
+  context('with an existing call', () => {
+    const CallStatus = 'completed';
+    beforeEach(async () => Call.query().truncate());
+    beforeEach(async () => Call.query().insert({callee_call_uuid: CallUUID, status: 'answered'}));
 
-      Log.query().then((data) => {
-        expect(data).to.have.length(0);
-        done();
-      })
-      .catch(done);
+    it('should record the call has ended with the status and duration', async () => {
+      return requestp.post(`/hangup?name=Bridger&callee_id=111`)
+        .type('form').send({CallStatus: 'completed', CallUUID, Duration: '10'})
+        .then(async () => {
+          const call = await Call.query()
+            .where({status: 'completed', callee_call_uuid: CallUUID, duration: 10})
+            .first();
+          expect(call).to.be.an(Call);
+        });
     });
-  });
-
-  it('returns the log id so we can associate it w/ other things', (done) => {
-    request
-      .post('/survey_result')
-      .type('form')
-      .send(payload)
-      .end((err, res) => {
-        if (err) return done(err);
-
-        SurveyResult.query()
-          .then((data) => {
-            expect(data).to.have.length(1);
-            expect(data[0].log_id).to.equal('1');
-            done();
-          })
-          .catch(done);
-      });
-  });
-});
-
-describe('routing', () => {
-  beforeEach(done => Callee.query().insert(caller).nodeify(done));
-  beforeEach(done => Callee.query().insert(associatedCallee).nodeify(done));
-  it('/call redirects to hangup & calls back to call_log', (done) => {
-    request.post(`/call?caller_number=${caller.phone_number}`)
-      .expect(/Redirect\>http:\/\/127.0.0.1\/hangup/)
-      .expect(/callbackUrl="http:\/\/127.0.0.1\/call_log/)
-      .end(done);
   });
 });
