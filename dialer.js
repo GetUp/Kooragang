@@ -37,6 +37,6 @@ module.exports.dial = async appUrl => {
       ring_timeout: 30
     };
     if (process.env.NODE_ENV === 'development') console.error('CALLING', params)
-    return await promisfy(api.make_call)(params);
+    return await promisfy(api.make_call.bind(api))(params);
   }
 };

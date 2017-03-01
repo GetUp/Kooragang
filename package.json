@@ -22,7 +22,7 @@
     "moment": "^2.11.2",
     "objection": "^0.4.0",
     "pg": "^4.4.4",
-    "plivo": "^0.3.3",
+    "plivo": "GetUp/plivo-node#node-style-callbacks",
     "request": "^2.69.0"
   },
   "devDependencies": {

@@ -96,7 +96,7 @@ app.post('/answer', async ({body, query}, res, next) => {
       callee_call_uuid: body.CallUUID
     });
     if (name) {
-      await promisfy(api.speak_conference_member)({
+      await promisfy(api.speak_conference_member.bind(api))({
         conference_id: caller.phone_number,
         member_id: caller.conference_member_id,
         text: name,
