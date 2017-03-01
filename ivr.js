@@ -67,15 +67,14 @@ const unapprovedCaller = (r, res) => {
 
 const answer = digit => {
   return {
-    '1': 'machine',
-    '2': 'no answer',
-    '3': 'callback',
-    '4': 'not interested',
-    '5': 'disagree',
-    '6': 'undecided',
-    '7': 'agree',
-    '8': 'take action',
-    '9': 'error'
+    '2': 'machine',
+    '3': 'no answer',
+    '4': 'callback',
+    '5': 'not interested',
+    '6': 'disagree',
+    '7': 'undecided',
+    '8': 'agree',
+    '9': 'take action'
   }[digit];
 }
 
@@ -256,7 +255,7 @@ app.post('/survey', async (req, res) => {
     redirect: true,
     retries: 10,
     numDigits: 1,
-    validDigits: [1, 2, 3, 7, 9]
+    validDigits: [2, 3, 4, 4, 6, 7, 8, 9]
   });
   surveyResponse.addSpeakAU('Enter the answer code');
   res.send(r.toXML());
