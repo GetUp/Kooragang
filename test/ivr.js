@@ -1,4 +1,4 @@
-const app = require('../dialer');
+const app = require('../ivr');
 const request = require('supertest')(app);
 const requestp = require('supertest-as-promised')(app);
 const expect = require('expect.js');

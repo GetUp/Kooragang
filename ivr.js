@@ -15,7 +15,7 @@ const {
   Log,
   SurveyResult,
   transaction
-} = require('../models');
+} = require('./models');
 
 const quarterSec = 'http://www.xamuel.com/blank-mp3-files/quartersec.mp3';
 const halfSec = 'http://www.xamuel.com/blank-mp3-files/halfsec.mp3';

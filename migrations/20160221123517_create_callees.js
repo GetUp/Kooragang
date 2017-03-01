@@ -39,7 +39,7 @@ exports.up = function(knex, Promise) {
       t.index(['conference_uuid'])
       t.index(['callee_call_uuid'])
       t.integer('duration');
-    });
+    })
 };
 
 exports.down = function(knex, Promise) {
