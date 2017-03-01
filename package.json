@@ -2,6 +2,9 @@
   "name": "Kooragang",
   "private": true,
   "version": "1.0.0",
+  "engines": {
+    "node": "7.6"
+  },
   "description": "",
   "scripts": {
     "start": "heroku local",
