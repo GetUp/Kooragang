@@ -7,6 +7,7 @@ const _ = require('lodash');
 const app = express();
 const promisfy = require('es6-promisify');
 const api = plivo.RestAPI({ authId: process.env.API_ID || 'test', authToken: process.env.API_TOKEN || 'test'});
+const dialer = require('./dialer');
 
 const {
   Call,
@@ -51,7 +52,7 @@ app.use((req, res, next) => {
   });
 });
 
-const appUrl = endpoint => `${host}/${endpoint}`;
+const appUrl = endpoint => endpoint ? `${host}/${endpoint}` : host;
 
 app.get('/', (req, res) => res.send('<_-.-_>I\'m awake.</_-.-_>'));
 
@@ -64,7 +65,7 @@ const unapprovedCaller = (r, res) => {
   res.send(r.toXML());
 }
 
-const answer = (digit) => {
+const answer = digit => {
   return {
     '1': 'machine',
     '2': 'no answer',
@@ -122,12 +123,15 @@ app.post('/hangup', async ({body, query}, res, next) => {
       ended_at: new Date(),
       status: body.CallStatus, duration: body.Duration
     });
+    await dialer.dial(appUrl());
   }
   return next();
 });
 
 
 app.post('/connect', async (req, res, next) => {
+  if (req.body.CallStatus === 'completed') return next();
+
   const r = plivo.Response();
   r.addWait({length: 2});
 
@@ -180,8 +184,9 @@ app.post('/ready', (req, res, next) => {
     return res.send(r.toXML());
   }
 
-  r.addSpeakAU('You are now in the call queue. We will connect you to a call shortly.')
+  r.addSpeakAU('You are now in the call queue.')
   if (req.query.start) {
+    r.addSpeakAU('We will connect you to a call shortly.')
     r.addPlay(quarterSec);
     r.addSpeakAU('Remember, don\'t hangup *your* phone. Press star to end a call. Or wait for the other person to hang up.');
   }
@@ -218,6 +223,7 @@ app.post('/conference_event/caller', async ({query, body}, res, next) => {
   if (body.ConferenceAction === 'enter') {
     await Caller.query().where({phone_number: query.caller_number})
       .patch({status: body.ConferenceAction === 'enter' ? 'available' : null, conference_member_id});
+    await dialer.dial(appUrl());
   }
   res.sendStatus(200);
 });
@@ -230,7 +236,7 @@ app.post('/call_again', (req, res) => {
     retries: 10,
     numDigits: 1
   });
-  callAgain.addSpeakAU('Press 1 to resume callling. To finish your calling session, press star.');
+  callAgain.addSpeakAU('Press 1 to continue calling. To finish your calling session, press star.');
   r.addRedirect(appUrl('disconnect'));
   res.send(r.toXML());
 });
@@ -272,7 +278,7 @@ app.post('/survey_result', async (req, res, next) => {
 app.post('/disconnect', (req, res) => {
   const r = plivo.Response();
 
-  r.addSpeakAU('Thank you very much for calling.');
+  r.addSpeakAU('Thank you very much for volunteering on this campaign.');
 
   const feedback = r.addGetDigits({
     action: appUrl('feedback'),

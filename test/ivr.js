@@ -1,10 +1,13 @@
-const app = require('../ivr');
-const request = require('supertest')(app);
-const requestp = require('supertest-as-promised')(app);
 const expect = require('expect.js');
-const timekeeper = require('timekeeper');
-const moment = require('moment');
 const nock = require('nock');
+const proxyquire = require('proxyquire');
+const app = proxyquire('../ivr', {
+  './dialer': {
+    dial: async (appUrl) => {}
+  }
+});
+const requestp = require('supertest-as-promised')(app);
+
 const {
   Call,
   Callee,
@@ -37,34 +40,31 @@ describe('/connect', () => {
 
   context('with an approved number', () => {
     const payload = { From: caller.phone_number };
-    it('plays the briefing message', (done) => {
-      request.post('/connect')
+    it('plays the briefing message', () => {
+      return requestp.post('/connect')
         .type('form')
         .send(payload)
-        .expect(/Hi bob/)
-        .end(done)
+        .expect(/Hi bob/);
     });
   });
 
   context('with an irregular, but approved, caller id', () => {
     const payload = { From: '02 8888 8888' };
-    it('still identifies our caller', (done) => {
-      request.post('/connect')
+    it('still identifies our caller', () => {
+      requestp.post('/connect')
         .type('form')
         .send(payload)
-        .expect(/Hi bob/)
-        .end(done)
+        .expect(/Hi bob/);
     });
   });
 
   context('with an unapproved number', () => {
     const payload = { From: '61266666666' };
-    it('directs them to contact us', (done) => {
-      request.post('/connect')
+    it('directs them to contact us', () => {
+      return requestp.post('/connect')
         .type('form')
         .send(payload)
-        .expect(/only approved callers/)
-        .end(done)
+        .expect(/only approved callers/);
     });
   });
 
@@ -75,7 +75,7 @@ describe('/connect', () => {
     };
     beforeEach(async () => Caller.query().insert(sipCaller));
     it('should strip out sip details for caller number', () => {
-      return request.post('/connect')
+      return requestp.post('/connect')
         .type('form')
         .send({From: `sip:${sipCaller.phone_number}@phone.plivo.com`})
         .expect(/alice123/i);
@@ -84,33 +84,29 @@ describe('/connect', () => {
 
   context('with a private number', () => {
     const payload = { From: 'no one we know' };
-    it('directs them to contact us', (done) => {
-      request.post('/connect')
+    it('directs them to contact us', () => {
+      return requestp.post('/connect')
         .type('form')
         .send(payload)
-        .expect(/only approved callers/)
-        .end(done)
+        .expect(/only approved callers/);
     });
   });
 });
 
 describe('/ready', () => {
-  it('should put them in a conference', (done) => {
-    request.post(`/ready?caller_number=11111`).expect(/<Conference/i).end(done);
-  });
+  it('should put them in a conference',
+    () => requestp.post(`/ready?caller_number=11111`).expect(/<Conference/i));
 
-  it('should use the caller number as the conference name', (done) => {
-    request.post(`/ready?caller_number=11111`).expect(/>11111<\/Conference/i).end(done);
-  });
+  it('should use the caller number as the conference name',
+    () => requestp.post(`/ready?caller_number=11111`).expect(/>11111<\/Conference/i));
 
   context('with start=1 passed', () => {
-    it('should give extra instructions', (done) => {
-      request.post(`/ready?caller_number=11111&start=1`).expect(/press star/i).end(done);
-    });
+    it('should give extra instructions',
+      () => requestp.post(`/ready?caller_number=11111&start=1`).expect(/press star/i));
   });
 
   context('with * pressed', () => {
-    it('should redirect them to disconnect', async () => {
+    it('should redirect them to disconnect', () => {
       return requestp.post(`/ready?caller_number=11111&start=1`)
         .type('form').send({Digits: '*'})
         .expect(/disconnect/i)
@@ -119,8 +115,8 @@ describe('/ready', () => {
 });
 
 describe('/hold_music', () => {
-  it('should return a list of mp3', (done) => {
-    request.post('/hold_music').expect(/welcome-pack-6.mp3/i).end(done);
+  it('should return a list of mp3', () => {
+    return requestp.post('/hold_music').expect(/welcome-pack-6.mp3/i);
   });
 });
 
@@ -231,13 +227,10 @@ describe('/answer', () => {
           .expect(/61288888888<\/Conference/)
       });
 
-      it('should speak the callee\'s name in the conference', (done) => {
-        request.post(`/answer?name=Bridger&callee_id=${callee.id}`)
+      it('should speak the callee\'s name in the conference', () => {
+        return requestp.post(`/answer?name=Bridger&callee_id=${callee.id}`)
           .type('form').send({CallStatus, CallUUID: call_uuid})
-          .end(err => {
-            mockedApiCall.done();
-            done(err);
-          });
+          .then(() => mockedApiCall.done() );
       });
 
       it('should create a call record', () => {
