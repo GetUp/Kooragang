@@ -41,8 +41,8 @@ module.exports.dial = async appUrl => {
 // TODO need a way to test if all calls have been processed and not just dialed.
 // Potentially join against calls that are ended to make sure every callee has an ended call
 module.exports.isComplete = async () => {
-  const {count} = await Callee.knexQuery().count('id as count').whereNotNull('last_called_at').first();
-  return parseInt(count, 10) > 0;
+  const {count} = await Callee.knexQuery().count('id as count').whereNull('last_called_at').first();
+  return parseInt(count, 10) === 0;
 }
 
 module.exports.notifyAgents = async () => {
