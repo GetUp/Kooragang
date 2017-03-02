@@ -96,12 +96,17 @@ app.post('/answer', async ({body, query}, res, next) => {
       callee_call_uuid: body.CallUUID
     });
     if (name) {
-      await promisfy(api.speak_conference_member.bind(api))({
+      const params = {
         conference_id: caller.phone_number,
         member_id: caller.conference_member_id,
         text: name,
         language: 'en-GB', voice: 'MAN'
-      });
+      }
+      try{
+        await promisfy(api.speak_conference_member.bind(api))(params);
+      }catch(e){
+        console.error('======= Unable to contact name with:', params, ' and error: ', e);
+      }
     }
     r.addConference(caller.phone_number, {startConferenceOnEnter: false, stayAlone: false, callbackUrl: appUrl(`conference_event/callee?caller_number=${caller.phone_number}`)});
     res.send(r.toXML());
@@ -270,6 +275,7 @@ app.post('/survey', async (req, res) => {
     redirect: true,
     retries: 10,
     numDigits: 1,
+    timeout: 10,
     validDigits: [2, 3, 4, 4, 6, 7, 8, 9]
   });
   surveyResponse.addSpeakAU('Enter the answer code');
