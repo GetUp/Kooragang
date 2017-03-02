@@ -270,10 +270,10 @@ app.post('/call_again', (req, res) => {
 
 app.post('/survey', async (req, res) => {
   const r = plivo.Response();
-  r.addSpeakAU('The call has ended.');
 
   const call = await Call.query().where({conference_uuid: req.body.ConferenceUUID}).first();
   if (!call) {
+    r.addSpeakAU('The call has ended.');
     r.addSpeakAU('No survey required.');
     return res.send(r.toXML());
   }
@@ -286,6 +286,7 @@ app.post('/survey', async (req, res) => {
     timeout: 10,
     validDigits: [2, 3, 4, 5, 6, 7, 8, 9]
   });
+  surveyResponse.addSpeakAU('The call has ended.');
   surveyResponse.addSpeakAU('Enter the answer code');
   res.send(r.toXML());
 });
