@@ -276,7 +276,7 @@ app.post('/survey', async (req, res) => {
     retries: 10,
     numDigits: 1,
     timeout: 10,
-    validDigits: [2, 3, 4, 4, 6, 7, 8, 9]
+    validDigits: [2, 3, 4, 5, 6, 7, 8, 9]
   });
   surveyResponse.addSpeakAU('Enter the answer code');
   res.send(r.toXML());
