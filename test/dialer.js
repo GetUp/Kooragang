@@ -4,7 +4,7 @@ const dialer = require('../dialer');
 
 const { Callee } = require('../models');
 
-describe('dialer', () => {
+describe('.dial', () => {
   context('with available callees', () => {
     let callee, invalidCallee;
     beforeEach(async () => Callee.query().delete());
@@ -21,5 +21,18 @@ describe('dialer', () => {
       await dialer.dial();
       mockedApiCall.done();
     });
+  });
+});
+
+describe('.isComplete', () => {
+  beforeEach(async () => Callee.query().delete());
+
+  context('with no available callees', () => {
+    beforeEach(async () => Callee.query().insert({phone_number: '123456789', last_called_at: new Date()}));
+    it('should return true', async () => expect(await dialer.isComplete()).to.be(true));
+  });
+  context('with available callees', () => {
+    beforeEach(async () => Callee.query().insert({phone_number: '123456789'}));
+    it('should return false', async () => expect(await dialer.isComplete()).to.be(false));
   });
 });

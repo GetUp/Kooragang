@@ -148,6 +148,14 @@ app.post('/connect', async (req, res, next) => {
   const  caller = await Caller.query().where('phone_number', 'like', '%' + callerNumber).first();
   if (!caller) return unapprovedCaller(r, res);
 
+  const campaignComplete = await dialer.isComplete();
+  if (campaignComplete) {
+    r.addSpeakAU(`Hi ${caller.first_name}! Welcome to the GetUp Dialer tool.`);
+    r.addPlay(halfSec);
+    r.addSpeakAU('The campaign has been completed! Please contact the campaign coordinator for further instructions. Thank you and have a great day!');
+    return res.send(r.toXML());
+  }
+
   const briefing = r.addGetDigits({
     action: appUrl(`ready?caller_number=${caller.phone_number}&start=1`),
     method: 'POST',
@@ -174,12 +182,19 @@ app.post('/connect', async (req, res, next) => {
   res.send(r.toXML());
 });
 
-app.post('/ready', (req, res, next) => {
+app.post('/ready', async (req, res, next) => {
   const r = plivo.Response();
   const caller_number = req.query.caller_number;
 
   if (req.body.Digits === '*') {
     r.addRedirect(appUrl('disconnect'));
+    return res.send(r.toXML());
+  }
+
+  const campaignComplete = await dialer.isComplete();
+  if (campaignComplete) {
+    r.addSpeakAU('The campaign has been completed!');
+    r.addRedirect(appUrl('disconnect?completed=1'));
     return res.send(r.toXML());
   }
 

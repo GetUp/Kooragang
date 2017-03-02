@@ -3,7 +3,8 @@ const nock = require('nock');
 const proxyquire = require('proxyquire');
 const app = proxyquire('../ivr', {
   './dialer': {
-    dial: async (appUrl) => {}
+    dial: async (appUrl) => {},
+    isComplete: async (appUrl) => false,
   }
 });
 const request = require('supertest-as-promised')(app);
