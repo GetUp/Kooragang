@@ -34,6 +34,7 @@ exports.up = function(knex, Promise) {
       t.timestamp('connected_at');
       t.timestamp('ended_at');
       t.string('status');
+      t.boolean('dropped').defaultTo(false);
       t.string('callee_call_uuid');
       t.string('conference_uuid');
       t.index(['conference_uuid'])

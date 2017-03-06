@@ -73,7 +73,7 @@ describe('.dial', () => {
         });
       });
       beforeEach(async () => {
-        await Call.query().insert({callee_id: callee.id, status: 'dropped', ended_at: new Date()})
+        await Call.query().insert({callee_id: callee.id, dropped: true, ended_at: new Date()})
       });
       it('should decrease the calling ratio', async () => {
         await dialer.dial(testUrl, campaign)
@@ -89,7 +89,7 @@ describe('.dial', () => {
         });
       });
       beforeEach(async () => {
-        await Call.query().insert({callee_id: callee.id, status: 'dropped', ended_at: new Date()})
+        await Call.query().insert({callee_id: callee.id, dropped: true, ended_at: new Date()})
         const inserts = _.range(100).map(() => Call.query().insert({callee_id: callee.id, status: 'completed', ended_at: new Date()}));
         await Promise.all(inserts);
       });

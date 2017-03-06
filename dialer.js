@@ -14,7 +14,7 @@ const {
 } = require('./models');
 
 const RECALCULATE_DELAY = 180;
-const ACCEPTABLE_DROP_RATIO = 0.02;
+const ACCEPTABLE_DROP_RATIO = 0.05;
 const RATIO_WINDOW = 600;
 
 module.exports.dial = async (...args) => {
@@ -40,18 +40,19 @@ const recalculateRatio = async(campaign) => {
   const recalculationScheduledFor = moment().subtract(RECALCULATE_DELAY, 'seconds');
   let newRatio;
   if (campaign.last_checked_ratio_at && recalculationScheduledFor < campaign.last_checked_ratio_at) return campaign;
-  const statusCounts = await Call.knexQuery().select('status')
+  const statusCounts = await Call.knexQuery().select('dropped')
     .count('id as count')
     .where('ended_at', '>=', moment().subtract(RATIO_WINDOW, 'second').toDate())
-    .groupBy('status');
+    .groupBy('dropped');
   const total = _.sumBy(statusCounts, ({count}) => parseInt(count, 10));
-  const dropStatus = _.find(statusCounts, ({status}) => status === 'dropped');
+  const dropStatus = _.find(statusCounts, ({dropped}) => dropped);
   const drops = dropStatus ? parseInt(dropStatus.count, 10) : 0;
   if (drops / total > ACCEPTABLE_DROP_RATIO) {
-    newRatio = campaign.ratio > 1 ? campaign.ratio - 1 : 0;
+    newRatio = campaign.ratio > 1 ? campaign.ratio - 1 : 1;
   }else {
     newRatio = campaign.ratio === campaign.max_ratio ? campaign.ratio : campaign.ratio + 1;
   }
+  if (process.env.NODE_ENV === 'development') console.error(`UPDATING RATIO TO ${newRatio}`)
   await Event.query().insert({campaign_id: campaign.id, name: 'ratio', value: newRatio});
   return await Campaign.query().patchAndFetchById(campaign.id, {ratio: newRatio, last_checked_ratio_at: new Date()});
 }

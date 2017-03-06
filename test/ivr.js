@@ -212,7 +212,7 @@ describe('/answer', () => {
         return request.post(`/answer?name=Bridger&callee_id=${callee.id}`)
           .type('form').send({CallStatus, CallUUID: call_uuid})
           .then(async () => {
-            const call = await Call.query().where({callee_id: callee.id, callee_call_uuid: call_uuid, status: 'dropped'}).first();
+            const call = await Call.query().where({callee_id: callee.id, callee_call_uuid: call_uuid, dropped: true}).first();
             expect(call).to.be.an(Call);
             const event = await Event.query().where({call_id: call.id, name: 'drop', value: 1}).first();
             expect(event).to.be.an(Event);

@@ -13,6 +13,7 @@ const {
   Call,
   Callee,
   Caller,
+  Campaign,
   Log,
   SurveyResult,
   Event,
@@ -117,6 +118,7 @@ app.post('/answer', async ({body, query}, res, next) => {
       log_id: res.locals.log_id,
       callee_id: query.callee_id,
       status: 'dropped',
+      dropped: true,
       callee_call_uuid: body.CallUUID
     });
     await Event.query().insert({call_id: call.id, name: 'drop', value: 1})
@@ -125,17 +127,18 @@ app.post('/answer', async ({body, query}, res, next) => {
 });
 
 app.post('/hangup', async ({body, query}, res, next) => {
-  const call = await Call.query().where({callee_call_uuid: body.CallUUID}).first();
+  let call = await Call.query().where({callee_call_uuid: body.CallUUID}).first();
   if (call){
     await Call.query().where({callee_call_uuid: body.CallUUID})
       .patch({ended_at: new Date(), status: body.CallStatus, duration: body.Duration});
   }else{
-    await Call.query().insert({
+    call = await Call.query().insert({
       callee_call_uuid: body.CallUUID, callee_id: query.callee_id,
       ended_at: new Date(),
       status: body.CallStatus, duration: body.Duration
     });
-    await dialer.dial(appUrl());
+    const campaign = await Campaign.query().where({status: 'active'}).first();
+    await dialer.dial(appUrl(), campaign);
   }
   return next();
 });
@@ -250,7 +253,8 @@ app.post('/conference_event/caller', async ({query, body}, res, next) => {
   if (body.ConferenceAction === 'enter') {
     await Caller.query().where({phone_number: query.caller_number})
       .patch({status: body.ConferenceAction === 'enter' ? 'available' : null, conference_member_id});
-    await dialer.dial(appUrl());
+    const campaign = await Campaign.query().where({status: 'active'}).first();
+    await dialer.dial(appUrl(), campaign);
   }
   res.sendStatus(200);
 });
