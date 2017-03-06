@@ -26,6 +26,7 @@
     "objection": "^0.4.0",
     "pg": "^4.4.4",
     "plivo": "GetUp/plivo-node#0ffa30fc1ea05aae7bb2753aa3e6055cc0e62e18",
+    "promise-sequential": "^1.1.1",
     "request": "^2.69.0"
   },
   "devDependencies": {

@@ -8,6 +8,22 @@ const transaction = objection.transaction;
 
 Model.knex(knex);
 
+class Campaign extends Model {
+  static get tableName() { return 'campaigns' }
+  static get relationMappings() {
+    return {
+      callees: {
+        relation: Model.OneToManyRelation,
+        modelClass: Callee,
+        join: {
+          from: 'campaigns.id',
+          to: 'callees.campaign_id'
+        }
+      }
+    }
+  }
+}
+
 class Call extends Model {
   static get tableName() { return 'calls' }
 }
@@ -54,11 +70,17 @@ class SurveyResult extends Model {
   static get tableName() { return 'survey_results' }
 }
 
+class Event extends Model {
+  static get tableName() { return 'events' }
+}
+
 module.exports = {
   Call,
   Callee,
   Caller,
   Log,
+  Campaign,
   SurveyResult,
+  Event,
   transaction
 };

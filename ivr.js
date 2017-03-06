@@ -15,6 +15,7 @@ const {
   Caller,
   Log,
   SurveyResult,
+  Event,
   transaction
 } = require('./models');
 
@@ -112,7 +113,14 @@ app.post('/answer', async ({body, query}, res, next) => {
     res.send(r.toXML());
   } else {
     await callerTransaction.commit()
-    next(`No callers available. Dropping call to ${body.to} (${body.CallUUID})`)
+    const call = await Call.query().insert({
+      log_id: res.locals.log_id,
+      callee_id: query.callee_id,
+      status: 'dropped',
+      callee_call_uuid: body.CallUUID
+    });
+    await Event.query().insert({call_id: call.id, name: 'drop', value: 1})
+    res.sendStatus(200);
   }
 });
 

@@ -13,6 +13,8 @@ const {
   Call,
   Callee,
   Caller,
+  Campaign,
+  Event,
   Log,
   SurveyResult
 } = require('../models');
@@ -26,18 +28,24 @@ const associatedCallee = {
   first_name: 'chris',
   phone_number: '+612-7777 7777',
   location: 'rozelle',
-  caller: '61288888888'
+  caller: '61288888888',
+  campaign_id: 1
 };
 const unassociatedCallee = {
   first_name: 'alice',
   phone_number: '+612 9999-9999',
-  location: 'drummoyne'
+  location: 'drummoyne',
+  campaign_id: 1
 };
 
 describe('/connect', () => {
+  beforeEach(async () => Event.query().delete());
   beforeEach(done => Call.query().delete().nodeify(done));
   beforeEach(done => Caller.query().delete().nodeify(done));
+  beforeEach(done => Callee.query().delete().nodeify(done));
+  beforeEach(done => Campaign.query().delete().nodeify(done));
   beforeEach(done => Caller.query().insert(caller).nodeify(done));
+  beforeEach(async () => campaign = await Campaign.query().insert({id: 1, name: 'test', status: 'active'}));
 
   context('with an approved number', () => {
     const payload = { From: caller.phone_number };
@@ -152,7 +160,8 @@ describe('/conference_event/callee', () => {
   const conference_uuid = '222';
   const status = 'connected';
   const callee = associatedCallee;
-  beforeEach(async () => Call.query().truncate());
+  beforeEach(async () => Event.query().delete());
+  beforeEach(async () => Call.query().delete());
   beforeEach(async () => Callee.query().delete());
   beforeEach(async () => await Callee.query().insert(callee));
   beforeEach(async () => Caller.query().delete());
@@ -179,36 +188,39 @@ describe('/conference_event/callee', () => {
 describe('/answer', () => {
   context('with a called picked up', () => {
     const CallStatus = 'in-progress';
+    const conference_member_id = '1111';
+    const call_uuid = '2222';
+    let callee;
+    let mockedApiCall;
+    beforeEach(async () => Event.query().delete());
+    beforeEach(async () => Call.query().delete());
+    beforeEach(async () => Caller.query().insert(caller));
+    beforeEach(async () => Callee.query().insert(associatedCallee));
+    beforeEach(async () => {
+      callee = await Callee.query().where({phone_number: associatedCallee.phone_number}).first();
+    });
 
     context('with no conferences on the line', () => {
       beforeEach(async () => Caller.query().delete());
-      xit('should record the delay');
-      xit('should delay the call and retry and increment counter');
-      context('with retry counter above max', () => {
-        xit('should drop the call');
+      it('be successful but drop the call', () => {
+        return request.post(`/answer?name=Bridger&callee_id=${callee.id}`)
+          .type('form').send({CallStatus, CallUUID: call_uuid})
+          .expect(200)
       });
-      it('TODO: drop the call for now', () => {
-        return request.post('/answer')
-          .type('form').send({CallStatus})
-          .expect(500)
-      });
-    });
 
-    context('with conferences but everyone is busy with someone', () => {
-      xit('should delay the call and retry and increment counter');
+      it('should record the drop on the call and as an event', () => {
+        return request.post(`/answer?name=Bridger&callee_id=${callee.id}`)
+          .type('form').send({CallStatus, CallUUID: call_uuid})
+          .then(async () => {
+            const call = await Call.query().where({callee_id: callee.id, callee_call_uuid: call_uuid, status: 'dropped'}).first();
+            expect(call).to.be.an(Call);
+            const event = await Event.query().where({call_id: call.id, name: 'drop', value: 1}).first();
+            expect(event).to.be.an(Event);
+          });
+      });
     });
 
     context('with available member', () => {
-      const conference_member_id = '1111';
-      const call_uuid = '2222';
-      let callee;
-      let mockedApiCall;
-      beforeEach(async () => Call.query().truncate());
-      beforeEach(async () => Caller.query().insert(caller));
-      beforeEach(async () => Callee.query().insert(associatedCallee));
-      beforeEach(async () => {
-        callee = await Callee.query().where({phone_number: associatedCallee.phone_number}).first();
-      });
       beforeEach(async () => {
         return Caller.query().where({phone_number: caller.phone_number})
           .patch({status: 'available', conference_member_id})
@@ -252,7 +264,8 @@ describe('/hangup', () => {
   context('with a hangup before answered', () => {
     const CallStatus = 'no-answer';
     let callee;
-    beforeEach(async () => Call.query().truncate());
+    beforeEach(async () => Event.query().delete());
+    beforeEach(async () => Call.query().delete());
     beforeEach(async () => Callee.query().delete());
     beforeEach(async () => {
       callee = await Callee.query().insert(associatedCallee);
@@ -272,7 +285,7 @@ describe('/hangup', () => {
 
   context('with an existing call', () => {
     const CallStatus = 'completed';
-    beforeEach(async () => Call.query().truncate());
+    beforeEach(async () => Call.query().delete());
     beforeEach(async () => Call.query().insert({callee_call_uuid: CallUUID, status: 'answered'}));
 
     it('should record the call has ended with the status and duration', async () => {
