@@ -29,6 +29,7 @@ const ratioDial = async (appUrl, campaign) => {
   const cleanedNumber = '\'61\' || right(regexp_replace(phone_number, \'[^\\\d]\', \'\', \'g\'),9)';
   const callees = await Callee.bindTransaction(trans).query()
     .whereRaw(`length(${cleanedNumber}) = 11`)
+    .where({campaign_id: campaign.id})
     .whereNull('last_called_at')
     .orderBy('id')
     .limit(callsToMake);
@@ -41,8 +42,10 @@ const recalculateRatio = async(campaign) => {
   let newRatio;
   if (campaign.last_checked_ratio_at && recalculationScheduledFor < campaign.last_checked_ratio_at) return campaign;
   const statusCounts = await Call.knexQuery().select('dropped')
-    .count('id as count')
+    .innerJoin('callees', 'calls.callee_id', 'callees.id')
+    .count('calls.id as count')
     .where('ended_at', '>=', moment().subtract(RATIO_WINDOW, 'second').toDate())
+    .where({campaign_id: campaign.id})
     .groupBy('dropped');
   const total = _.sumBy(statusCounts, ({count}) => parseInt(count, 10));
   const dropStatus = _.find(statusCounts, ({dropped}) => dropped);
@@ -95,8 +98,10 @@ const updateAndCall = async (trans, callee, appUrl) => {
 
 // TODO need a way to test if all calls have been processed and not just dialed.
 // Potentially join against calls that are ended to make sure every callee has an ended call
-module.exports.isComplete = async () => {
-  const {count} = await Callee.knexQuery().count('id as count').whereNull('last_called_at').first();
+module.exports.isComplete = async (campaign) => {
+  const {count} = await Callee.knexQuery().count('id as count')
+    .where({campaign_id: campaign.id})
+    .whereNull('last_called_at').first();
   return parseInt(count, 10) === 0;
 }
 

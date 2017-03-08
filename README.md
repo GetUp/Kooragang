@@ -44,4 +44,13 @@ psql `heroku config:get DATABASE_URL`?ssl=true -c "\copy callers (first_name, ph
 
 ```
 psql `heroku config:get DATABASE_URL`?ssl=true -c "\copy callees (external_id, first_name, phone_number, location, caller) FROM 'tmp/gt/callees.csv' CSV HEADER;"
-```
+
+#### TODO
+
+* have two digit answer codes followed by hash
+* allow entering 2 or 2# during call to hangup
+* repeat back disposition after entering code
+* experiment with answering machine detection
+    * perhaps play "silence" or something else while waiting
+* error where person is sent to conference that no longer exists, perhaps reset member record or do api check?
+* model calls by replaying real call data from callfire

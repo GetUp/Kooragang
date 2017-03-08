@@ -19,7 +19,7 @@ const {
   SurveyResult
 } = require('../models');
 
-const caller = {
+let caller = {
   first_name: 'bob',
   phone_number: '61288888888',
   location: 'balmain'
@@ -39,18 +39,31 @@ const unassociatedCallee = {
 };
 
 describe('/connect', () => {
-  beforeEach(async () => Event.query().delete());
-  beforeEach(done => Call.query().delete().nodeify(done));
-  beforeEach(done => Caller.query().delete().nodeify(done));
-  beforeEach(done => Callee.query().delete().nodeify(done));
-  beforeEach(done => Campaign.query().delete().nodeify(done));
-  beforeEach(done => Caller.query().insert(caller).nodeify(done));
+  beforeEach(async () => {
+    await Event.query().delete();
+    await Call.query().delete();
+    await Callee.query().delete();
+    await Campaign.query().delete();
+    await Caller.query().delete();
+  });
   beforeEach(async () => campaign = await Campaign.query().insert({id: 1, name: 'test', status: 'active'}));
+  beforeEach(async () => caller = await Caller.query().insert(caller));
+
+  context('with no campaign id specified', () => {
+    const payload = { From: caller.phone_number };
+    it('plays the briefing message', () => {
+      return request.post('/connect')
+        .type('form')
+        .send(payload)
+        .expect(/error/);
+    });
+  });
+
 
   context('with an approved number', () => {
     const payload = { From: caller.phone_number };
     it('plays the briefing message', () => {
-      return request.post('/connect')
+      return request.post(`/connect?campaign_id=${campaign.id}`)
         .type('form')
         .send(payload)
         .expect(/Hi bob/);
@@ -58,22 +71,24 @@ describe('/connect', () => {
   });
 
   context('with an irregular, but approved, caller id', () => {
-    const payload = { From: '02 8888 8888' };
+    const payload = { From: '612 8888 8888' };
     it('still identifies our caller', () => {
-      request.post('/connect')
+      return request.post(`/connect?campaign_id=${campaign.id}`)
         .type('form')
         .send(payload)
         .expect(/Hi bob/);
     });
   });
 
-  context('with an unapproved number', () => {
+  context('with an unknown number', () => {
     const payload = { From: '61266666666' };
-    it('directs them to contact us', () => {
-      return request.post('/connect')
+    it('create a record', async() => {
+      await request.post(`/connect?campaign_id=${campaign.id}`)
         .type('form')
         .send(payload)
-        .expect(/only approved callers/);
+        .expect(/welcome/i);
+      const caller = await Caller.query().where({phone_number: payload.From}).first();
+      expect(caller).to.be.a(Caller);
     });
   });
 
@@ -84,7 +99,7 @@ describe('/connect', () => {
     };
     beforeEach(async () => Caller.query().insert(sipCaller));
     it('should strip out sip details for caller number', () => {
-      return request.post('/connect')
+      return request.post(`/connect?campaign_id=${campaign.id}`)
         .type('form')
         .send({From: `sip:${sipCaller.phone_number}@phone.plivo.com`})
         .expect(/alice123/i);
@@ -92,12 +107,12 @@ describe('/connect', () => {
   });
 
   context('with a private number', () => {
-    const payload = { From: 'no one we know' };
-    it('directs them to contact us', () => {
-      return request.post('/connect')
+    const payload = { From: '' };
+    it('directs them to enable caller id', () => {
+      return request.post(`/connect?campaign_id=${campaign.id}`)
         .type('form')
         .send(payload)
-        .expect(/only approved callers/);
+        .expect(/caller id/);
     });
   });
 });
@@ -194,6 +209,7 @@ describe('/answer', () => {
     let mockedApiCall;
     beforeEach(async () => Event.query().delete());
     beforeEach(async () => Call.query().delete());
+    beforeEach(async () => Caller.query().delete());
     beforeEach(async () => Caller.query().insert(caller));
     beforeEach(async () => Callee.query().insert(associatedCallee));
     beforeEach(async () => {

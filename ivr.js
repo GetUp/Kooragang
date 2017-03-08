@@ -58,15 +58,6 @@ const appUrl = endpoint => endpoint ? `${host}/${endpoint}` : host;
 
 app.get('/', (req, res) => res.send('<_-.-_>I\'m awake.</_-.-_>'));
 
-const unapprovedCaller = (r, res) => {
-  r.addSpeakAU('Hi there! We don\'t recognise the number you\'re calling from.');
-  r.addSpeakAU('We\'re currently in beta, so only approved callers can use this system.');
-  r.addSpeakAU('If you\'d like to help out, please send an email to: take-action, at get up, dot org, dot ay u.');
-  r.addSpeakAU('That address again: take-action, at get up, dot org, dot ay u.');
-  r.addSpeakAU('Thanks and goodbye.');
-  res.send(r.toXML());
-}
-
 const answer = digit => {
   return {
     '2': 'machine',
@@ -110,7 +101,11 @@ app.post('/answer', async ({body, query}, res, next) => {
         console.error('======= Unable to contact name with:', params, ' and error: ', e);
       }
     }
-    r.addConference(caller.phone_number, {startConferenceOnEnter: false, stayAlone: false, callbackUrl: appUrl(`conference_event/callee?caller_number=${caller.phone_number}`)});
+    r.addConference(caller.phone_number, {
+      startConferenceOnEnter: false,
+      stayAlone: false,
+      callbackUrl: appUrl(`conference_event/callee?caller_number=${caller.phone_number}&campaign_id=${campaign.id}`)
+    });
     res.send(r.toXML());
   } else {
     await callerTransaction.commit()
@@ -137,7 +132,7 @@ app.post('/hangup', async ({body, query}, res, next) => {
       ended_at: new Date(),
       status: body.CallStatus, duration: body.Duration
     });
-    const campaign = await Campaign.query().where({status: 'active'}).first();
+    const {campaign} = await Callee.query().eager('campaign').where({id: call.callee_id}).first();
     await dialer.dial(appUrl(), campaign);
   }
   return next();
@@ -159,12 +154,24 @@ app.post('/connect', async (req, res, next) => {
     });
   }
 
+  const campaign = await Campaign.query().where({id: req.query.campaign_id}).first();
+  if (!campaign){
+    r.addSpeakAU('An error has occurred. The number is not associated with a campaign');
+    r.addPlay(halfSec);
+    r.addSpeakAU('GetUp technical staff have been notified. Hanging up now.');
+    return res.send(r.toXML());
+  }
   const sip = req.body.From.match(/sip:(\w+)@/);
-  const callerNumber = sip ? sip[1] : req.body.From.replace(/\s/g, '').slice(-9);
-  const  caller = await Caller.query().where('phone_number', 'like', '%' + callerNumber).first();
-  if (!caller) return unapprovedCaller(r, res);
+  const callerNumber = sip ? sip[1] : req.body.From.replace(/\s/g, '');
+  if (_.isEmpty(callerNumber)){
+    return res.send('It appears you do not have caller id enabled. Please enable it and call back. Thank you.')
+  }
+  let  caller = await Caller.query().where({phone_number: callerNumber}).first();
+  if (!caller){
+    caller = await Caller.query().insert({phone_number: callerNumber, first_name: ''});
+  }
 
-  const campaignComplete = await dialer.isComplete();
+  const campaignComplete = await dialer.isComplete(campaign);
   if (campaignComplete) {
     r.addSpeakAU(`Hi ${caller.first_name}! Welcome to the GetUp Dialer tool.`);
     r.addPlay(halfSec);
@@ -173,7 +180,7 @@ app.post('/connect', async (req, res, next) => {
   }
 
   const briefing = r.addGetDigits({
-    action: appUrl(`ready?caller_number=${caller.phone_number}&start=1`),
+    action: appUrl(`ready?caller_number=${caller.phone_number}&start=1&campaign_id=${campaign.id}`),
     method: 'POST',
     timeout: 5,
     numDigits: 1,
@@ -207,7 +214,8 @@ app.post('/ready', async (req, res, next) => {
     return res.send(r.toXML());
   }
 
-  const campaignComplete = await dialer.isComplete();
+  const campaign = await Campaign.query().where({id: req.query.campaign_id}).first();
+  const campaignComplete = await dialer.isComplete(campaign);
   if (campaignComplete) {
     r.addSpeakAU('The campaign has been completed!');
     r.addRedirect(appUrl('disconnect?completed=1'));
@@ -224,9 +232,9 @@ app.post('/ready', async (req, res, next) => {
     waitSound: appUrl('hold_music'),
     maxMembers: 2,
     timeLimit: 60 * 120,
-    callbackUrl: appUrl(`conference_event/caller?caller_number=${caller_number}`),
+    callbackUrl: appUrl(`conference_event/caller?caller_number=${caller_number}&campaign_id=${req.query.campaign_id}`),
     hangupOnStar: 'true',
-    action: appUrl(`survey?caller_number=${caller_number}`)
+    action: appUrl(`survey?caller_number=${caller_number}&campaign_id=${req.query.campaign_id}`)
   });
   res.send(r.toXML());
 });
@@ -253,7 +261,7 @@ app.post('/conference_event/caller', async ({query, body}, res, next) => {
   if (body.ConferenceAction === 'enter') {
     await Caller.query().where({phone_number: query.caller_number})
       .patch({status: body.ConferenceAction === 'enter' ? 'available' : null, conference_member_id});
-    const campaign = await Campaign.query().where({status: 'active'}).first();
+    const campaign = await Campaign.query().where({id: query.campaign_id}).first();
     await dialer.dial(appUrl(), campaign);
   }
   res.sendStatus(200);

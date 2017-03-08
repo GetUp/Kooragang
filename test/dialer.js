@@ -19,7 +19,7 @@ describe('.dial', () => {
   const testUrl = 'http://test'
   beforeEach(dropAll);
   beforeEach(async () => {
-    campaign = await Campaign.query().insert({name: 'test'});
+    campaign = await Campaign.query().insert({name: 'test', max_ratio: 3});
     invalidCallee = await Callee.query().insert({phone_number: '9', campaign_id: campaign.id});
     callee = await Callee.query().insert({phone_number: '123456789', campaign_id: campaign.id});
   });
@@ -61,7 +61,7 @@ describe('.dial', () => {
         it('should not increase the calling ratio', async () => {
           await dialer.dial(testUrl, campaign);
           const updatedCampaign = await Campaign.query().where({id: campaign.id}).first();
-          expect(updatedCampaign.ratio).to.be(1);
+          expect(updatedCampaign.ratio).to.be(campaign.max_ratio);
         });
       });
     });
@@ -151,12 +151,16 @@ describe('.isComplete', () => {
     campaign = await Campaign.query().insert({name: 'test'});
   });
 
-  context('with no available callees', () => {
+  context('with no available callees on the current campaign', () => {
     beforeEach(async () => Callee.query().insert({phone_number: '123456789', last_called_at: new Date(), campaign_id: campaign.id}));
-    it('should return true', async () => expect(await dialer.isComplete()).to.be(true));
+    beforeEach(async () => {
+      const anotherCampaign = await Campaign.query().insert({name: 'another'});
+      Callee.query().insert({phone_number: '123456789', campaign_id: anotherCampaign.id});
+    });
+    it('should return true', async () => expect(await dialer.isComplete(campaign)).to.be(true));
   });
   context('with available callees', () => {
     beforeEach(async () => Callee.query().insert({phone_number: '123456789', campaign_id: campaign.id}));
-    it('should return false', async () => expect(await dialer.isComplete()).to.be(false));
+    it('should return false', async () => expect(await dialer.isComplete(campaign)).to.be(false));
   });
 });

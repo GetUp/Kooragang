@@ -40,6 +40,14 @@ class Callee extends Model {
           from: 'callees.id',
           to: 'calls.callee_id'
         }
+      },
+      campaign: {
+        relation: Model.OneToOneRelation,
+        modelClass: Campaign,
+        join: {
+          from: 'callees.campaign_id',
+          to: 'campaigns.id'
+        }
       }
     }
   }
