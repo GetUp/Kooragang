@@ -188,7 +188,7 @@ app.post('/connect', async (req, res, next) => {
     validDigits: ['1', '9']
   });
 
-  briefing.addSpeakAU(`Hi ${caller.first_name}! Welcome to the GetUp Dialer tool. Today you will be making calls about the Adani campaign.`);
+  briefing.addSpeakAU(`Hi ${caller.first_name}! Welcome to the GetUp Dialer tool. Today you will be making calls about for the ${campaign.name} campaign.`);
   briefing.addPlay(halfSec);
   briefing.addSpeakAU('You should have a copy of the script and the disposition codes in front of you.');
   briefing.addPlay(quarterSec);
