@@ -47,6 +47,7 @@ psql `heroku config:get DATABASE_URL`?ssl=true -c "\copy callees (external_id, f
 
 #### TODO
 
+* web interface with script
 * have two digit answer codes followed by hash
 * allow entering 2 or 2# during call to hangup
 * repeat back disposition after entering code

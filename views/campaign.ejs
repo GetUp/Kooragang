@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <meta name="description" content="PhoneBanking tool">
+    <meta name="robots" content="noindex">
+    <meta name="author" content="GetUp">
+    <link rel="icon" href="/favicon.ico">
+
+    <title><%=campaign.name%></title>
+
+    <!-- Bootstrap core CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+
+    <!-- Custom styles for this template -->
+    <style>
+    body {
+      padding-top: 50px;
+
+    }
+    .starter-template {
+      padding: 40px 15px;
+      text-align: center;
+     }
+    </style>
+  </head>
+
+  <body>
+
+    <nav class="navbar navbar-inverse navbar-fixed-top">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="#">Phone Bank Tool</a>
+        </div>
+        <div id="navbar" class="collapse navbar-collapse">
+          <ul class="nav navbar-nav">
+            <li class="active"><a href="#">Home</a></li>
+          </ul>
+        </div><!--/.nav-collapse -->
+      </div>
+    </nav>
+
+    <div class="container">
+    <div class="jumbotron">
+      <h1><%=campaign.name%> Campaign</h1>
+    </div>
+      <div class="row">
+        <div class="col-md-8">
+          <h2>Script</h2>
+          <div>
+          <iframe scrolling="no" style="border: 0; width: 100%; height: 1200px; overflow: hidden;" src="https://docs.google.com/document/d/1_2uhubfXoW8zokuhKXdRAdz8_WMH7R0wAQM5YWZii-4/pub?embedded=true"></iframe>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <h2>Get Started</h2>
+          <div class="well">
+            <h3>Call 07 3063 0974</h3>
+            You will be provided with further instructions.
+          </div>
+          <h2>Disposition codes</h2>
+          <div class="well">
+            You will be asked to enter one of these codes to record the outcome of the call:
+            <ul style="margin-top:1em; list-style: none; font-size: 110%;">
+              <li><strong>2</strong> - answering machine</li>
+              <li><strong>3</strong> - no answer</li>
+              <li><strong>4</strong> - requested to be callback</li>
+              <li><strong>5</strong> - not interested</li>
+              <li><strong>6</strong> - disagrees</li>
+              <li><strong>7</strong> - undecided</li>
+              <li><strong>8</strong> - agreed</li>
+              <li><strong>9</strong> - supporter</li>
+            </ul>
+          </div>
+          <div class="panel-group" id="accordion">
+            <h2>General questions</h2>
+            <div class="panel panel-default">
+              <div class="panel-heading">
+                <h4 class="panel-title">
+                  <a class="accordion-toggle" data-toggle="collapse" data-parent="#accordion" href="#collapse-1">I'm new here. Can I help?</a>
+                </h4>
+              </div>
+              <div id="collapse-1" class="panel-collapse collapse in">
+                <div class="panel-body">
+                  You sure can! This phone banking tool is designed to for people who have never made any campaign calls before etc etc. 
+                </div>
+              </div>
+            </div>
+
+            <div class="panel panel-default">
+              <div class="panel-heading">
+                <h4 class="panel-title">
+                  <a class="accordion-toggle" data-toggle="collapse" data-parent="#accordion" href="#collapse-2">What will I need?</a>
+                </h4>
+              </div>
+              <div id="collapse-2" class="panel-collapse collapse">
+                <div class="panel-body">
+                  The two main things you'll need is a phone and a copy of the script printed out or in front of you. A headset is nice, as it makes it easier to use the keypad at the same time, but it is not essential.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /.container -->
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  </body>
+</html>

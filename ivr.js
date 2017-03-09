@@ -25,6 +25,7 @@ const halfSec = 'http://www.xamuel.com/blank-mp3-files/halfsec.mp3';
 const callEndBeep = 'https://dl.dropboxusercontent.com/u/404666/getup/kooragang/call_end_beep.wav';
 
 app.use(bodyParser.urlencoded({extended: true}));
+app.set('view engine', 'ejs');
 
 const response = Object.getPrototypeOf(plivo.Response());
 response.addSpeakAU = function(text) {
@@ -58,18 +59,17 @@ const appUrl = endpoint => endpoint ? `${host}/${endpoint}` : host;
 
 app.get('/', (req, res) => res.send('<_-.-_>I\'m awake.</_-.-_>'));
 
-const answer = digit => {
-  return {
-    '2': 'machine',
-    '3': 'no answer',
-    '4': 'callback',
-    '5': 'not interested',
-    '6': 'disagree',
-    '7': 'undecided',
-    '8': 'agree',
-    '9': 'take action'
-  }[digit];
+const dispositions = {
+  '2': 'answering machine',
+  '3': 'no answer',
+  '4': 'callback',
+  '5': 'not interested',
+  '6': 'disagree',
+  '7': 'undecided',
+  '8': 'agree',
+  '9': 'supporter take action'
 }
+const answer = digit => dispositions[digit];
 
 app.post('/answer', async ({body, query}, res, next) => {
   const r = plivo.Response();
@@ -104,7 +104,7 @@ app.post('/answer', async ({body, query}, res, next) => {
     r.addConference(caller.phone_number, {
       startConferenceOnEnter: false,
       stayAlone: false,
-      callbackUrl: appUrl(`conference_event/callee?caller_number=${caller.phone_number}&campaign_id=${campaign.id}`)
+      callbackUrl: appUrl(`conference_event/callee?caller_number=${caller.phone_number}&campaign_id=${query.campaign_id}`)
     });
     res.send(r.toXML());
   } else {
@@ -185,23 +185,18 @@ app.post('/connect', async (req, res, next) => {
     timeout: 5,
     numDigits: 1,
     retries: 10,
-    validDigits: [1]
+    validDigits: ['1', '9']
   });
 
   briefing.addSpeakAU(`Hi ${caller.first_name}! Welcome to the GetUp Dialer tool. Today you will be making calls about the Adani campaign.`);
   briefing.addPlay(halfSec);
-  briefing.addSpeakAU('You should have a document with the script and the reference codes for each survey question.');
+  briefing.addSpeakAU('You should have a copy of the script and the disposition codes in front of you.');
   briefing.addPlay(quarterSec);
-  briefing.addSpeakAU('If not, please hang up and get the instructions you need from the campaign coordinator.');
+  briefing.addSpeakAU('If not, please press the 9 key');
   briefing.addPlay(halfSec);
-  briefing.addPlay(halfSec);
-
-  briefing.addSpeakAU('Thank you very much for being part of this campaign. Press 1 to get started!');
-
-  briefing.addPlay(halfSec);
-  briefing.addWait({length: 6})
-  briefing.addSpeakAU('This message will automatically replay until you press 1 on your phone key pad.');
-
+  briefing.addSpeakAU('Otherwise, press 1 to get started!');
+  briefing.addWait({length: 8})
+  briefing.addSpeakAU('This message will automatically replay until you press 1 or 9 on your phone key pad.');
   res.send(r.toXML());
 });
 
@@ -215,6 +210,11 @@ app.post('/ready', async (req, res, next) => {
   }
 
   const campaign = await Campaign.query().where({id: req.query.campaign_id}).first();
+  if (req.body.Digits === '9') {
+    r.addSpeakAU(`This feature does not work yet. In the future, it will send an SMS with a link to http://phonebank.getup.org.au/${campaign.id}. For now, please get a copy of the script from this site. Hanging up!`)
+    return res.send(r.toXML());
+  }
+
   const campaignComplete = await dialer.isComplete(campaign);
   if (campaignComplete) {
     r.addSpeakAU('The campaign has been completed!');
@@ -270,7 +270,7 @@ app.post('/conference_event/caller', async ({query, body}, res, next) => {
 app.post('/call_again', (req, res) => {
   const r = plivo.Response();
   const callAgain = r.addGetDigits({
-    action: appUrl(`ready?caller_number=${req.query.caller_number}`),
+    action: appUrl(`ready?caller_number=${req.query.caller_number}&campaign_id=${req.query.campaign_id}`),
     timeout: 10,
     retries: 10,
     numDigits: 1
@@ -291,7 +291,7 @@ app.post('/survey', async (req, res) => {
   }
 
   const surveyResponse = r.addGetDigits({
-    action: appUrl(`survey_result?q=rsvp&caller_number=${req.query.caller_number}&call_id=${call.id}`),
+    action: appUrl(`survey_result?q=rsvp&caller_number=${req.query.caller_number}&call_id=${call.id}&campaign_id=${req.query.campaign_id}`),
     redirect: true,
     retries: 10,
     numDigits: 1,
@@ -305,14 +305,16 @@ app.post('/survey', async (req, res) => {
 
 app.post('/survey_result', async (req, res, next) => {
   const r = plivo.Response();
+  const disposition = answer(req.body.Digits);
   const data = {
     log_id: res.locals.log_id,
     call_id: req.query.call_id,
     question: req.query.q,
-    answer: answer(req.body.Digits)
+    answer: disposition
   }
+  r.addSpeakAU(disposition);
   await SurveyResult.query().insert(data);
-  r.addRedirect(appUrl(`call_again?caller_number=${req.query.caller_number}`));
+  r.addRedirect(appUrl(`call_again?caller_number=${req.query.caller_number}&campaign_id=${req.query.campaign_id}`));
   res.send(r.toXML());
 });
 
@@ -345,5 +347,12 @@ app.post('/feedback', (req, res) => {
 
 // already logged in middleware
 app.post('/log', (req, res) => res.sendStatus(200));
+
+app.get(/^\/\d+$/, async (req, res) => {
+  res.set('Content-Type', 'text/html');
+  const campaign = await Campaign.query().where({id: req.path.replace(/^\//, '')}).first();
+  if (!campaign) res.sendStatus(404);
+  return res.render('campaign.ejs', {campaign, dispositions})
+});
 
 module.exports = app;

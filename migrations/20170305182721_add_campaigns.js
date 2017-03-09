@@ -8,6 +8,8 @@ exports.up = function(knex, Promise) {
       t.string('name').notNull();
       t.string('status');
       t.string('dialer');
+      t.string('script_url');
+      t.string('phone_number');
       t.integer('max_ratio').defaultTo(1);
       t.integer('ratio').defaultTo(0);
       t.timestamp('last_checked_ratio_at');
@@ -30,5 +32,6 @@ exports.up = function(knex, Promise) {
 exports.down = function(knex, Promise) {
   return knex.schema
     .dropTableIfExists('campaigns')
+    .dropTableIfExists('events')
     .table('callees', table => table.dropColumn('campaign_id'));
 };

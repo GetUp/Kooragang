@@ -316,3 +316,19 @@ describe('/hangup', () => {
     });
   });
 });
+
+describe('with campaign id in path', () => {
+  beforeEach(async () => {
+    await Event.query().delete();
+    await Call.query().delete();
+    await Callee.query().delete();
+    await Campaign.query().delete();
+    await Caller.query().delete();
+  });
+  beforeEach(async () => campaign = await Campaign.query().insert({id: 1, name: 'test', status: 'active'}));
+
+  it ('should return a page with the campaign name', () => {
+    return request.get(`/${campaign.id}`).
+      expect(/test/);
+  });
+});
