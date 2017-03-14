@@ -50,8 +50,6 @@ psql `heroku config:get DATABASE_URL`?ssl=true -c "\copy callees (external_id, f
 * web interface with script
 * have two digit answer codes followed by hash
 * allow entering 2 or 2# during call to hangup
-* repeat back disposition after entering code
-* experiment with answering machine detection
-    * perhaps play "silence" or something else while waiting
 * error where person is sent to conference that no longer exists, perhaps reset member record or do api check?
 * model calls by replaying real call data from callfire
+* look at hanging calls when there is not agent available
