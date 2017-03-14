@@ -35,6 +35,24 @@ describe('.dial', () => {
     });
   });
 
+  context('with answering machine detection enabled on campaign', () => {
+    beforeEach(async () => {
+      campaign = await Campaign.query().patchAndFetchById(campaign.id, {
+        detect_answering_machine: true
+      });
+    });
+    it('should add the extra dialing params', async () => {
+      const mockedApiCall = nock('https://api.plivo.com')
+        .post(/Call/, body => {
+          return body.machine_detection === 'hangup';
+        })
+        .query(true)
+        .reply(200);
+      await dialer.dial(testUrl, campaign);
+      mockedApiCall.done();
+    })
+  });
+
   context('with a predictive ratio dialer campaign', () => {
     let mockedApiCall;
     beforeEach(async () => {

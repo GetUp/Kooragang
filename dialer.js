@@ -33,7 +33,7 @@ const ratioDial = async (appUrl, campaign) => {
     .whereNull('last_called_at')
     .orderBy('id')
     .limit(callsToMake);
-  await Promise.all(callees.map(callee => updateAndCall(trans, callee, appUrl)))
+  await Promise.all(callees.map(callee => updateAndCall(trans, campaign, callee, appUrl)))
   return trans.commit();
 };
 
@@ -71,23 +71,27 @@ const powerDial = async (appUrl, campaign) => {
   if (!callee) {
     if (process.env.NODE_ENV === 'development') console.error('NO MORE NUMBERS')
   }else{
-    await updateAndCall(calleeTransaction, callee, appUrl);
+    await updateAndCall(calleeTransaction, campaign, callee, appUrl);
   }
   return calleeTransaction.commit();
 };
 
-const updateAndCall = async (trans, callee, appUrl) => {
+const updateAndCall = async (trans, campaign, callee, appUrl) => {
   await Callee.bindTransaction(trans).query()
     .patchAndFetchById(callee.id, {last_called_at: new Date})
   const params = {
     to: callee.phone_number,
-    from : '1111111111',
+    from : process.env.NUMBER || '1111111111',
     answer_url : `${appUrl}/answer?name=${callee.first_name}&callee_id=${callee.id}&campaign_id=${callee.campaign_id}`,
     hangup_url : `${appUrl}/hangup?callee_id=${callee.id}&campaign_id=${callee.campaign_id}`,
     fallback_url : `${appUrl}/log?callee_id=${callee.id}&campaign_id=${callee.campaign_id}`,
     time_limit: 10 * 60,
     ring_timeout: 30
   };
+  if (campaign.detect_answering_machine) {
+    params.machine_detection = 'hangup';
+    params.machine_detection_time = '3500';
+  }
   if (process.env.NODE_ENV === 'development') console.error('CALLING', params)
   try{
     return await promisfy(api.make_call.bind(api))(params);

@@ -297,6 +297,19 @@ describe('/hangup', () => {
           expect(call).to.be.an(Call);
         });
     });
+
+    context('with answering machine detection', () => {
+      it('should record the call was hungup with the status and duration', async () => {
+        return request.post(`/hangup?name=Bridger&callee_id=${callee.id}`)
+          .type('form').send({CallStatus, CallUUID, Duration: '10', Machine: 'true'})
+          .then(async () => {
+            const call = await Call.query()
+              .where({status: 'machine_detected', callee_call_uuid: CallUUID, duration: 10})
+              .first();
+            expect(call).to.be.an(Call);
+          });
+      });
+    })
   });
 
   context('with an existing call', () => {

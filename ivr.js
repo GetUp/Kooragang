@@ -123,21 +123,21 @@ app.post('/answer', async ({body, query}, res, next) => {
 
 app.post('/hangup', async ({body, query}, res, next) => {
   let call = await Call.query().where({callee_call_uuid: body.CallUUID}).first();
+  const status = body.Machine === 'true' ? 'machine_detected' : body.CallStatus;
   if (call){
     await Call.query().where({callee_call_uuid: body.CallUUID})
-      .patch({ended_at: new Date(), status: body.CallStatus, duration: body.Duration});
+      .patch({ended_at: new Date(), status, duration: body.Duration});
   }else{
     call = await Call.query().insert({
       callee_call_uuid: body.CallUUID, callee_id: query.callee_id,
       ended_at: new Date(),
-      status: body.CallStatus, duration: body.Duration
+      status, duration: body.Duration
     });
     const {campaign} = await Callee.query().eager('campaign').where({id: call.callee_id}).first();
     await dialer.dial(appUrl(), campaign);
   }
   return next();
 });
-
 
 app.post('/connect', async (req, res, next) => {
   if (req.body.CallStatus === 'completed') return next();
