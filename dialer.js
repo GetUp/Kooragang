@@ -13,10 +13,6 @@ const {
   transaction
 } = require('./models');
 
-const RECALCULATE_DELAY = 180;
-const ACCEPTABLE_DROP_RATIO = 0.05;
-const RATIO_WINDOW = 600;
-
 module.exports.dial = async (...args) => {
   return args[1].dialer === 'ratio' ? ratioDial(...args) : powerDial(...args);
 };
@@ -38,19 +34,20 @@ const ratioDial = async (appUrl, campaign) => {
 };
 
 const recalculateRatio = async(campaign) => {
-  const recalculationScheduledFor = moment().subtract(RECALCULATE_DELAY, 'seconds');
+  const recalculationScheduledFor = moment().subtract(campaign.recalculate_ratio_window, 'seconds');
   let newRatio;
+  const dropRatio = campaign.acceptable_drop_rate;
   if (campaign.last_checked_ratio_at && recalculationScheduledFor < campaign.last_checked_ratio_at) return campaign;
   const statusCounts = await Call.knexQuery().select('dropped')
     .innerJoin('callees', 'calls.callee_id', 'callees.id')
     .count('calls.id as count')
-    .where('ended_at', '>=', moment().subtract(RATIO_WINDOW, 'second').toDate())
+    .where('ended_at', '>=', moment().subtract(campaign.ratio_window, 'second').toDate())
     .where({campaign_id: campaign.id})
     .groupBy('dropped');
   const total = _.sumBy(statusCounts, ({count}) => parseInt(count, 10));
   const dropStatus = _.find(statusCounts, ({dropped}) => dropped);
   const drops = dropStatus ? parseInt(dropStatus.count, 10) : 0;
-  if (drops / total > ACCEPTABLE_DROP_RATIO) {
+  if (drops / total > dropRatio) {
     newRatio = campaign.ratio > 1 ? campaign.ratio - 1 : 1;
   }else {
     newRatio = campaign.ratio === campaign.max_ratio ? campaign.ratio : campaign.ratio + 1;

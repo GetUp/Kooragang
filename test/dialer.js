@@ -19,7 +19,7 @@ describe('.dial', () => {
   const testUrl = 'http://test'
   beforeEach(dropAll);
   beforeEach(async () => {
-    campaign = await Campaign.query().insert({name: 'test', max_ratio: 3});
+    campaign = await Campaign.query().insert({name: 'test', max_ratio: 3, acceptable_drop_rate: 0.05, recalculate_ratio_window: 180, ratio_window: 600});
     invalidCallee = await Callee.query().insert({phone_number: '9', campaign_id: campaign.id});
     callee = await Callee.query().insert({phone_number: '123456789', campaign_id: campaign.id});
   });

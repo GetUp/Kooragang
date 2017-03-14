@@ -15,6 +15,9 @@ exports.up = function(knex, Promise) {
       t.timestamp('last_checked_ratio_at');
       t.string('ended_at');
       t.boolean('detect_answering_machine').defaultTo(false);
+      t.decimal('acceptable_drop_rate').defaultTo(0);
+      t.integer('ratio_window').defaultTo(600);
+      t.integer('recalculate_ratio_window').defaultTo(180);
       t.index(['name']);
       t.index(['status']);
     }).table('callees', t => {
