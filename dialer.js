@@ -63,6 +63,7 @@ const powerDial = async (appUrl, campaign) => {
   const callee = await Callee.bindTransaction(calleeTransaction).query()
     .whereRaw(`length(${cleanedNumber}) = 11`)
     .whereNull('last_called_at')
+    .where({campaign_id: campaign.id})
     .orderBy('id')
     .first();
   if (!callee) {
