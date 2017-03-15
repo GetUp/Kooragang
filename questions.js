@@ -13,7 +13,7 @@ module.exports = {
     }
   },
   voter_id: {
-    speak: 'Enter the voter i.d. code',
+    speak: 'Enter the voter ID code',
     answers: {
       '2': 'influence their vote and voted for LNP last election',
       '3': 'influence their vote and voted for another party last election',
@@ -27,7 +27,7 @@ module.exports = {
       '2': 'will call MP',
       '3': 'would write to local paper or make FB post',
       '4': 'will do both actions',
-      '5': 'won’t take action',
+      '5': 'won\'t take action',
     },
     next: () => 'complete'
   },
