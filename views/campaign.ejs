@@ -70,14 +70,7 @@
           <div class="well">
             You will be asked to enter one of these codes to record the outcome of the call:
             <ul style="margin-top:1em; list-style: none; font-size: 110%;">
-              <li><strong>2</strong> - answering machine</li>
-              <li><strong>3</strong> - no answer</li>
-              <li><strong>4</strong> - requested to callback</li>
-              <li><strong>5</strong> - not interested</li>
-              <li><strong>6</strong> - disagree</li>
-              <li><strong>7</strong> - undecided</li>
-              <li><strong>8</strong> - agree</li>
-              <li><strong>9</strong> - willing to take action</li>
+              <%- Object.keys(dispositions).map(d => `<li><strong>${d}</strong> - ${dispositions[d]}</li>`).join('') %>
             </ul>
           </div>
           <div class="panel-group" id="accordion">
