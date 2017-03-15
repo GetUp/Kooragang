@@ -19,6 +19,7 @@ const {
   SurveyResult
 } = require('../models');
 
+const CallUUID = '111';
 let caller = {
   first_name: 'bob',
   phone_number: '61288888888',
@@ -275,8 +276,6 @@ describe('/answer', () => {
 });
 
 describe('/hangup', () => {
-  const CallUUID = '111';
-
   context('with a hangup before answered', () => {
     const CallStatus = 'no-answer';
     let callee;
@@ -341,7 +340,60 @@ describe('with campaign id in path', () => {
   beforeEach(async () => campaign = await Campaign.query().insert({id: 1, name: 'test', status: 'active'}));
 
   it ('should return a page with the campaign name', () => {
-    return request.get(`/${campaign.id}`).
-      expect(/test/);
+    return request.get(`/${campaign.id}`)
+      .expect(/test/);
+  });
+});
+
+describe('/survey', () => {
+  const conference_uuid = '222';
+  beforeEach(async () => {
+    await Call.query().delete();
+    await Campaign.query().delete();
+    await SurveyResult.query().delete();
+  });
+  beforeEach(async () => call = await Call.query().insert({callee_call_uuid: CallUUID, conference_uuid, status: 'answered'}));
+  beforeEach(async () => campaign = await Campaign.query().insert({id: 1, name: 'test', status: 'active'}));
+
+  it ('should return the question specified by the q param', () => {
+    const question = 'action';
+    return request.post(`/survey?q=${question}&call_id=${call.id}&campaign_id=${campaign.id}`)
+      .expect(new RegExp(`q=${question}`))
+      .expect(new RegExp(`Enter the ${question} code`));
+  });
+});
+
+describe('/survey_result', () => {
+  beforeEach(async () => await SurveyResult.query().delete());
+
+  it('stores the result', () => {
+    return request.post('/survey_result?q=disposition')
+      .type('form').send({ Digits: '2' })
+      .then(async () => {
+        const result = await SurveyResult.query()
+          .where({question: 'disposition'})
+          .first();
+        expect(result.answer).to.be('answering machine');
+      });
+  });
+
+  context('with a non-meaningful disposition', () => {
+    const payload = { Digits: '2' };
+    it ('should announce the result & redirect to call_again', () => {
+      return request.post('/survey_result?q=disposition')
+        .type('form').send(payload)
+        .expect(/answering machine/)
+        .expect(/call_again/);
+    });
+  });
+
+  context('with a meaningful disposition', () => {
+    const payload = { Digits: '5' };
+    it ('should announce the result & redirect to the next question', () => {
+      return request.post('/survey_result?q=disposition')
+        .type('form').send(payload)
+        .expect(/does not support the loan/)
+        .expect(/survey\?q=/);
+    });
   });
 });

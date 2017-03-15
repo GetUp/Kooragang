@@ -121,5 +121,3 @@ module.exports.notifyAgents = async () => {
   });
   return Promise.all(notifications);
 }
-
-

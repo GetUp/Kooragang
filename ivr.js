@@ -8,6 +8,7 @@ const app = express();
 const promisfy = require('es6-promisify');
 const api = plivo.RestAPI({ authId: process.env.API_ID || 'test', authToken: process.env.API_TOKEN || 'test'});
 const dialer = require('./dialer');
+const questions = require('./questions');
 
 const {
   Call,
@@ -58,18 +59,6 @@ app.use((req, res, next) => {
 const appUrl = endpoint => endpoint ? `${host}/${endpoint}` : host;
 
 app.get('/', (req, res) => res.send('<_-.-_>I\'m awake.</_-.-_>'));
-
-const dispositions = {
-  '2': 'answering machine',
-  '3': 'no answer',
-  '4': 'callback',
-  '5': 'not interested',
-  '6': 'disagree',
-  '7': 'undecided',
-  '8': 'agree',
-  '9': 'supporter take action'
-}
-const answer = digit => dispositions[digit];
 
 app.post('/answer', async ({body, query}, res, next) => {
   const r = plivo.Response();
@@ -234,7 +223,7 @@ app.post('/ready', async (req, res, next) => {
     timeLimit: 60 * 120,
     callbackUrl: appUrl(`conference_event/caller?caller_number=${caller_number}&campaign_id=${req.query.campaign_id}`),
     hangupOnStar: 'true',
-    action: appUrl(`survey?caller_number=${caller_number}&campaign_id=${req.query.campaign_id}`)
+    action: appUrl(`survey?q=disposition&caller_number=${caller_number}&campaign_id=${req.query.campaign_id}`)
   });
   res.send(r.toXML());
 });
@@ -281,9 +270,16 @@ app.post('/call_again', (req, res) => {
 });
 
 app.post('/survey', async (req, res) => {
+  let call;
   const r = plivo.Response();
+  const question = req.query.q;
+  const questionData = questions[question];
 
-  const call = await Call.query().where({conference_uuid: req.body.ConferenceUUID}).first();
+  if (req.query.call_id) {
+    call = await Call.query().where({id: req.query.call_id}).first();
+  } else {
+    call = await Call.query().where({conference_uuid: req.body.ConferenceUUID}).first();
+  }
   if (!call) {
     r.addSpeakAU('The call has ended.');
     r.addSpeakAU('No survey required.');
@@ -291,30 +287,36 @@ app.post('/survey', async (req, res) => {
   }
 
   const surveyResponse = r.addGetDigits({
-    action: appUrl(`survey_result?q=rsvp&caller_number=${req.query.caller_number}&call_id=${call.id}&campaign_id=${req.query.campaign_id}`),
+    action: appUrl(`survey_result?q=${question}&caller_number=${req.query.caller_number}&call_id=${call.id}&campaign_id=${req.query.campaign_id}`),
     redirect: true,
     retries: 10,
     numDigits: 1,
     timeout: 10,
-    validDigits: [2, 3, 4, 5, 6, 7, 8, 9]
+    validDigits: Object.keys(questionData.answers),
   });
-  surveyResponse.addSpeakAU('The call has ended.');
-  surveyResponse.addSpeakAU('Enter the answer code');
+  if (question === 'disposition') surveyResponse.addSpeakAU('The call has ended.');
+  surveyResponse.addSpeakAU(questionData.speak);
   res.send(r.toXML());
 });
 
-app.post('/survey_result', async (req, res, next) => {
+app.post('/survey_result', async (req, res) => {
   const r = plivo.Response();
-  const disposition = answer(req.body.Digits);
+  const question = questions[req.query.q];
+  const disposition = question.answers[req.body.Digits];
+  const next = question.next(disposition);
   const data = {
     log_id: res.locals.log_id,
     call_id: req.query.call_id,
     question: req.query.q,
-    answer: disposition
+    answer: disposition,
   }
-  r.addSpeakAU(disposition);
   await SurveyResult.query().insert(data);
-  r.addRedirect(appUrl(`call_again?caller_number=${req.query.caller_number}&campaign_id=${req.query.campaign_id}`));
+  r.addSpeakAU(disposition);
+  if (next === 'complete') {
+    r.addRedirect(appUrl(`call_again?caller_number=${req.query.caller_number}&campaign_id=${req.query.campaign_id}`));
+  } else {
+    r.addRedirect(appUrl(`survey?q=${next}&call_id=${req.query.call_id}&caller_number=${req.query.caller_number}&campaign_id=${req.query.campaign_id}`));
+  }
   res.send(r.toXML());
 });
 
@@ -352,7 +354,7 @@ app.get(/^\/\d+$/, async (req, res) => {
   res.set('Content-Type', 'text/html');
   const campaign = await Campaign.query().where({id: req.path.replace(/^\//, '')}).first();
   if (!campaign) res.sendStatus(404);
-  return res.render('campaign.ejs', {campaign, dispositions})
+  return res.render('campaign.ejs', {campaign, dispositions: questions['disposition'].answers})
 });
 
 module.exports = app;
