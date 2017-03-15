@@ -21,8 +21,6 @@ const {
   transaction
 } = require('./models');
 
-const quarterSec = 'http://www.xamuel.com/blank-mp3-files/quartersec.mp3';
-const halfSec = 'http://www.xamuel.com/blank-mp3-files/halfsec.mp3';
 const callEndBeep = 'https://dl.dropboxusercontent.com/u/404666/getup/kooragang/call_end_beep.wav';
 
 app.use(bodyParser.urlencoded({extended: true}));
@@ -146,7 +144,7 @@ app.post('/connect', async (req, res, next) => {
   const campaign = await Campaign.query().where({id: req.query.campaign_id}).first();
   if (!campaign){
     r.addSpeakAU('An error has occurred. The number is not associated with a campaign');
-    r.addPlay(halfSec);
+    r.addWait({length: 1});
     r.addSpeakAU('GetUp technical staff have been notified. Hanging up now.');
     return res.send(r.toXML());
   }
@@ -163,7 +161,7 @@ app.post('/connect', async (req, res, next) => {
   const campaignComplete = await dialer.isComplete(campaign);
   if (campaignComplete) {
     r.addSpeakAU(`Hi ${caller.first_name}! Welcome to the GetUp Dialer tool.`);
-    r.addPlay(halfSec);
+    r.addWait({length: 1});
     r.addSpeakAU('The campaign has been completed! Please contact the campaign coordinator for further instructions. Thank you and have a great day!');
     return res.send(r.toXML());
   }
@@ -178,13 +176,13 @@ app.post('/connect', async (req, res, next) => {
   });
 
   briefing.addSpeakAU(`Hi ${caller.first_name}! Welcome to the GetUp Dialer tool. Today you will be making calls for the ${campaign.name} campaign.`);
-  briefing.addPlay(halfSec);
+  briefing.addWait({length: 1});
   briefing.addSpeakAU('You should have a copy of the script and the disposition codes in front of you.');
-  briefing.addPlay(quarterSec);
+  briefing.addWait({length: 1});
   briefing.addSpeakAU('If not, please press the 9 key');
-  briefing.addPlay(halfSec);
+  briefing.addWait({length: 1});
   briefing.addSpeakAU('Otherwise, press 1 to get started!');
-  briefing.addWait({length: 8})
+  briefing.addWait({length: 8});
   briefing.addSpeakAU('This message will automatically replay until you press 1 or 9 on your phone key pad.');
   res.send(r.toXML());
 });
@@ -214,7 +212,7 @@ app.post('/ready', async (req, res, next) => {
   r.addSpeakAU('You are now in the call queue.')
   if (req.query.start) {
     r.addSpeakAU('We will connect you to a call shortly.')
-    r.addPlay(quarterSec);
+    r.addWait({length: 1});
     r.addSpeakAU('Remember, don\'t hangup *your* phone. Press star to end a call. Or wait for the other person to hang up.');
   }
   r.addConference(caller_number, {
