@@ -3,6 +3,7 @@ const nock = require('nock');
 const dialer = require('../dialer');
 const moment = require('moment');
 const _ = require('lodash');
+const sinon = require('sinon');
 
 const { Callee, Caller, Call, Campaign, Event } = require('../models');
 
@@ -19,7 +20,7 @@ describe('.dial', () => {
   const testUrl = 'http://test'
   beforeEach(dropAll);
   beforeEach(async () => {
-    campaign = await Campaign.query().insert({name: 'test', max_ratio: 3, acceptable_drop_rate: 0.05, recalculate_ratio_window: 180, ratio_window: 600});
+    campaign = await Campaign.query().insert({name: 'test', max_ratio: 3.0, acceptable_drop_rate: 0.05, recalculate_ratio_window: 180, ratio_window: 600});
     invalidCallee = await Callee.query().insert({phone_number: '9', campaign_id: campaign.id});
     callee = await Callee.query().insert({phone_number: '123456789', campaign_id: campaign.id});
   });
@@ -56,7 +57,7 @@ describe('.dial', () => {
   context('with a predictive ratio dialer campaign', () => {
     let mockedApiCall;
     beforeEach(async () => {
-      campaign = await Campaign.query().patchAndFetchById(campaign.id, {dialer: 'ratio'});
+      campaign = await Campaign.query().patchAndFetchById(campaign.id, {dialer: 'ratio', ratio: 1});
     });
     beforeEach(() => {
       mockedApiCall = nock('https://api.plivo.com')
@@ -66,10 +67,10 @@ describe('.dial', () => {
     });
 
     context('with no drops in the last 10 minutes', () => {
-      it('should increase the calling ratio by 1', async () => {
+      it('should increase the calling ratio by the campaign ratio_increment', async () => {
         await dialer.dial(testUrl, campaign)
         const updatedCampaign = await Campaign.query().where({id: campaign.id}).first();
-        expect(updatedCampaign.ratio).to.be(1);
+        expect(updatedCampaign.ratio).to.be(1.2);
       });
 
       context('with the calling ratio at the max', () => {
@@ -96,14 +97,16 @@ describe('.dial', () => {
       it('should decrease the calling ratio', async () => {
         await dialer.dial(testUrl, campaign)
         const updatedCampaign = await Campaign.query().where({id: campaign.id}).first();
-        expect(updatedCampaign.ratio).to.be(campaign.max_ratio - 1);
+        expect(updatedCampaign.ratio).to.be(campaign.max_ratio - campaign.ratio_increment);
       });
     });
 
     context('drops in the last 10 minutes under an acceptable ratio', () => {
+      let currentRatio;
       beforeEach(async () => {
+        currentRatio = campaign.max_ratio - 1;
         campaign = await Campaign.query().patchAndFetchById(campaign.id, {
-          ratio: campaign.max_ratio - 1
+          ratio: currentRatio
         });
       });
       beforeEach(async () => {
@@ -114,13 +117,14 @@ describe('.dial', () => {
       it('should increase the calling ratio', async () => {
         await dialer.dial(testUrl, campaign)
         const updatedCampaign = await Campaign.query().where({id: campaign.id}).first();
-        expect(updatedCampaign.ratio).to.be(campaign.max_ratio);
+        expect(updatedCampaign.ratio).to.be(currentRatio + 0.2);
       });
 
       it('should create an event', async () => {
         await dialer.dial(testUrl, campaign)
-        const event = await Event.query().where({campaign_id: campaign.id, name: 'ratio', value: campaign.max_ratio}).first();
+        const event = await Event.query().where({campaign_id: campaign.id, name: 'ratio'}).first();
         expect(event).to.be.an(Event);
+        expect(event.value).to.be((currentRatio + 0.2).toString());
       });
     });
 
@@ -154,6 +158,54 @@ describe('.dial', () => {
           .post(/Call/, body => body.to === '61411111111')
           .query(true)
           .times(4)
+          .reply(200);
+        await dialer.dial(testUrl, campaign)
+        mockedApiCall.done()
+      });
+    });
+
+    context('with 2 available agents and of 1.2', () => {
+      beforeEach(async () => {
+        await Promise.all(_.range(2).map(() => Caller.query().insert({phone_number: '1', status: 'available'})));
+        campaign = await Campaign.query().patchAndFetchById(campaign.id, {
+          ratio: 1.2, max_ratio: 4, last_checked_ratio_at: new Date()
+        });
+      });
+      beforeEach(async () => {
+        await Callee.query().delete();
+        const inserts = _.range(4).map(() => Callee.query().insert({phone_number: '61411111111', campaign_id: campaign.id}));
+        await Promise.all(inserts);
+      });
+
+      it('should initiate two calls', async () => {
+        mockedApiCall = nock('https://api.plivo.com')
+          .post(/Call/, body => body.to === '61411111111')
+          .query(true)
+          .times(2)
+          .reply(200);
+        await dialer.dial(testUrl, campaign)
+        mockedApiCall.done()
+      });
+    });
+
+    context('with 2 available agents and of 1.6', () => {
+      beforeEach(async () => {
+        await Promise.all(_.range(2).map(() => Caller.query().insert({phone_number: '1', status: 'available'})));
+        campaign = await Campaign.query().patchAndFetchById(campaign.id, {
+          ratio: 1.6, max_ratio: 4, last_checked_ratio_at: new Date()
+        });
+      });
+      beforeEach(async () => {
+        await Callee.query().delete();
+        const inserts = _.range(4).map(() => Callee.query().insert({phone_number: '61411111111', campaign_id: campaign.id}));
+        await Promise.all(inserts);
+      });
+
+      it('should initiate three calls', async () => {
+        mockedApiCall = nock('https://api.plivo.com')
+          .post(/Call/, body => body.to === '61411111111')
+          .query(true)
+          .times(3)
           .reply(200);
         await dialer.dial(testUrl, campaign)
         mockedApiCall.done()

@@ -21,7 +21,7 @@ const ratioDial = async (appUrl, campaign) => {
   campaign = await recalculateRatio(campaign);
   const trans = await transaction.start(Callee.knex(), Caller.knex());
   const callers = await Caller.bindTransaction(trans).query().where({status: 'available'});
-  const callsToMake = callers.length * campaign.ratio;
+  const callsToMake = Math.floor(callers.length * campaign.ratio);
   const cleanedNumber = '\'61\' || right(regexp_replace(phone_number, \'[^\\\d]\', \'\', \'g\'),9)';
   const callees = await Callee.bindTransaction(trans).query()
     .whereRaw(`length(${cleanedNumber}) = 11`)
@@ -48,10 +48,12 @@ const recalculateRatio = async(campaign) => {
   const dropStatus = _.find(statusCounts, ({dropped}) => dropped);
   const drops = dropStatus ? parseInt(dropStatus.count, 10) : 0;
   if (drops / total > dropRatio) {
-    newRatio = campaign.ratio > 1 ? campaign.ratio - 1 : 1;
+    newRatio = campaign.ratio - campaign.ratio_increment;
   }else {
-    newRatio = campaign.ratio === campaign.max_ratio ? campaign.ratio : campaign.ratio + 1;
+    newRatio = campaign.ratio + campaign.ratio_increment;
   }
+  if (newRatio < 1) newRatio = 1;
+  if (newRatio > campaign.max_ratio) newRatio = campaign.max_ratio;
   if (process.env.NODE_ENV === 'development') console.error(`UPDATING RATIO TO ${newRatio}`)
   await Event.query().insert({campaign_id: campaign.id, name: 'ratio', value: newRatio});
   return await Campaign.query().patchAndFetchById(campaign.id, {ratio: newRatio, last_checked_ratio_at: new Date()});
