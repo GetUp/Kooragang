@@ -294,7 +294,7 @@ app.post('/survey', async (req, res) => {
     validDigits: Object.keys(questionData.answers),
   });
   if (question === 'disposition') surveyResponse.addSpeakAU('The call has ended.');
-  surveyResponse.addSpeakAU(questionData.speak);
+  surveyResponse.addSpeakAU(`Enter the ${questionData.name} code.`);
   res.send(r.toXML());
 });
 
@@ -353,7 +353,7 @@ app.get(/^\/\d+$/, async (req, res) => {
   res.set('Content-Type', 'text/html');
   const campaign = await Campaign.query().where({id: req.path.replace(/^\//, '')}).first();
   if (!campaign) res.sendStatus(404);
-  return res.render('campaign.ejs', {campaign, dispositions: questions['disposition'].answers})
+  return res.render('campaign.ejs', {campaign, questions})
 });
 
 module.exports = app;

@@ -67,12 +67,16 @@
             <h3>Call 07 3063 0974</h3>
             You will be provided with further instructions.
           </div>
-          <h2>Disposition codes</h2>
+          <h2>Call result codes</h2>
           <div class="well">
-            You will be asked to enter one of these codes to record the outcome of the call:
-            <ul style="margin-top:1em; list-style: none; font-size: 110%;">
-              <%- Object.keys(dispositions).map(d => `<li><strong>${d}</strong> - ${dispositions[d]}</li>`).join('') %>
-            </ul>
+            <p>You will be asked to enter one of these codes to record the outcome of the call:</p>
+
+            <% Object.keys(questions).map(key => { %>
+              <h3><%= `${questions[key].name} codes` %></h3>
+              <ul style="margin-top:1em; list-style: none; font-size: 110%;">
+                <%- Object.keys(questions[key].answers).map(a => `<li><strong>${a}</strong> - ${questions[key].answers[a]}</li>`).join('') %>
+              </ul>
+            <% }).join('') %>
           </div>
           <div class="panel-group" id="accordion">
             <h2>General questions</h2>
