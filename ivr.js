@@ -84,7 +84,7 @@ app.post('/answer', async ({body, query}, res, next) => {
         language: 'en-GB', voice: 'MAN'
       }
       try{
-        await promisfy(api.speak_conference_member.bind(api))(params);
+        //await promisfy(api.speak_conference_member.bind(api))(params);
       }catch(e){
         console.error('======= Unable to contact name with:', params, ' and error: ', e);
       }
