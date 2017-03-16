@@ -28,7 +28,7 @@ exports.up = function(knex, Promise) {
       t.timestamp('created_at').defaultTo(knex.fn.now());
       t.timestamp('updated_at').defaultTo(knex.fn.now());
       t.string('name').notNull();
-      t.string('value');
+      t.text('value');
       t.bigInteger('campaign_id').references('id').inTable('campaigns');
       t.bigInteger('call_id').references('id').inTable('calls');
     });

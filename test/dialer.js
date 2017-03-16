@@ -162,6 +162,18 @@ describe('.dial', () => {
         await dialer.dial(testUrl, campaign)
         mockedApiCall.done()
       });
+
+      it('should record an event', async () => {
+        mockedApiCall = nock('https://api.plivo.com')
+          .post(/Call/, body => body.to === '61411111111')
+          .query(true)
+          .times(4)
+          .reply(200);
+        await dialer.dial(testUrl, campaign)
+        const event = await Event.query().where({campaign_id: campaign.id, name: 'calling'}).first();
+        expect(event).to.be.an(Event);
+        expect(event.value).to.match(/callsToMake/);
+      });
     });
 
     context('with 2 available agents and of 1.2', () => {

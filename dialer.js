@@ -29,6 +29,7 @@ const ratioDial = async (appUrl, campaign) => {
     .whereNull('last_called_at')
     .orderBy('id')
     .limit(callsToMake);
+  await Event.query().insert({campaign_id: campaign.id, name: 'calling', value: {ratio: campaign.ratio, callers: callers.length, callsToMake, callees: callees.length}});
   await Promise.all(callees.map(callee => updateAndCall(trans, campaign, callee, appUrl)))
   return trans.commit();
 };
