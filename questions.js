@@ -6,9 +6,10 @@ module.exports = {
       "3": "not interested",
       "4": "support the loan",
       "5": "does not support the loan",
+      "6": "unsure about support for the loan",
     },
     next: answer => {
-      if (answer === "does not support the loan") return "voter_id";
+      if (answer === "does not support the loan" || answer === "unsure about support for the loan") return "voter_id";
       return "complete";
     }
   },
