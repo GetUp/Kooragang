@@ -359,7 +359,7 @@ describe('/survey', () => {
     const question = 'action';
     return request.post(`/survey?q=${question}&call_id=${call.id}&campaign_id=${campaign.id}`)
       .expect(new RegExp(`q=${question}`))
-      .expect(new RegExp(`Enter the ${question} code`));
+      .expect(new RegExp(`Enter the ${question} code`, 'i'));
   });
 });
 
