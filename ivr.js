@@ -76,7 +76,7 @@ app.post('/answer', async ({body, query}, res, next) => {
       status: 'answered',
       callee_call_uuid: body.CallUUID
     });
-    if (name) {
+    if (!_.isEmpty(name)) {
       const params = {
         conference_id: caller.phone_number,
         member_id: caller.conference_member_id,
