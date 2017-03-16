@@ -11,7 +11,7 @@ exports.up = function(knex, Promise) {
       t.string('script_url');
       t.string('phone_number');
       t.decimal('max_ratio').defaultTo(1.0);
-      t.decimal('ratio').defaultTo(0);
+      t.decimal('ratio').defaultTo(1.0);
       t.timestamp('last_checked_ratio_at');
       t.string('ended_at');
       t.boolean('detect_answering_machine').defaultTo(false);
