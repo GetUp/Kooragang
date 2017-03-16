@@ -377,41 +377,6 @@ app.post('/feedback', (req, res) => {
   r.addSpeakAU('Thanks again for calling. We hope to see you again soon!');
   res.send(r.toXML());
 });
-
-app.post('/sms', async (req, res) => {
-  const from = req.body.From;
-  const to = req.body.To;
-  const text = req.body.Text;
-  const params = {
-    from : to,
-    answer_url : appUrl(`/connect?campaign_id=${req.query.campaign_id}&callback=1`),
-    ring_timeout: 120
-  };
-  let phoneRegex;
-  let callMade;
-
-  if (text.match(/call me/i)) {
-    params.to = from;
-  } else if (phoneRegex = text.match(/^\d{10}/)) {
-    params.to = phoneRegex[0];
-  }
-  if (params.to) {
-    try{
-      await promisfy(api.make_call.bind(api))(params);
-      callMade = true;
-    } catch(e) { console.error(e) };
-  }
-  if (!callMade) {
-    const r = plivo.Response();
-    r.addMessage('Sorry! I did not understand that message', {
-      src: to, dst: from
-    });
-    res.send(r.toXML());
-  } else {
-    res.sendStatus(200);
-  }
-});
-
 // already logged in middleware
 app.post('/log', (req, res) => res.sendStatus(200));
 
