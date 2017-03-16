@@ -242,34 +242,43 @@ describe('/answer', () => {
         return Caller.query().where({phone_number: caller.phone_number})
           .patch({status: 'available', conference_member_id})
       });
-      beforeEach(() => {
-        mockedApiCall = nock('https://api.plivo.com')
-          .post(/\/Conference\/61288888888\/Member\/1111\/Speak/, (body) => {
-             return body.text === 'Bridger';
-          })
-          .query(true)
-          .reply(200);
+      context('with the speak api mocked', () => {
+        beforeEach(() => {
+          mockedApiCall = nock('https://api.plivo.com')
+            .post(/\/Conference\/61288888888\/Member\/1111\/Speak/, (body) => {
+               return body.text === 'Bridger';
+            })
+            .query(true)
+            .reply(200);
+        });
+
+        it('should add the caller to the conference', () => {
+          return request.post(`/answer?name=Bridger&callee_id=${callee.id}`)
+            .type('form').send({CallStatus, CallUUID: call_uuid})
+            .expect(/61288888888<\/Conference/)
+        });
+
+        it('should speak the callee\'s name in the conference', () => {
+          return request.post(`/answer?name=Bridger&callee_id=${callee.id}`)
+            .type('form').send({CallStatus, CallUUID: call_uuid})
+            .then(() => mockedApiCall.done() );
+        });
+
+        it('should create a call record', () => {
+          return request.post(`/answer?name=Bridger&callee_id=${callee.id}`)
+            .type('form').send({CallStatus, CallUUID: call_uuid})
+            .then(async () => {
+              const call = await Call.query().where({callee_id: callee.id, callee_call_uuid: call_uuid}).first();
+              expect(call).to.be.an(Call);
+            });
+        });
       });
 
-      it('should add the caller to the conference', () => {
-        return request.post(`/answer?name=Bridger&callee_id=${callee.id}`)
-          .type('form').send({CallStatus, CallUUID: call_uuid})
-          .expect(/61288888888<\/Conference/)
-      });
-
-      it('should speak the callee\'s name in the conference', () => {
-        return request.post(`/answer?name=Bridger&callee_id=${callee.id}`)
-          .type('form').send({CallStatus, CallUUID: call_uuid})
-          .then(() => mockedApiCall.done() );
-      });
-
-      it('should create a call record', () => {
-        return request.post(`/answer?name=Bridger&callee_id=${callee.id}`)
-          .type('form').send({CallStatus, CallUUID: call_uuid})
-          .then(async () => {
-            const call = await Call.query().where({callee_id: callee.id, callee_call_uuid: call_uuid}).first();
-            expect(call).to.be.an(Call);
-          });
+      context('when the callee has no name set', () => {
+        it('should not say anything', () => {
+          return request.post(`/answer?callee_id=${callee.id}&name=`)
+            .type('form').send({CallStatus, CallUUID: call_uuid})
+        });
       });
     });
   });
