@@ -53,3 +53,4 @@ psql `heroku config:get DATABASE_URL`?ssl=true -c "\copy callees (external_id, f
 * error where person is sent to conference that no longer exists, perhaps reset member record or do api check?
 * model calls by replaying real call data from callfire
 * look at hanging calls when there is not agent available
+* dump all failed api calls into events table

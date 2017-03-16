@@ -60,7 +60,6 @@ describe('/connect', () => {
     });
   });
 
-
   context('with an approved number', () => {
     const payload = { From: caller.phone_number };
     it('plays the briefing message', () => {
@@ -116,6 +115,17 @@ describe('/connect', () => {
         .expect(/caller id/);
     });
   });
+
+  context('with a callback', () => {
+    const payload = { From: '33333' };
+    it('should use the number passed in the number parameter', () => {
+      return request.post(`/connect?campaign_id=${campaign.id}&callback=1&number=${caller.phone_number}`)
+        .type('form')
+        .send(payload)
+        .expect(/Welcome back/)
+        .expect(new RegExp(caller.phone_number));
+    });
+  });
 });
 
 describe('/ready', () => {
@@ -135,6 +145,32 @@ describe('/ready', () => {
       return request.post(`/ready?caller_number=11111&start=1`)
         .type('form').send({Digits: '*'})
         .expect(/disconnect/i)
+    });
+  });
+
+  context('with 8 pressed', () => {
+    it('should send an sms to their number', () => {
+      return request.post(`/ready?caller_number=11111&start=1&campaign_id=${campaign.id}`)
+        .type('form').send({Digits: '8'})
+        .expect(/message/i)
+    });
+  });
+
+  context('with 9 pressed', () => {
+    it('should call them back', async () => {
+      const mockedApiCall = nock('https://api.plivo.com')
+        .post(/Call/, body => {
+          return body.to === caller.phone_number && body.from === '1111111111'
+            && body.answer_url.match(/connect/)
+            && body.answer_url.match(/callback=1/)
+            && body.answer_url.match(/campaign_id=1/);
+        })
+        .query(true)
+        .reply(200);
+      await request.post(`/ready?caller_number=${caller.phone_number}&start=1&campaign_id=${campaign.id}`)
+        .type('form').send({Digits: '9'})
+        .expect(/hanging up now/i)
+      mockedApiCall.done();
     });
   });
 });
@@ -403,6 +439,68 @@ describe('/survey_result', () => {
         .type('form').send(payload)
         .expect(/does not support the loan/)
         .expect(/survey\?q=/);
+    });
+  });
+});
+
+describe('/sms', () => {
+  const from = '11111';
+  const to = '22222';
+
+  context('with an unknown text', () => {
+    it('should respond saying it does not understand', () => {
+      return request.post('/sms')
+        .type('form').send({
+          From: from,
+          To: to,
+          Text: ''
+        })
+        .expect(/did not understand/);
+    });
+  });
+
+  context('with "call me"', () => {
+    it('should call the from number', async () => {
+      const mockedApiCall = nock('https://api.plivo.com')
+        .post(/Call/, body => {
+          return body.to === from && body.from === to
+            && body.answer_url.match(/connect/)
+            && body.answer_url.match(/callback=1/)
+            && body.answer_url.match(/campaign_id=1/);
+        })
+        .query(true)
+        .reply(200);
+      await request.post('/sms?campaign_id=1')
+        .type('form').send({
+          From: from,
+          To: to,
+          Text: 'call me'
+        })
+        .expect(200);
+      mockedApiCall.done();
+    });
+  });
+
+  context('with a valid number', () => {
+    const validNumber = '0468222222';
+    it('should call the given number', async () => {
+      const mockedApiCall = nock('https://api.plivo.com')
+        .post(/Call/, body => {
+          return body.to === validNumber && body.from === to
+            && body.answer_url.match(/connect/)
+            && body.answer_url.match(/callback=1/)
+            && body.answer_url.match(/campaign_id=1/);
+        })
+        .query(true)
+        .reply(200);
+      await request.post('/sms?campaign_id=1')
+        .type('form').send({
+          From: from,
+          To: to,
+          Text: validNumber
+        })
+        .expect(200);
+      mockedApiCall.done();
     });
   });
 });

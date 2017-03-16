@@ -149,8 +149,14 @@ app.post('/connect', async (req, res, next) => {
     r.addSpeakAU('GetUp technical staff have been notified. Hanging up now.');
     return res.send(r.toXML());
   }
-  const sip = req.body.From.match(/sip:(\w+)@/);
-  const callerNumber = sip ? sip[1] : req.body.From.replace(/\s/g, '');
+
+  let callerNumber;
+  if (req.query.callback) {
+    callerNumber = req.query.number;
+  } else {
+    const sip = req.body.From.match(/sip:(\w+)@/);
+    callerNumber = sip ? sip[1] : req.body.From.replace(/\s/g, '').replace(/^0/, '61');
+  }
   if (_.isEmpty(callerNumber)){
     return res.send('It appears you do not have caller id enabled. Please enable it and call back. Thank you.')
   }
@@ -173,18 +179,26 @@ app.post('/connect', async (req, res, next) => {
     timeout: 5,
     numDigits: 1,
     retries: 10,
-    validDigits: ['1', '9']
+    validDigits: ['1', '8', '9']
   });
 
-  briefing.addSpeakAU(`Hi ${caller.first_name}! Welcome to the GetUp Dialer tool. Today you will be making calls for the ${campaign.name} campaign.`);
+  if (req.query.callback) {
+   briefing.addSpeakAU(`Hi ${caller.first_name}! Welcome back.`);
+  } else {
+   briefing.addSpeakAU(`Hi ${caller.first_name}! Welcome to the GetUp Dialer tool. Today you will be making calls for the ${campaign.name} campaign.`);
+  }
   briefing.addWait({length: 1});
   briefing.addSpeakAU('You should have a copy of the script and the disposition codes in front of you.');
   briefing.addWait({length: 1});
-  briefing.addSpeakAU('If not, please press the 9 key');
+  briefing.addSpeakAU('If not, please press the 8 key');
   briefing.addWait({length: 1});
+  if (!req.query.callback) {
+    briefing.addSpeakAU('If you cannot afford long phone calls and would like to be called back instead, please press the 9 key');
+    briefing.addWait({length: 1});
+  }
   briefing.addSpeakAU('Otherwise, press 1 to get started!');
   briefing.addWait({length: 8});
-  briefing.addSpeakAU('This message will automatically replay until you press 1 or 9 on your phone key pad.');
+  briefing.addSpeakAU('This message will automatically replay until you select a number on your phone\'s key pad.');
   res.send(r.toXML());
 });
 
@@ -198,8 +212,26 @@ app.post('/ready', async (req, res, next) => {
   }
 
   const campaign = await Campaign.query().where({id: req.query.campaign_id}).first();
+  if (req.body.Digits === '8') {
+    r.addMessage(`Please print or download the script and disposition codes from ${appUrl(`/${campaign.id}`)}. When you are ready, call again!`, {
+      src: process.env.NUMBER || '1111111111', dst: caller_number
+    });
+    r.addSpeakAU('Sending an sms with instructions to your number. Thank you and speak soon!')
+    return res.send(r.toXML());
+  }
   if (req.body.Digits === '9') {
-    r.addSpeakAU(`This feature does not work yet. In the future, it will send an SMS with a link to http://phonebank.getup.org.au/${campaign.id}. For now, please get a copy of the script from this site. Hanging up!`)
+    r.addSpeakAU('We will call you back immediately. Hanging up now!')
+    const params = {
+      from: process.env.NUMBER || '1111111111',
+      to: caller_number,
+      answer_url : appUrl(`connect?campaign_id=${campaign.id}&callback=1&number=${caller_number}`),
+      ring_timeout: 120
+    };
+    try{
+      await promisfy(api.make_call.bind(api))(params);
+    }catch(e){
+      r.addSpeakAU('There was an error calling you back. GetUp staff have been notified. Sorry!')
+    }
     return res.send(r.toXML());
   }
 
@@ -344,6 +376,40 @@ app.post('/feedback', (req, res) => {
   });
   r.addSpeakAU('Thanks again for calling. We hope to see you again soon!');
   res.send(r.toXML());
+});
+
+app.post('/sms', async (req, res) => {
+  const from = req.body.From;
+  const to = req.body.To;
+  const text = req.body.Text;
+  const params = {
+    from : to,
+    answer_url : appUrl(`/connect?campaign_id=${req.query.campaign_id}&callback=1`),
+    ring_timeout: 120
+  };
+  let phoneRegex;
+  let callMade;
+
+  if (text.match(/call me/i)) {
+    params.to = from;
+  } else if (phoneRegex = text.match(/^\d{10}/)) {
+    params.to = phoneRegex[0];
+  }
+  if (params.to) {
+    try{
+      await promisfy(api.make_call.bind(api))(params);
+      callMade = true;
+    } catch(e) { console.error(e) };
+  }
+  if (!callMade) {
+    const r = plivo.Response();
+    r.addMessage('Sorry! I did not understand that message', {
+      src: to, dst: from
+    });
+    res.send(r.toXML());
+  } else {
+    res.sendStatus(200);
+  }
 });
 
 // already logged in middleware
