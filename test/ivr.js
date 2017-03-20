@@ -197,12 +197,20 @@ describe('/hold_music', () => {
 });
 
 describe('/conference_event/caller', () => {
-  beforeEach(async () => Caller.query().delete());
+  let campaign;
+  beforeEach( async () => {
+    await Event.query().delete();
+    await Call.query().delete();
+    await Callee.query().delete();
+    await Campaign.query().delete();
+    await Caller.query().delete();
+  });
   beforeEach(async () => await Caller.query().insert(caller));
+  beforeEach(async () => campaign = await Campaign.query().insert({id: 1, name: 'test', status: 'active'}));
 
   context('with caller entering the conference', () => {
     it('should update the caller to be available and recorder the conference_member_id', async () => {
-      await request.post(`/conference_event/caller?caller_number=${caller.phone_number}`)
+      await request.post(`/conference_event/caller?caller_number=${caller.phone_number}&campaign_id=${campaign.id}`)
         .type('form')
         .send({ConferenceAction: 'enter', ConferenceFirstMember: 'true', ConferenceMemberID: '11'})
       let updatedCaller = await Caller.query().first();
@@ -271,18 +279,18 @@ describe('/answer', () => {
     context('with no conferences on the line', () => {
       beforeEach(async () => Caller.query().delete());
       it('be successful but drop the call', () => {
-        return request.post(`/answer?name=Bridger&callee_id=${callee.id}`)
+        return request.post(`/answer?name=Bridger&callee_id=${callee.id}&campaign_id=${callee.campaign_id}`)
           .type('form').send({CallStatus, CallUUID: call_uuid})
           .expect(200)
       });
 
       it('should record the drop on the call and as an event', () => {
-        return request.post(`/answer?name=Bridger&callee_id=${callee.id}`)
+        return request.post(`/answer?name=Bridger&callee_id=${callee.id}&campaign_id=${callee.campaign_id}`)
           .type('form').send({CallStatus, CallUUID: call_uuid})
           .then(async () => {
             const call = await Call.query().where({callee_id: callee.id, callee_call_uuid: call_uuid, dropped: true}).first();
             expect(call).to.be.an(Call);
-            const event = await Event.query().where({call_id: call.id, name: 'drop', value: 1}).first();
+            const event = await Event.query().where({call_id: call.id, name: 'drop'}).first();
             expect(event).to.be.an(Event);
           });
       });
@@ -373,6 +381,7 @@ describe('/hangup', () => {
 
   context('with an existing call', () => {
     const CallStatus = 'completed';
+    beforeEach(async () => Event.query().delete());
     beforeEach(async () => Call.query().delete());
     beforeEach(async () => Call.query().insert({callee_call_uuid: CallUUID, status: 'answered'}));
 

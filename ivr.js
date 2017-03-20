@@ -67,7 +67,7 @@ app.post('/answer', async ({body, query}, res, next) => {
   const caller = await Caller.bindTransaction(callerTransaction).query()
     .where({status: 'available'}).orderBy('updated_at').first();
   if (caller) {
-    await Caller.query().patchAndFetchById(caller.id, {status: 'connecting'});
+    await Caller.query().patchAndFetchById(caller.id, {status: 'in-call'});
     await callerTransaction.commit()
     await Call.query().insert({
       log_id: res.locals.log_id,
@@ -104,7 +104,10 @@ app.post('/answer', async ({body, query}, res, next) => {
       dropped: true,
       callee_call_uuid: body.CallUUID
     });
-    await Event.query().insert({call_id: call.id, name: 'drop', value: 1})
+    let campaign = await Campaign.query().where({id: query.campaign_id}).first();
+    const calls_in_progress = campaign.calls_in_progress;
+    campaign = await dialer.decrementCallsInProgress(campaign);
+    await Event.query().insert({call_id: call.id, name: 'drop', value: {calls_in_progress, updated_calls_in_progress: campaign.calls_in_progress} })
     res.sendStatus(200);
   }
 });
@@ -121,7 +124,10 @@ app.post('/hangup', async ({body, query}, res, next) => {
       ended_at: new Date(),
       status, duration: body.Duration
     });
-    const {campaign} = await Callee.query().eager('campaign').where({id: call.callee_id}).first();
+    let {campaign} = await Callee.query().eager('campaign').where({id: call.callee_id}).first();
+    const calls_in_progress = campaign.calls_in_progress;
+    campaign = await dialer.decrementCallsInProgress(campaign);
+    await Event.query().insert({call_id: call.id, name: 'filter', value: {status, calls_in_progress, updated_calls_in_progress: campaign.calls_in_progress}})
     await dialer.dial(appUrl(), campaign);
   }
   res.sendStatus(200);
@@ -233,16 +239,18 @@ app.post('/ready', async (req, res, next) => {
   }
 
   r.addSpeakAU('You are now in the call queue.')
+  let callbackUrl = `conference_event/caller?caller_number=${caller_number}&campaign_id=${req.query.campaign_id}`;
   if (req.query.start) {
     r.addSpeakAU('We will connect you to a call shortly.')
     r.addWait({length: 1});
     r.addSpeakAU('Remember, don\'t hangup *your* phone. Press star to end a call. Or wait for the other person to hang up.');
+    callbackUrl += '&start=1';
   }
   r.addConference(caller_number, {
     waitSound: appUrl('hold_music'),
     maxMembers: 2,
     timeLimit: 60 * 120,
-    callbackUrl: appUrl(`conference_event/caller?caller_number=${caller_number}&campaign_id=${req.query.campaign_id}`),
+    callbackUrl: appUrl(callbackUrl),
     hangupOnStar: 'true',
     action: appUrl(`survey?q=disposition&caller_number=${caller_number}&campaign_id=${req.query.campaign_id}`)
   });
@@ -291,8 +299,15 @@ app.post('/conference_event/caller', async ({query, body}, res, next) => {
   const conference_member_id = body.ConferenceMemberID;
   if (body.ConferenceAction === 'enter') {
     await Caller.query().where({phone_number: query.caller_number})
-      .patch({status: body.ConferenceAction === 'enter' ? 'available' : null, conference_member_id});
-    const campaign = await Campaign.query().where({id: query.campaign_id}).first();
+      .patch({status: 'available', conference_member_id});
+    let campaign = await Campaign.query().where({id: query.campaign_id}).first();
+    const calls_in_progress = campaign.calls_in_progress;
+    if (query.start) {
+      await Event.query().insert({campaign_id: campaign.id, name: 'join', value: {calls_in_progress}})
+    }else {
+      campaign = await dialer.decrementCallsInProgress(campaign);
+      await Event.query().insert({campaign_id: campaign.id, name: 'available', value: {calls_in_progress, updated_calls_in_progress: campaign.calls_in_progress}})
+    }
     await dialer.dial(appUrl(), campaign);
   }
   res.sendStatus(200);

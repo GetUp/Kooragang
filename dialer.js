@@ -22,14 +22,20 @@ const ratioDial = async (appUrl, campaign) => {
   const trans = await transaction.start(Callee.knex(), Caller.knex());
   const callers = await Caller.bindTransaction(trans).query().where({status: 'available'});
   const callsToMake = Math.floor(callers.length * campaign.ratio);
+  const callsToMakeExcludingCurrentCalls = callsToMake - campaign.calls_in_progress;
   const cleanedNumber = '\'61\' || right(regexp_replace(phone_number, \'[^\\\d]\', \'\', \'g\'),9)';
-  const callees = await Callee.bindTransaction(trans).query()
-    .whereRaw(`length(${cleanedNumber}) = 11`)
-    .where({campaign_id: campaign.id})
-    .whereNull('last_called_at')
-    .orderBy('id')
-    .limit(callsToMake);
-  await Event.query().insert({campaign_id: campaign.id, name: 'calling', value: {ratio: campaign.ratio, callers: callers.length, callsToMake, callees: callees.length}});
+  let callees = [];
+  if (callsToMake > 0) {
+    callees = await Callee.bindTransaction(trans).query()
+      .whereRaw(`length(${cleanedNumber}) = 11`)
+      .where({campaign_id: campaign.id})
+      .whereNull('last_called_at')
+      .orderBy('id')
+      .limit(callsToMakeExcludingCurrentCalls);
+  }
+  const updated_calls_in_progress = campaign.calls_in_progress + callees.length;
+  await Campaign.bindTransaction(trans).query().patchAndFetchById(campaign.id, {calls_in_progress: updated_calls_in_progress});
+  await Event.query().insert({campaign_id: campaign.id, name: 'calling', value: {ratio: campaign.ratio, callers: callers.length, callsToMake, callees: callees.length, callsToMakeExcludingCurrentCalls, calls_in_progress: campaign.calls_in_progress, updated_calls_in_progress}});
   await Promise.all(callees.map(callee => updateAndCall(trans, campaign, callee, appUrl)))
   return trans.commit();
 };
@@ -95,11 +101,22 @@ const updateAndCall = async (trans, campaign, callee, appUrl) => {
   }
   if (process.env.NODE_ENV === 'development') console.error('CALLING', params)
   try{
-    return await promisfy(api.make_call.bind(api))(params);
+    await promisfy(api.make_call.bind(api))(params);
   }catch(e){
-    console.error('======= Unable to make call:', params, ' and error: ', e);
+    await decrementCallsInProgress(campaign);
+    await Event.query().insert({campaign_id: campaign.id, name: 'api_error', value: {calls_in_progress: campaign.calls_in_progress, callee_id: callee.id, error: e}});
   }
 };
+
+const decrementCallsInProgress = async campaign => {
+  //await Campaign.knexQuery()d$.patch('');
+  //const {calls_in_progress} = await Campaign.bindTransaction(trans).query().patchAndFetchById(campaign.id, 'calls_in_progress = case calls_in_progress when 0 then 0 else calls_in_progress - 1 end');
+  let {calls_in_progress} = await Campaign.query().where({id: campaign.id}).first();
+  calls_in_progress = calls_in_progress < 1 ? 0 : calls_in_progress - 1;
+  let updatedCampaign = await Campaign.query().patchAndFetchById(campaign.id, {calls_in_progress});
+  return updatedCampaign;
+}
+module.exports.decrementCallsInProgress = decrementCallsInProgress;
 
 // TODO need a way to test if all calls have been processed and not just dialed.
 // Potentially join against calls that are ended to make sure every callee has an ended call

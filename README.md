@@ -47,10 +47,7 @@ psql `heroku config:get DATABASE_URL`?ssl=true -c "\copy callees (external_id, f
 
 #### TODO
 
-* web interface with script
-* have two digit answer codes followed by hash
 * allow entering 2 or 2# during call to hangup
 * error where person is sent to conference that no longer exists, perhaps reset member record or do api check?
 * model calls by replaying real call data from callfire
-* look at hanging calls when there is not agent available
-* dump all failed api calls into events table
+* decrement calls_in_progress when agent hangs up and they're in conference or doing survey

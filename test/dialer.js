@@ -36,6 +36,22 @@ describe('.dial', () => {
     });
   });
 
+  context('with error with an api call', () => {
+    beforeEach(() => {
+      return Campaign.query().patchAndFetchById(campaign.id, {calls_in_progress: 1});
+    });
+    it ('should remove decrement the calls_in_progress', async () => {
+      const mockedApiCall = nock('https://api.plivo.com')
+        .post(/Call/, body => true)
+        .query(true)
+        .reply(404);
+      await dialer.dial(testUrl, campaign)
+      const updatedCampaign = await Campaign.query().where({id: campaign.id}).first();
+      expect(updatedCampaign.calls_in_progress).to.be(0);
+      mockedApiCall.done()
+    })
+  });
+
   context('with answering machine detection enabled on campaign', () => {
     beforeEach(async () => {
       campaign = await Campaign.query().patchAndFetchById(campaign.id, {
@@ -200,11 +216,42 @@ describe('.dial', () => {
       });
     });
 
+    context('with calls in progress', () => {
+      beforeEach(async () => {
+        campaign = await Campaign.query().patchAndFetchById(campaign.id, {
+          ratio: 1, max_ratio: 4, last_checked_ratio_at: new Date(), calls_in_progress: 0
+        });
+      });
+      beforeEach(async () => {
+        await Callee.query().delete();
+        const inserts = _.range(8).map(() => Callee.query().insert({phone_number: '61411111111', campaign_id: campaign.id}));
+        await Promise.all(inserts);
+      });
+
+      it('should exclude calls in progress from the number of calls to make', async () => {
+        let calls_in_progress;
+        let counter = 0;
+        const mockedApiCall = nock('https://api.plivo.com')
+          .post(/Call/, body => body.to === '61411111111')
+          .query(true)
+          .times(4)
+          .reply(200);
+        await Caller.query().insert({phone_number: '1', status: 'available'});
+        await Caller.query().insert({phone_number: '2', status: 'available'});
+        await Caller.query().insert({phone_number: '3', status: 'available'});
+        await dialer.dial(testUrl, campaign);
+        campaign = await dialer.decrementCallsInProgress(campaign);
+        expect(campaign.calls_in_progress).to.be(2);
+        await dialer.dial(testUrl, campaign);
+        mockedApiCall.done()
+      });
+    });
+
     context('with 2 available agents and of 1.6', () => {
       beforeEach(async () => {
         await Promise.all(_.range(2).map(() => Caller.query().insert({phone_number: '1', status: 'available'})));
         campaign = await Campaign.query().patchAndFetchById(campaign.id, {
-          ratio: 1.6, max_ratio: 4, last_checked_ratio_at: new Date()
+          ratio: 1.6, max_ratio: 4, last_checked_ratio_at: new Date(), calls_in_progress: 0
         });
       });
       beforeEach(async () => {
@@ -214,7 +261,7 @@ describe('.dial', () => {
       });
 
       it('should initiate three calls', async () => {
-        mockedApiCall = nock('https://api.plivo.com')
+        const mockedApiCall = nock('https://api.plivo.com')
           .post(/Call/, body => body.to === '61411111111')
           .query(true)
           .times(3)
