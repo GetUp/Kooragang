@@ -6,8 +6,8 @@ exports.seed = function(knex, Promise) {
       knex('campaigns').del()
     ).then(() => {
       return Promise.join(
-        knex('campaigns').insert({id: 1, name: 'Power Dialler Test', dialer: 'power'}),
-        knex('campaigns').insert({id: 2, name: 'Predictive Dialler Test', dialer: 'ratio', status: 'active', ratio: 1, max_ratio: 1})
+        knex('campaigns').insert({id: 1, name: 'Power Dialler Test', phone_number: '61285994346', dialer: 'power'}),
+        knex('campaigns').insert({id: 2, name: 'Predictive Dialler Test', phone_number: '61285994346', dialer: 'ratio', status: 'active', ratio: 1, max_ratio: 1})
       );
     }).then(() => {
       return Promise.join(
