@@ -364,6 +364,7 @@ describe('/hangup', () => {
     it('should record the call has ended with the status and duration', async () => {
       return request.post(`/hangup?name=Bridger&callee_id=111`)
         .type('form').send({CallStatus: 'completed', CallUUID, Duration: '10'})
+        .expect(200)
         .then(async () => {
           const call = await Call.query()
             .where({status: 'completed', callee_call_uuid: CallUUID, duration: 10})

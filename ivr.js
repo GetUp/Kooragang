@@ -124,11 +124,11 @@ app.post('/hangup', async ({body, query}, res, next) => {
     const {campaign} = await Callee.query().eager('campaign').where({id: call.callee_id}).first();
     await dialer.dial(appUrl(), campaign);
   }
-  return next();
+  res.sendStatus(200);
 });
 
 app.post('/connect', async (req, res, next) => {
-  if (req.body.CallStatus === 'completed') return next();
+  if (req.body.CallStatus === 'completed') return res.sendStatus(200);
 
   const r = plivo.Response();
   r.addWait({length: 2});
