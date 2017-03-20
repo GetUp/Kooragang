@@ -211,7 +211,7 @@ app.post('/ready', async (req, res, next) => {
 
   if (req.body.Digits === '8') {
     await Caller.query().where({phone_number: caller_number}).patch({callback: true});
-    r.addSpeakAU('We will call you back immediately. Hanging up now!')
+    r.addSpeakAU('We will call you back immediately. Hanging up now!');
     r.addHangup();
     return res.send(r.toXML());
   }
@@ -250,15 +250,16 @@ app.post('/ready', async (req, res, next) => {
 });
 
 app.post('/call_ended', async (req, res) => {
+  const campaign = await Campaign.query().where({id: req.query.campaign_id}).first();
   const caller = await Caller.query()
     .where({phone_number: req.body.From})
     .first()
     .patch({callback: false})
     .returning('*');
   const params = {
-    from: process.env.NUMBER || '1111111111',
+    from: campaign.phone_number || '1111111111',
     to: caller.phone_number,
-    answer_url : appUrl(`connect?campaign_id=${req.query.campaign_id}&callback=1&number=${caller.phone_number}`),
+    answer_url : appUrl(`connect?campaign_id=${campaign.id}&callback=1&number=${caller.phone_number}`),
     ring_timeout: 120
   };
   try{

@@ -64,7 +64,7 @@
         <div class="col-md-4">
           <h2>Get Started</h2>
           <div class="well">
-            <h3>Call 07 3063 0974</h3>
+            <h3>Call <%= campaign.phone_number.replace(/^61/, '0').replace(/(\d{2})(\d{4})(\d{4})/, '$1 $2 $3') %></h3>
             You will be provided with further instructions.
             <br><br>
             See <a href="#accordion">General Questions</a> for alternatives if you are unable to afford long phone conversations.
