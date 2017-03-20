@@ -10,8 +10,9 @@ exports.up = function(knex, Promise) {
       t.string('location');
       t.string('status');
       t.string('conference_member_id');
-      t.index(['status'])
+      t.index(['status']);
       t.timestamp('last_phoned_at');
+      t.boolean('callback');
     })
     .createTable('callees', (t) => {
       t.increments();
@@ -38,7 +39,7 @@ exports.up = function(knex, Promise) {
       t.string('callee_call_uuid');
       t.string('conference_uuid');
       t.index(['conference_uuid'])
-      t.index(['callee_call_uuid'])
+      t.index(['callee_call_uuid']);
       t.integer('duration');
     })
 };

@@ -209,22 +209,14 @@ app.post('/ready', async (req, res, next) => {
     return res.send(r.toXML());
   }
 
-  const campaign = await Campaign.query().where({id: req.query.campaign_id}).first();
   if (req.body.Digits === '8') {
+    await Caller.query().where({phone_number: caller_number}).patch({callback: true});
     r.addSpeakAU('We will call you back immediately. Hanging up now!')
-    const params = {
-      from: process.env.NUMBER || '1111111111',
-      to: caller_number,
-      answer_url : appUrl(`connect?campaign_id=${campaign.id}&callback=1&number=${caller_number}`),
-      ring_timeout: 120
-    };
-    try{
-      await promisify(api.make_call.bind(api))(params);
-    }catch(e){
-      r.addSpeakAU('There was an error calling you back. GetUp staff have been notified. Sorry!')
-    }
+    r.addHangup();
     return res.send(r.toXML());
   }
+
+  const campaign = await Campaign.query().where({id: req.query.campaign_id}).first();
   if (req.body.Digits === '9') {
     r.addMessage(`Please print or download the script and disposition codes from ${appUrl(`/${campaign.id}`)}. When you are ready, call again!`, {
       src: process.env.NUMBER || '1111111111', dst: caller_number
@@ -255,6 +247,26 @@ app.post('/ready', async (req, res, next) => {
     action: appUrl(`survey?q=disposition&caller_number=${caller_number}&campaign_id=${req.query.campaign_id}`)
   });
   res.send(r.toXML());
+});
+
+app.post('/call_ended', async (req, res) => {
+  const caller = await Caller.query()
+    .where({phone_number: req.body.From})
+    .first()
+    .patch({callback: false})
+    .returning('*');
+  const params = {
+    from: process.env.NUMBER || '1111111111',
+    to: caller.phone_number,
+    answer_url : appUrl(`connect?campaign_id=${req.query.campaign_id}&callback=1&number=${caller.phone_number}`),
+    ring_timeout: 120
+  };
+  try{
+    await promisify(api.make_call.bind(api))(params);
+    return res.sendStatus(200);
+  }catch(e){
+    console.error(e)
+  }
 });
 
 app.post('/hold_music', (req, res) => {

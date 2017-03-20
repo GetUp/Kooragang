@@ -39,17 +39,17 @@ const unassociatedCallee = {
   campaign_id: 1
 };
 
-describe('/connect', () => {
-  beforeEach(async () => {
-    await Event.query().delete();
-    await Call.query().delete();
-    await Callee.query().delete();
-    await Campaign.query().delete();
-    await Caller.query().delete();
-  });
-  beforeEach(async () => campaign = await Campaign.query().insert({id: 1, name: 'test', status: 'active'}));
-  beforeEach(async () => caller = await Caller.query().insert(caller));
+beforeEach(async () => {
+  await Event.query().delete();
+  await Call.query().delete();
+  await Callee.query().delete();
+  await Campaign.query().delete();
+  await Caller.query().delete();
+});
+beforeEach(async () => campaign = await Campaign.query().insert({id: 1, name: 'test', status: 'active'}));
+beforeEach(async () => caller = await Caller.query().insert(caller));
 
+describe('/connect', () => {
   context('with no campaign id specified', () => {
     const payload = { From: caller.phone_number };
     it('plays the briefing message', () => {
@@ -149,7 +149,29 @@ describe('/ready', () => {
   });
 
   context('with 8 pressed', () => {
-    it('should call them back', async () => {
+    it('should set a boolean for a call back', async () => {
+      await request.post(`/ready?caller_number=${caller.phone_number}&start=1&campaign_id=${campaign.id}`)
+        .type('form').send({Digits: '8'})
+        .expect(/hanging up now/i)
+        .expect(/<Hangup\/>/)
+      const updatedCaller = await Caller.query().first();
+      return expect(updatedCaller.callback).to.be(true);
+    });
+  });
+
+  context('with 9 pressed', () => {
+    it('should send an sms to their number', () => {
+      return request.post(`/ready?caller_number=11111&start=1&campaign_id=${campaign.id}`)
+        .type('form').send({Digits: '9'})
+        .expect(/message/i)
+    });
+  });
+});
+
+describe('/call_ended', () => {
+  context('with callback set to true', () => {
+    beforeEach(async () => caller.$query().patch({callback: true}));
+    it('should unset callback bool and call them back', async () => {
       const mockedApiCall = nock('https://api.plivo.com')
         .post(/Call/, body => {
           return body.to === caller.phone_number && body.from === '1111111111'
@@ -159,18 +181,11 @@ describe('/ready', () => {
         })
         .query(true)
         .reply(200);
-      await request.post(`/ready?caller_number=${caller.phone_number}&start=1&campaign_id=${campaign.id}`)
-        .type('form').send({Digits: '8'})
-        .expect(/hanging up now/i)
-      mockedApiCall.done();
-    });
-  });
-
-  context('with 9 pressed', () => {
-    it('should send an sms to their number', () => {
-      return request.post(`/ready?caller_number=11111&start=1&campaign_id=${campaign.id}`)
-        .type('form').send({Digits: '9'})
-        .expect(/message/i)
+      await request.post(`/call_ended?campaign_id=${campaign.id}`)
+        .type('form').send({From: caller.phone_number})
+        .then(() => mockedApiCall.done());
+      const updatedCaller = await Caller.query().first();
+      await expect(updatedCaller.callback).to.be(false);
     });
   });
 });
