@@ -156,13 +156,7 @@ app.post('/connect', async (req, res, next) => {
     return res.send(r.toXML());
   }
 
-  let callerNumber;
-  if (req.query.callback) {
-    callerNumber = req.query.number;
-  } else {
-    const sip = req.body.From.match(/sip:(\w+)@/);
-    callerNumber = sip ? sip[1] : req.body.From.replace(/\s/g, '').replace(/^0/, '61');
-  }
+  let callerNumber = extractCallerNumber(req.query, req.body);
   if (_.isEmpty(callerNumber)){
     return res.send('It appears you do not have caller id enabled. Please enable it and call back. Thank you.')
   }
@@ -414,5 +408,14 @@ app.get(/^\/\d+$/, async (req, res) => {
   if (!campaign) res.sendStatus(404);
   return res.render('campaign.ejs', {campaign, questions})
 });
+
+const extractCallerNumber = (query, body) => {
+  if (query.callback) {
+    return query.number;
+  } else {
+    const sip = body.From.match(/sip:(\w+)@/);
+    return sip ? sip[1] : body.From.replace(/\s/g, '').replace(/^0/, '61');
+  }
+};
 
 module.exports = app;
