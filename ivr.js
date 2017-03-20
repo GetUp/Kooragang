@@ -5,7 +5,7 @@ const async = require('async');
 const moment = require('moment');
 const _ = require('lodash');
 const app = express();
-const promisfy = require('es6-promisify');
+const promisify = require('es6-promisify');
 const api = plivo.RestAPI({ authId: process.env.API_ID || 'test', authToken: process.env.API_TOKEN || 'test'});
 const dialer = require('./dialer');
 const questions = require('./questions');
@@ -84,7 +84,7 @@ app.post('/answer', async ({body, query}, res, next) => {
         language: 'en-GB', voice: 'MAN'
       }
       try{
-        await promisfy(api.speak_conference_member.bind(api))(params);
+        await promisify(api.speak_conference_member.bind(api))(params);
       }catch(e){
         console.error('======= Unable to contact name with:', params, ' and error: ', e);
       }
@@ -219,7 +219,7 @@ app.post('/ready', async (req, res, next) => {
       ring_timeout: 120
     };
     try{
-      await promisfy(api.make_call.bind(api))(params);
+      await promisify(api.make_call.bind(api))(params);
     }catch(e){
       r.addSpeakAU('There was an error calling you back. GetUp staff have been notified. Sorry!')
     }
