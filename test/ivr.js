@@ -407,7 +407,7 @@ describe('with campaign id in path', () => {
     await Campaign.query().delete();
     await Caller.query().delete();
   });
-  beforeEach(async () => campaign = await Campaign.query().insert({id: 1, name: 'test', status: 'active'}));
+  beforeEach(async () => campaign = await Campaign.query().insert({id: 1, name: 'test', status: 'active', phone_number: '1111'}));
 
   it ('should return a page with the campaign name', () => {
     return request.get(`/${campaign.id}`)
