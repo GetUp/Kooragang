@@ -149,14 +149,6 @@ describe('/ready', () => {
   });
 
   context('with 8 pressed', () => {
-    it('should send an sms to their number', () => {
-      return request.post(`/ready?caller_number=11111&start=1&campaign_id=${campaign.id}`)
-        .type('form').send({Digits: '8'})
-        .expect(/message/i)
-    });
-  });
-
-  context('with 9 pressed', () => {
     it('should call them back', async () => {
       const mockedApiCall = nock('https://api.plivo.com')
         .post(/Call/, body => {
@@ -168,9 +160,17 @@ describe('/ready', () => {
         .query(true)
         .reply(200);
       await request.post(`/ready?caller_number=${caller.phone_number}&start=1&campaign_id=${campaign.id}`)
-        .type('form').send({Digits: '9'})
+        .type('form').send({Digits: '8'})
         .expect(/hanging up now/i)
       mockedApiCall.done();
+    });
+  });
+
+  context('with 9 pressed', () => {
+    it('should send an sms to their number', () => {
+      return request.post(`/ready?caller_number=11111&start=1&campaign_id=${campaign.id}`)
+        .type('form').send({Digits: '9'})
+        .expect(/message/i)
     });
   });
 });

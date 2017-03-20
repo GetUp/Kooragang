@@ -183,19 +183,17 @@ app.post('/connect', async (req, res, next) => {
   });
 
   if (req.query.callback) {
-   briefing.addSpeakAU(`Hi ${caller.first_name}! Welcome back.`);
+    briefing.addSpeakAU(`Hi ${caller.first_name}! Welcome back.`);
   } else {
-   briefing.addSpeakAU(`Hi ${caller.first_name}! Welcome to the GetUp Dialer tool. Today you will be making calls for the ${campaign.name} campaign.`);
+    briefing.addSpeakAU(`Hi ${caller.first_name}! Welcome to the GetUp Dialer tool. Today you will be making calls for the ${campaign.name} campaign.`);
+    briefing.addWait({length: 1});
+    briefing.addSpeakAU('If you cannot afford long phone calls and would like to be called back instead, please press the 8 key');
   }
   briefing.addWait({length: 1});
   briefing.addSpeakAU('You should have a copy of the script and the disposition codes in front of you.');
   briefing.addWait({length: 1});
-  briefing.addSpeakAU('If not, please press the 8 key');
+  briefing.addSpeakAU('If not, please press the 9 key');
   briefing.addWait({length: 1});
-  if (!req.query.callback) {
-    briefing.addSpeakAU('If you cannot afford long phone calls and would like to be called back instead, please press the 9 key');
-    briefing.addWait({length: 1});
-  }
   briefing.addSpeakAU('Otherwise, press 1 to get started!');
   briefing.addWait({length: 8});
   briefing.addSpeakAU('This message will automatically replay until you select a number on your phone\'s key pad.');
@@ -213,13 +211,6 @@ app.post('/ready', async (req, res, next) => {
 
   const campaign = await Campaign.query().where({id: req.query.campaign_id}).first();
   if (req.body.Digits === '8') {
-    r.addMessage(`Please print or download the script and disposition codes from ${appUrl(`/${campaign.id}`)}. When you are ready, call again!`, {
-      src: process.env.NUMBER || '1111111111', dst: caller_number
-    });
-    r.addSpeakAU('Sending an sms with instructions to your number. Thank you and speak soon!')
-    return res.send(r.toXML());
-  }
-  if (req.body.Digits === '9') {
     r.addSpeakAU('We will call you back immediately. Hanging up now!')
     const params = {
       from: process.env.NUMBER || '1111111111',
@@ -232,6 +223,13 @@ app.post('/ready', async (req, res, next) => {
     }catch(e){
       r.addSpeakAU('There was an error calling you back. GetUp staff have been notified. Sorry!')
     }
+    return res.send(r.toXML());
+  }
+  if (req.body.Digits === '9') {
+    r.addMessage(`Please print or download the script and disposition codes from ${appUrl(`/${campaign.id}`)}. When you are ready, call again!`, {
+      src: process.env.NUMBER || '1111111111', dst: caller_number
+    });
+    r.addSpeakAU('Sending an sms with instructions to your number. Thank you and speak soon!')
     return res.send(r.toXML());
   }
 
