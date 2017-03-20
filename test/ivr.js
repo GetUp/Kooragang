@@ -169,6 +169,14 @@ describe('/ready', () => {
 });
 
 describe('/call_ended', () => {
+  context('with callback not set to true', () => {
+    beforeEach(async () => caller.$query().patch({callback: null}));
+    it('should not call them back', () => {
+      return request.post(`/call_ended?campaign_id=${campaign.id}`)
+        .type('form').send({From: caller.phone_number})
+    });
+  });
+
   context('with callback set to true', () => {
     beforeEach(async () => caller.$query().patch({callback: true}));
     it('should unset callback bool and call them back', async () => {

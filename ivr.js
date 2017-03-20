@@ -258,16 +258,18 @@ app.post('/ready', async (req, res, next) => {
 });
 
 app.post('/call_ended', async (req, res) => {
-  const campaign = await Campaign.query().where({id: req.query.campaign_id}).first();
   const caller = await Caller.query()
-    .where({phone_number: req.body.From})
+    .where({phone_number: req.body.From, callback: true})
     .first()
     .patch({callback: false})
     .returning('*');
+  if(!caller) return res.sendStatus(200);
+
+  const campaign = await Campaign.query().where({id: req.query.campaign_id}).first();
   const params = {
     from: campaign.phone_number || '1111111111',
     to: caller.phone_number,
-    answer_url : appUrl(`connect?campaign_id=${campaign.id}&callback=1&number=${caller.phone_number}`),
+    answer_url: appUrl(`connect?campaign_id=${campaign.id}&callback=1&number=${caller.phone_number}`),
     ring_timeout: 120
   };
   try{
