@@ -3,32 +3,57 @@ module.exports = {
     name: "Disposition",
     answers: {
       "2": "answering machine",
-      "3": "not interested",
-      "4": "support the loan",
-      "5": "does not support the loan",
-      "6": "unsure about support for the loan",
+      "3": "no answer",
+      "4": "not interested",
+      "5": "not not call",
+      "6": "wrong number",
+      "7": "meaningful conversation",
     },
     next: answer => {
-      if (answer === "does not support the loan" || answer === "unsure about support for the loan") return "voter_id";
+      if (answer === "meaningful conversation") return "loan_support";
       return "complete";
     }
+  },
+  loan_support: {
+    name: "Loan Support",
+    answers: {
+      "2": "supports the loan",
+      "3": "does not support the loan",
+      "4": "unsure about support for the loan",
+    },
+    next: answer => {
+      if (answer != "supports the loan") return "coalition_support";
+      return "complete";
+    }
+  },
+  coalition_support: {
+    name: "Coalition Support",
+    answers: {
+      "2": "would influence their support for the coalition",
+      "3": "would not influence their support for the coalition",
+      "4": "may influence their support for the coalition",
+      "5": "would not say",
+    },
+    next: () => "voter_id"
   },
   voter_id: {
     name: "Voter ID",
     answers: {
-      "2": "influence their vote and voted for LNP last election",
-      "3": "influence their vote and voted for another party last election",
-      "4": "would not influence vote",
+      "1": "liberal national party",
+      "2": "labor",
+      "3": "greens",
+      "4": "hanson",
+      "5": "other",
+      "6": "did not say",
     },
     next: () => "action"
   },
   action: {
     name: "Action",
     answers: {
-      "2": "will call MP",
-      "3": "would write to local paper or make FB post",
-      "4": "will do both actions",
-      "5": "won't take action",
+      "2": "will call member of parliment",
+      "3": "would write to local paper or make facebook post",
+      "4": "will not take action",
     },
     next: () => "complete"
   },
