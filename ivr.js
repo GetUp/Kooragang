@@ -166,11 +166,12 @@ app.post('/connect', async (req, res, next) => {
   if (!caller){
     caller = await Caller.query().insert({phone_number: callerNumber, first_name: ''});
   }
+  const callerName = caller.first_name || "there";
 
   const campaignComplete = await dialer.isComplete(campaign);
   if (campaignComplete) {
     r.addWait({length: 2});
-    r.addSpeakAU(`Hi ${caller.first_name}! Welcome to the GetUp Dialer tool.`);
+    r.addSpeakAU(`Hi ${callerName}! Welcome to the GetUp Dialer tool.`);
     r.addWait({length: 1});
     r.addSpeakAU('The campaign has been completed! Please contact the campaign coordinator for further instructions. Thank you and have a great day!');
     return res.send(r.toXML());
@@ -187,9 +188,9 @@ app.post('/connect', async (req, res, next) => {
 
   briefing.addWait({length: 2});
   if (req.query.callback) {
-    briefing.addSpeakAU(`Hi ${caller.first_name}! Welcome back.`);
+    briefing.addSpeakAU(`Hi ${callerName}! Welcome back.`);
   } else {
-    briefing.addSpeakAU(`Hi ${caller.first_name}! Welcome to the GetUp Dialer tool. Today you will be making calls for the ${campaign.name} campaign.`);
+    briefing.addSpeakAU(`Hi ${callerName}! Welcome to the GetUp Dialer tool. Today you will be making calls for the ${campaign.name} campaign.`);
     briefing.addWait({length: 1});
     briefing.addSpeakAU('If you cannot afford long phone calls and would like to be called back instead, please press the 8 key');
   }
