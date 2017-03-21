@@ -206,6 +206,16 @@ describe('/call_ended', () => {
       expect((await campaign.$query()).calls_in_progress).to.be(1);
     });
   })
+
+  context('with a caller with status "in-call" and ending a callback call', () => {
+    beforeEach(async () => caller.$query().patch({status: 'in-call'}));
+    beforeEach(async () => campaign.$query().patch({calls_in_progress: 2}));
+    it('should decrement the calls_in_progress', async () => {
+      await request.post(`/call_ended?campaign_id=${campaign.id}&callback=1&number=${caller.phone_number}`)
+        .type('form').send({From: '1111111'})
+      expect((await campaign.$query()).calls_in_progress).to.be(1);
+    });
+  })
 });
 
 describe('/hold_music', () => {
