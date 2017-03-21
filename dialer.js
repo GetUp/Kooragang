@@ -22,24 +22,34 @@ const ratioDial = async (appUrl, campaign) => {
   const callers = await Caller.query().where({status: 'available'});
   const callsToMake = Math.floor(callers.length * campaign.ratio);
   const callsToMakeExcludingCurrentCalls = callsToMake - campaign.calls_in_progress;
-  const cleanedNumber = '\'61\' || right(regexp_replace(phone_number, \'[^\\\d]\', \'\', \'g\'),9)';
-  const trans = await transaction.start(Callee.knex(), Campaign.knex());
-  let updated_calls_in_progress;
+  let updated_calls_in_progress = 0;
   let callees = [];
   if (callsToMakeExcludingCurrentCalls > 0) {
-    callees = await Callee.bindTransaction(trans).query()
-      .whereRaw(`length(${cleanedNumber}) = 11`)
-      .where({campaign_id: campaign.id})
-      .whereNull('last_called_at')
-      .orderBy('id')
-      .limit(callsToMakeExcludingCurrentCalls);
-    await Callee.bindTransaction(trans).query().patch({last_called_at: new Date()}).whereIn('id', _.map(callees, (callee) => callee.id));
-    updated_calls_in_progress = campaign.calls_in_progress + callees.length;
-    await Campaign.bindTransaction(trans).query().patchAndFetchById(campaign.id, {calls_in_progress: updated_calls_in_progress});
+    try{
+      const trans = await transaction.start(Callee.knex());
+      callees = await Callee.bindTransaction(trans).query()
+        .forUpdate()
+        .where({campaign_id: campaign.id})
+        .whereNull('last_called_at')
+        .limit(callsToMakeExcludingCurrentCalls);
+      if (callees.length) {
+        await Callee.bindTransaction(trans).query().patch({last_called_at: new Date()}).whereIn('id', _.map(callees, (callee) => callee.id));
+        updated_calls_in_progress = campaign.calls_in_progress + callees.length;
+      }
+      await trans.commit();
+    } catch (e) {
+      await trans.rollback();
+      await Event.query().insert({campaign_id: campaign.id, name: 'callee_error', value: {error: e}});
+    }
   }
-  await trans.commit();
-  await Event.query().insert({campaign_id: campaign.id, name: 'calling', value: {ratio: campaign.ratio, callers: callers.length, callsToMake, callees: callees.length, callsToMakeExcludingCurrentCalls, calls_in_progress: campaign.calls_in_progress, updated_calls_in_progress}});
-  await Promise.all(callees.map(callee => updateAndCall(campaign, callee, appUrl)))
+  const value = {ratio: campaign.ratio, callers: callers.length, callsToMake, callees: callees.length, callsToMakeExcludingCurrentCalls, calls_in_progress: campaign.calls_in_progress, updated_calls_in_progress}
+  if (callees.length) {
+    await Event.query().insert({campaign_id: campaign.id, name: 'calling', value});
+    await Campaign.query().patchAndFetchById(campaign.id, {calls_in_progress: updated_calls_in_progress});
+    await Promise.all(callees.map(callee => updateAndCall(campaign, callee, appUrl)))
+  } else {
+    await Event.query().insert({campaign_id: campaign.id, name: 'nocalling', value});
+  }
 };
 
 const recalculateRatio = async(campaign) => {
