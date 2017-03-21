@@ -137,7 +137,6 @@ app.post('/connect', async (req, res, next) => {
   if (req.body.CallStatus === 'completed') return res.sendStatus(200);
 
   const r = plivo.Response();
-  r.addWait({length: 2});
 
   if (process.env.RECORD_CALLS === 'true') {
     r.addRecord({
@@ -150,6 +149,7 @@ app.post('/connect', async (req, res, next) => {
 
   const campaign = await Campaign.query().where({id: req.query.campaign_id}).first();
   if (!campaign){
+    r.addWait({length: 2});
     r.addSpeakAU('An error has occurred. The number is not associated with a campaign');
     r.addWait({length: 1});
     r.addSpeakAU('GetUp technical staff have been notified. Hanging up now.');
@@ -158,15 +158,18 @@ app.post('/connect', async (req, res, next) => {
 
   let callerNumber = extractCallerNumber(req.query, req.body);
   if (_.isEmpty(callerNumber)){
-    return res.send('It appears you do not have caller id enabled. Please enable it and call back. Thank you.')
+    r.addWait({length: 2});
+    r.addSpeakAU('It appears you do not have caller id enabled. Please enable it and call back. Thank you.');
+    return res.send(r.toXML());
   }
-  let  caller = await Caller.query().where({phone_number: callerNumber}).first();
+  let caller = await Caller.query().where({phone_number: callerNumber}).first();
   if (!caller){
     caller = await Caller.query().insert({phone_number: callerNumber, first_name: ''});
   }
 
   const campaignComplete = await dialer.isComplete(campaign);
   if (campaignComplete) {
+    r.addWait({length: 2});
     r.addSpeakAU(`Hi ${caller.first_name}! Welcome to the GetUp Dialer tool.`);
     r.addWait({length: 1});
     r.addSpeakAU('The campaign has been completed! Please contact the campaign coordinator for further instructions. Thank you and have a great day!');
@@ -182,6 +185,7 @@ app.post('/connect', async (req, res, next) => {
     validDigits: ['1', '8', '9']
   });
 
+  briefing.addWait({length: 2});
   if (req.query.callback) {
     briefing.addSpeakAU(`Hi ${caller.first_name}! Welcome back.`);
   } else {
@@ -212,7 +216,6 @@ app.post('/ready', async (req, res, next) => {
   if (req.body.Digits === '8') {
     await Caller.query().where({phone_number: caller_number}).patch({callback: true});
     r.addSpeakAU('We will call you back immediately. Hanging up now!');
-    r.addHangup();
     return res.send(r.toXML());
   }
 

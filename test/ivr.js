@@ -153,7 +153,7 @@ describe('/ready', () => {
       await request.post(`/ready?caller_number=${caller.phone_number}&start=1&campaign_id=${campaign.id}`)
         .type('form').send({Digits: '8'})
         .expect(/hanging up now/i)
-        .expect(/<Hangup\/>/)
+        .expect(/Hanging up/)
       const updatedCaller = await Caller.query().first();
       return expect(updatedCaller.callback).to.be(true);
     });
