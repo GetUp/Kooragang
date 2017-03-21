@@ -5,7 +5,7 @@ module.exports = {
       "2": "answering machine",
       "3": "no answer",
       "4": "not interested",
-      "5": "not not call",
+      "5": "do not call",
       "6": "wrong number",
       "7": "meaningful conversation",
     },
@@ -22,7 +22,7 @@ module.exports = {
       "4": "unsure about support for the loan",
     },
     next: answer => {
-      if (answer != "supports the loan") return "coalition_support";
+      if (answer !== "supports the loan") return "coalition_support";
       return "complete";
     }
   },
@@ -51,7 +51,7 @@ module.exports = {
   action: {
     name: "Action",
     answers: {
-      "2": "will call member of parliment",
+      "2": "will call member of parliament",
       "3": "would write to local paper or make facebook post",
       "4": "will not take action",
     },

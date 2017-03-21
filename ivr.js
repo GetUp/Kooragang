@@ -137,7 +137,6 @@ app.post('/connect', async (req, res, next) => {
   if (req.body.CallStatus === 'completed') return res.sendStatus(200);
 
   const r = plivo.Response();
-  r.addWait({length: 2});
 
   if (process.env.RECORD_CALLS === 'true') {
     r.addRecord({
@@ -150,6 +149,7 @@ app.post('/connect', async (req, res, next) => {
 
   const campaign = await Campaign.query().where({id: req.query.campaign_id}).first();
   if (!campaign){
+    r.addWait({length: 2});
     r.addSpeakAU('An error has occurred. The number is not associated with a campaign');
     r.addWait({length: 1});
     r.addSpeakAU('GetUp technical staff have been notified. Hanging up now.');
@@ -158,16 +158,20 @@ app.post('/connect', async (req, res, next) => {
 
   let callerNumber = extractCallerNumber(req.query, req.body);
   if (_.isEmpty(callerNumber)){
-    return res.send('It appears you do not have caller id enabled. Please enable it and call back. Thank you.')
+    r.addWait({length: 2});
+    r.addSpeakAU('It appears you do not have caller id enabled. Please enable it and call back. Thank you.');
+    return res.send(r.toXML());
   }
-  let  caller = await Caller.query().where({phone_number: callerNumber}).first();
+  let caller = await Caller.query().where({phone_number: callerNumber}).first();
   if (!caller){
     caller = await Caller.query().insert({phone_number: callerNumber, first_name: ''});
   }
+  const callerName = caller.first_name || "there";
 
   const campaignComplete = await dialer.isComplete(campaign);
   if (campaignComplete) {
-    r.addSpeakAU(`Hi ${caller.first_name}! Welcome to the GetUp Dialer tool.`);
+    r.addWait({length: 2});
+    r.addSpeakAU(`Hi ${callerName}! Welcome to the GetUp Dialer tool.`);
     r.addWait({length: 1});
     r.addSpeakAU('The campaign has been completed! Please contact the campaign coordinator for further instructions. Thank you and have a great day!');
     return res.send(r.toXML());
@@ -182,10 +186,11 @@ app.post('/connect', async (req, res, next) => {
     validDigits: ['1', '8', '9']
   });
 
+  briefing.addWait({length: 2});
   if (req.query.callback) {
-    briefing.addSpeakAU(`Hi ${caller.first_name}! Welcome back.`);
+    briefing.addSpeakAU(`Hi ${callerName}! Welcome back.`);
   } else {
-    briefing.addSpeakAU(`Hi ${caller.first_name}! Welcome to the GetUp Dialer tool. Today you will be making calls for the ${campaign.name} campaign.`);
+    briefing.addSpeakAU(`Hi ${callerName}! Welcome to the GetUp Dialer tool. Today you will be making calls for the ${campaign.name} campaign.`);
     briefing.addWait({length: 1});
     briefing.addSpeakAU('If you cannot afford long phone calls and would like to be called back instead, please press the 8 key');
   }
@@ -211,8 +216,7 @@ app.post('/ready', async (req, res, next) => {
 
   if (req.body.Digits === '8') {
     await Caller.query().where({phone_number: caller_number}).patch({callback: true});
-    r.addSpeakAU('We will call you back immediately. Hanging up now!');
-    r.addHangup();
+    r.addSpeakAU('We will call you back immediately. Please hang up now!');
     return res.send(r.toXML());
   }
 
@@ -246,6 +250,7 @@ app.post('/ready', async (req, res, next) => {
     timeLimit: 60 * 120,
     callbackUrl: appUrl(callbackUrl),
     hangupOnStar: 'true',
+    digitsMatch: ['2'],
     action: appUrl(`survey?q=disposition&caller_number=${caller_number}&campaign_id=${req.query.campaign_id}`)
   });
   res.send(r.toXML());
@@ -269,6 +274,7 @@ app.post('/call_ended', async (req, res) => {
       ring_timeout: 120
     };
     try{
+      await sleep(5000);
       await promisify(api.make_call.bind(api))(params);
     }catch(e){
       await Event.query().insert({campaign_id: campaign.id, name: 'failed_callback', value: {caller_id: caller.id, error: e}})
@@ -308,6 +314,15 @@ app.post('/conference_event/caller', async ({query, body}, res, next) => {
       await Event.query().insert({campaign_id: campaign.id, name: 'available', value: {calls_in_progress, updated_calls_in_progress: campaign.calls_in_progress}})
     }
     await dialer.dial(appUrl(), campaign);
+  } else if (body.ConferenceAction === 'digits' && body.ConferenceDigitsMatch === '2') {
+    const call = await Call.query().where({conference_uuid: body.ConferenceUUID}).first();
+    if (call) {
+      const params = {
+        call_uuid: body.CallUUID,
+        aleg_url: appUrl(`survey_result?q=disposition&caller_number=${query.caller_number}&call_id=${call.id}&campaign_id=${query.campaign_id}&digit=2`),
+      }
+      await promisify(api.transfer_call.bind(api))(params);
+    }
   }
   res.sendStatus(200);
 });
@@ -358,7 +373,7 @@ app.post('/survey', async (req, res) => {
 app.post('/survey_result', async (req, res) => {
   const r = plivo.Response();
   const question = questions[req.query.q];
-  const disposition = question.answers[req.body.Digits];
+  const disposition = question.answers[req.body.Digits || req.query.digit];
   const next = question.next(disposition);
   const data = {
     log_id: res.locals.log_id,
@@ -420,5 +435,10 @@ const extractCallerNumber = (query, body) => {
     return sip ? sip[1] : body.From.replace(/\s/g, '').replace(/^0/, '61');
   }
 };
+
+function sleep(ms = 0) {
+  const timeout = process.env.NODE_ENV === "test" ? 0 : ms;
+  return new Promise(r => setTimeout(r, timeout));
+}
 
 module.exports = app;
