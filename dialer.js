@@ -22,7 +22,6 @@ const ratioDial = async (appUrl, campaign) => {
   const callers = await Caller.query().where({status: 'available'});
   const callsToMake = Math.floor(callers.length * campaign.ratio);
   const callsToMakeExcludingCurrentCalls = callsToMake - campaign.calls_in_progress;
-  let updated_calls_in_progress = 0;
   let callees = [];
   if (callsToMakeExcludingCurrentCalls > 0) {
     try{
@@ -34,7 +33,6 @@ const ratioDial = async (appUrl, campaign) => {
         .limit(callsToMakeExcludingCurrentCalls);
       if (callees.length) {
         await Callee.bindTransaction(trans).query().patch({last_called_at: new Date()}).whereIn('id', _.map(callees, (callee) => callee.id));
-        updated_calls_in_progress = campaign.calls_in_progress + callees.length;
       }
       await trans.commit();
     } catch (e) {
@@ -42,10 +40,11 @@ const ratioDial = async (appUrl, campaign) => {
       await Event.query().insert({campaign_id: campaign.id, name: 'callee_error', value: {error: e}});
     }
   }
+  const updated_calls_in_progress = campaign.calls_in_progress + callees.length;
   const value = {ratio: campaign.ratio, callers: callers.length, callsToMake, callees: callees.length, callsToMakeExcludingCurrentCalls, calls_in_progress: campaign.calls_in_progress, updated_calls_in_progress}
   if (callees.length) {
     await Event.query().insert({campaign_id: campaign.id, name: 'calling', value});
-    await Campaign.query().patchAndFetchById(campaign.id, {calls_in_progress: updated_calls_in_progress});
+    await campaign.$query().increment('calls_in_progress', callees.length);
     await Promise.all(callees.map(callee => updateAndCall(campaign, callee, appUrl)))
   } else {
     await Event.query().insert({campaign_id: campaign.id, name: 'nocalling', value});
@@ -121,12 +120,13 @@ const updateAndCall = async (campaign, callee, appUrl) => {
 };
 
 const decrementCallsInProgress = async campaign => {
-  //await Campaign.knexQuery()d$.patch('');
-  //const {calls_in_progress} = await Campaign.bindTransaction(trans).query().patchAndFetchById(campaign.id, 'calls_in_progress = case calls_in_progress when 0 then 0 else calls_in_progress - 1 end');
-  let {calls_in_progress} = await Campaign.query().where({id: campaign.id}).first();
-  calls_in_progress = calls_in_progress < 1 ? 0 : calls_in_progress - 1;
-  let updatedCampaign = await Campaign.query().patchAndFetchById(campaign.id, {calls_in_progress});
-  return updatedCampaign;
+  const updatedCampaign = await Campaign.query()
+    .returning('*')
+    .where({id: campaign.id})
+    .where('calls_in_progress', '>', 0)
+    .decrement('calls_in_progress', 1)
+    .first();
+  return updatedCampaign || campaign;
 }
 module.exports.decrementCallsInProgress = decrementCallsInProgress;
 
