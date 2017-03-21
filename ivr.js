@@ -321,7 +321,11 @@ app.post('/conference_event/caller', async ({query, body}, res, next) => {
         call_uuid: body.CallUUID,
         aleg_url: appUrl(`survey_result?q=disposition&caller_number=${query.caller_number}&call_id=${call.id}&campaign_id=${query.campaign_id}&digit=2`),
       }
-      await promisify(api.transfer_call.bind(api))(params);
+      try {
+        await promisify(api.transfer_call.bind(api))(params);
+      } catch (e) {
+        await Event.query().insert({campaign_id: query.campaign_id, name: 'failed_transfer', value: {call_id: call.id, error: e, call_uuid: body.CallUUID, conference_uuid: body.ConferenceUUID}});
+      }
     }
   }
   res.sendStatus(200);

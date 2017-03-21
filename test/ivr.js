@@ -255,6 +255,27 @@ describe('/conference_event/caller', () => {
       expect(updatedCaller.status).to.be(null);
     })
   });
+
+  context('with 2 pressed during the conference', () => {
+    const CallUUID = '1';
+    const ConferenceUUID = '2';
+
+    it('should make a transfer api call', async () => {
+      const call = await Call.query().insert({conference_uuid: ConferenceUUID});
+      const mockedApiCall = nock('https://api.plivo.com')
+        .post(/\/Call\/1\//, (body) => {
+           return body.aleg_url.match(/survey_result/)
+              && body.aleg_url.match(/digit=2/);
+        })
+        .query(true)
+        .reply(200);
+      await request.post(`/conference_event/caller?caller_number=${caller.phone_number}`)
+        .type('form')
+        .send({ConferenceAction: 'digits', ConferenceDigitsMatch: '2', CallUUID, ConferenceUUID})
+        .expect(200);
+      mockedApiCall.done();
+    })
+  });
 });
 
 describe('/conference_event/callee', () => {
