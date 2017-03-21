@@ -39,12 +39,12 @@ module.exports = {
   voter_id: {
     name: "Voter ID",
     answers: {
-      "1": "liberal national party",
-      "2": "labor",
-      "3": "greens",
-      "4": "hanson",
-      "5": "other",
-      "6": "did not say",
+      "2": "liberal national party",
+      "3": "labor",
+      "4": "greens",
+      "5": "hanson",
+      "6": "other",
+      "7": "did not say",
     },
     next: () => "action"
   },
