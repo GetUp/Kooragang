@@ -510,7 +510,7 @@ describe('/survey_result', () => {
     it ('should announce the result & redirect to the next question', () => {
       return request.post('/survey_result?q=disposition')
         .type('form').send(payload)
-        .expect(/does not support the loan/)
+        .expect(/do not call/)
         .expect(/survey\?q=/);
     });
   });

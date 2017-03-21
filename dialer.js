@@ -19,25 +19,27 @@ module.exports.dial = async (...args) => {
 
 const ratioDial = async (appUrl, campaign) => {
   campaign = await recalculateRatio(campaign);
-  const trans = await transaction.start(Callee.knex(), Caller.knex());
-  const callers = await Caller.bindTransaction(trans).query().where({status: 'available'});
+  const callers = await Caller.query().where({status: 'available'});
   const callsToMake = Math.floor(callers.length * campaign.ratio);
   const callsToMakeExcludingCurrentCalls = callsToMake - campaign.calls_in_progress;
   const cleanedNumber = '\'61\' || right(regexp_replace(phone_number, \'[^\\\d]\', \'\', \'g\'),9)';
+  const trans = await transaction.start(Callee.knex(), Campaign.knex());
+  let updated_calls_in_progress;
   let callees = [];
-  if (callsToMake > 0) {
+  if (callsToMakeExcludingCurrentCalls > 0) {
     callees = await Callee.bindTransaction(trans).query()
       .whereRaw(`length(${cleanedNumber}) = 11`)
       .where({campaign_id: campaign.id})
       .whereNull('last_called_at')
       .orderBy('id')
       .limit(callsToMakeExcludingCurrentCalls);
+    await Callee.bindTransaction(trans).query().patch({last_called_at: new Date()}).whereIn('id', _.map(callees, (callee) => callee.id));
+    updated_calls_in_progress = campaign.calls_in_progress + callees.length;
+    await Campaign.bindTransaction(trans).query().patchAndFetchById(campaign.id, {calls_in_progress: updated_calls_in_progress});
   }
-  const updated_calls_in_progress = campaign.calls_in_progress + callees.length;
-  await Campaign.bindTransaction(trans).query().patchAndFetchById(campaign.id, {calls_in_progress: updated_calls_in_progress});
+  await trans.commit();
   await Event.query().insert({campaign_id: campaign.id, name: 'calling', value: {ratio: campaign.ratio, callers: callers.length, callsToMake, callees: callees.length, callsToMakeExcludingCurrentCalls, calls_in_progress: campaign.calls_in_progress, updated_calls_in_progress}});
-  await Promise.all(callees.map(callee => updateAndCall(trans, campaign, callee, appUrl)))
-  return trans.commit();
+  await Promise.all(callees.map(callee => updateAndCall(campaign, callee, appUrl)))
 };
 
 const recalculateRatio = async(campaign) => {
@@ -78,14 +80,14 @@ const powerDial = async (appUrl, campaign) => {
   if (!callee) {
     if (process.env.NODE_ENV === 'development') console.error('NO MORE NUMBERS')
   }else{
-    await updateAndCall(calleeTransaction, campaign, callee, appUrl);
+    await Callee.query()
+      .patchAndFetchById(callee.id, {last_called_at: new Date})
+    await updateAndCall(campaign, callee, appUrl);
   }
   return calleeTransaction.commit();
 };
 
-const updateAndCall = async (trans, campaign, callee, appUrl) => {
-  await Callee.bindTransaction(trans).query()
-    .patchAndFetchById(callee.id, {last_called_at: new Date})
+const updateAndCall = async (campaign, callee, appUrl) => {
   const params = {
     to: callee.phone_number,
     from : process.env.NUMBER || '1111111111',
