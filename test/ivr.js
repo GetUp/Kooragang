@@ -506,11 +506,11 @@ describe('/survey_result', () => {
   });
 
   context('with a meaningful disposition', () => {
-    const payload = { Digits: '5' };
+    const payload = { Digits: '7' };
     it ('should announce the result & redirect to the next question', () => {
       return request.post('/survey_result?q=disposition')
         .type('form').send(payload)
-        .expect(/do not call/)
+        .expect(/meaningful/)
         .expect(/survey\?q=/);
     });
   });
