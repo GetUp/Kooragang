@@ -265,6 +265,7 @@ app.post('/call_ended', async (req, res) => {
       from: campaign.phone_number || '1111111111',
       to: caller.phone_number,
       answer_url: appUrl(`connect?campaign_id=${campaign.id}&callback=1&number=${caller.phone_number}`),
+      hangup_url: appUrl(`call_ended?campaign_id=${campaign.id}&callback=1&number=${caller.phone_number}`),
       ring_timeout: 120
     };
     try{
