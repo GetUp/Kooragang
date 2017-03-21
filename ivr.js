@@ -250,6 +250,7 @@ app.post('/ready', async (req, res, next) => {
     timeLimit: 60 * 120,
     callbackUrl: appUrl(callbackUrl),
     hangupOnStar: 'true',
+    digitsMatch: ['2'],
     action: appUrl(`survey?q=disposition&caller_number=${caller_number}&campaign_id=${req.query.campaign_id}`)
   });
   res.send(r.toXML());
@@ -313,6 +314,15 @@ app.post('/conference_event/caller', async ({query, body}, res, next) => {
       await Event.query().insert({campaign_id: campaign.id, name: 'available', value: {calls_in_progress, updated_calls_in_progress: campaign.calls_in_progress}})
     }
     await dialer.dial(appUrl(), campaign);
+  } else if (body.ConferenceAction === 'digits' && body.ConferenceDigitsMatch === '2') {
+    const call = await Call.query().where({conference_uuid: body.ConferenceUUID}).first();
+    if (call) {
+      const params = {
+        call_uuid: body.CallUUID,
+        aleg_url: appUrl(`survey_result?q=disposition&caller_number=${query.caller_number}&call_id=${call.id}&campaign_id=${query.campaign_id}&digit=2`),
+      }
+      await promisify(api.transfer_call.bind(api))(params);
+    }
   }
   res.sendStatus(200);
 });
@@ -363,7 +373,7 @@ app.post('/survey', async (req, res) => {
 app.post('/survey_result', async (req, res) => {
   const r = plivo.Response();
   const question = questions[req.query.q];
-  const disposition = question.answers[req.body.Digits];
+  const disposition = question.answers[req.body.Digits || req.query.digit];
   const next = question.next(disposition);
   const data = {
     log_id: res.locals.log_id,
