@@ -252,26 +252,28 @@ app.post('/ready', async (req, res, next) => {
 });
 
 app.post('/call_ended', async (req, res) => {
-  const caller = await Caller.query()
-    .where({phone_number: req.body.From, callback: true})
-    .first()
-    .patch({callback: false})
-    .returning('*');
-  if(!caller) return res.sendStatus(200);
+  const number = extractCallerNumber(req.query, req.body);
+  const caller = await Caller.query().where({phone_number: number}).first();
 
   const campaign = await Campaign.query().where({id: req.query.campaign_id}).first();
-  const params = {
-    from: campaign.phone_number || '1111111111',
-    to: caller.phone_number,
-    answer_url: appUrl(`connect?campaign_id=${campaign.id}&callback=1&number=${caller.phone_number}`),
-    ring_timeout: 120
-  };
-  try{
-    await promisify(api.make_call.bind(api))(params);
-    return res.sendStatus(200);
-  }catch(e){
-    console.error(e)
+  if(caller.status === 'in-call') await dialer.decrementCallsInProgress(campaign);
+
+  if (caller.callback) {
+    await caller.$query().patch({callback: false});
+
+    const params = {
+      from: campaign.phone_number || '1111111111',
+      to: caller.phone_number,
+      answer_url: appUrl(`connect?campaign_id=${campaign.id}&callback=1&number=${caller.phone_number}`),
+      ring_timeout: 120
+    };
+    try{
+      await promisify(api.make_call.bind(api))(params);
+    }catch(e){
+      await Event.query().insert({campaign_id: campaign.id, name: 'failed_callback', value: {caller_id: caller.id, error: e}})
+    }
   }
+  return res.sendStatus(200);
 });
 
 app.post('/hold_music', (req, res) => {

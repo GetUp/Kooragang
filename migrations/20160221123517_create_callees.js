@@ -12,7 +12,6 @@ exports.up = function(knex, Promise) {
       t.string('conference_member_id');
       t.index(['status']);
       t.timestamp('last_phoned_at');
-      t.boolean('callback');
     })
     .createTable('callees', (t) => {
       t.increments();
