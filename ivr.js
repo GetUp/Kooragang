@@ -215,7 +215,7 @@ app.post('/ready', async (req, res, next) => {
 
   if (req.body.Digits === '8') {
     await Caller.query().where({phone_number: caller_number}).patch({callback: true});
-    r.addSpeakAU('We will call you back immediately. Hanging up now!');
+    r.addSpeakAU('We will call you back immediately. Please hang up now!');
     return res.send(r.toXML());
   }
 
@@ -272,6 +272,7 @@ app.post('/call_ended', async (req, res) => {
       ring_timeout: 120
     };
     try{
+      await sleep(5000);
       await promisify(api.make_call.bind(api))(params);
     }catch(e){
       await Event.query().insert({campaign_id: campaign.id, name: 'failed_callback', value: {caller_id: caller.id, error: e}})
@@ -423,5 +424,10 @@ const extractCallerNumber = (query, body) => {
     return sip ? sip[1] : body.From.replace(/\s/g, '').replace(/^0/, '61');
   }
 };
+
+function sleep(ms = 0) {
+  const timeout = process.env.NODE_ENV === "test" ? 0 : ms;
+  return new Promise(r => setTimeout(r, timeout));
+}
 
 module.exports = app;
