@@ -218,7 +218,7 @@ app.post('/ready', async (req, res, next) => {
 
   const campaign = await Campaign.query().where({id: req.query.campaign_id}).first();
   if (req.body.Digits === '9') {
-    r.addMessage(`Please print or download the script and disposition codes from ${appUrl(`/${campaign.id}`)}. When you are ready, call again!`, {
+    r.addMessage(`Please print or download the script and disposition codes from ${appUrl(campaign.id)}. When you are ready, call again!`, {
       src: process.env.NUMBER || '1111111111', dst: caller_number
     });
     r.addSpeakAU('Sending an sms with instructions to your number. Thank you and speak soon!')
