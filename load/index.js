@@ -16,6 +16,7 @@ const target = process.env.TARGET;
 const debug = process.env.DEBUG;
 
 let state = {};
+let agents = 0;
 
 class Caller extends Model {
   static get tableName() { return 'callers' }
@@ -72,7 +73,6 @@ app.all('/cycle', async (req, res, next) => {
 
 app.listen(port, () => {
   console.log('Load tester running on port', port);
-  console.log('Press a to add an agent');
   const report = async () => {
     const summary = _.invertBy(state);
     const statuses = Object.keys(summary).map((status) => `${status} = ${summary[status].length}`);
@@ -88,17 +88,12 @@ app.listen(port, () => {
     console.log(moment().format('h:mm:ss a ⇨ '), statuses.length ? statuses.join(', ') : 'connected: 0', `   [${rate}/agent hour with ${total} total, ${drops} drops at ${dropRate} drop rate in last 5 mins]`);
   };
   report();
-  setInterval(report, process.env.INTERVAL || 10000)
-  readline.emitKeypressEvents(process.stdin);
-  let agents = 0;
-  process.stdin.setRawMode(true);
-  process.stdin.on('keypress', async (str, key) => {
-    if (key.ctrl && key.name === 'c') {
-      console.error('exiting..')
-      process.exit();
-    } else if (key.name === 'a'){
+  setInterval(report, process.env.INTERVAL || 10000);
+
+  const addAgent = async (count) => {
+    console.log(`Adding ${count} agents`);
+    _.times(count, async() => {
       agents++;
-      console.log(`Adding agent ${agents}`);
       const params = {
         to: target,
         from : agents,
@@ -111,6 +106,18 @@ app.listen(port, () => {
       } catch (e) {
         console.error(`Agent ${agents} could not connect - `, e)
       }
+    })
+  }
+
+  readline.emitKeypressEvents(process.stdin);
+  process.stdin.setRawMode(true);
+  process.stdin.on('keypress', async (str, key) => {
+    if (key.ctrl && key.name === 'c') {
+      console.error('exiting..')
+      process.exit();
+    } else if (key.name.match(/[1-9]/)){
+      await addAgent(parseInt(key.name, 10));
     }
   });
+  console.log('Press a number to add that many agents');
 });
