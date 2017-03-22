@@ -170,6 +170,15 @@ describe('/ready', () => {
 });
 
 describe('/call_ended', () => {
+  context('with no matching caller', () => {
+    it('should record an event', async () => {
+      await request.post(`/call_ended?campaign_id=${campaign.id}`)
+        .type('form').send({CallUUID})
+        .expect(200)
+      expect(await Event.query().where({name: 'unknown call ended'}).first()).to.be.a(Event);
+    });
+  });
+
   context('with callback not set to true', () => {
     beforeEach(async () => caller.$query().patch({callback: null, call_uuid: CallUUID}));
     it('should not call them back', () => {
@@ -364,7 +373,7 @@ describe('/answer', () => {
       context('with the speak api mocked', () => {
         beforeEach(() => {
           mockedApiCall = nock('https://api.plivo.com')
-            .post(`/v1/Account/test/Conference/${caller.id}/Member/1111/Speak/`, (body) => {
+            .post(`/v1/Account/test/Conference/conference-${caller.id}/Member/1111/Speak/`, (body) => {
                return body.text === 'Bridger';
             })
             .query(true)

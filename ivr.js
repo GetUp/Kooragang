@@ -255,9 +255,14 @@ app.post('/ready', async (req, res, next) => {
 });
 
 app.post('/call_ended', async (req, res) => {
-  const caller = await Caller.query().where({call_uuid: req.body.CallUUID}).first();
-
   const campaign = await Campaign.query().where({id: req.query.campaign_id}).first();
+
+  const caller = await Caller.query().where({call_uuid: req.body.CallUUID}).first();
+  if (!caller) {
+    await Event.query().insert({campaign_id: campaign.id, name: 'unknown call ended', value: req.body});
+    return res.sendStatus(200);
+  }
+
   if(caller.status === 'in-call') await dialer.decrementCallsInProgress(campaign);
   await caller.$query().patch({status: 'complete'});
   await Event.query().insert({campaign_id: campaign.id, name: 'caller_complete', value: {caller_id: caller.id}})
