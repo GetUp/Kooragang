@@ -21,6 +21,10 @@ class Caller extends Model {
   static get tableName() { return 'callers' }
 }
 
+class Call extends Model {
+  static get tableName() { return 'calls' }
+}
+
 app.use(bodyParser.urlencoded({extended: true}));
 app.use((req, res, next) => {
   res.set('Content-Type', 'text/xml');
@@ -69,10 +73,19 @@ app.all('/cycle', async (req, res, next) => {
 app.listen(port, () => {
   console.log('Load tester running on port', port);
   console.log('Press a to add an agent');
-  const report = () => {
+  const report = async () => {
     const summary = _.invertBy(state);
     const statuses = Object.keys(summary).map((status) => `${status} = ${summary[status].length}`);
-    console.log(moment().format('h:mm:ss a ⇨ '), statuses.length ? statuses.join(', ') : 'connected: 0');
+    const statusCounts = await Call.knexQuery().select('dropped')
+      .count('calls.id as count')
+      .whereRaw("ended_at >= NOW() - INTERVAL '5 minutes'")
+      .groupBy('dropped');
+    const total = _.sumBy(statusCounts, ({count}) => parseInt(count, 10));
+    const dropStatus = _.find(statusCounts, ({dropped}) => dropped);
+    const drops = dropStatus ? parseInt(dropStatus.count, 10) : 0;
+    const rate = agents ? Math.round(total*12/agents) : 0;
+    const dropRate = total ? Math.round(drops/total, 2) : 0;
+    console.log(moment().format('h:mm:ss a ⇨ '), statuses.length ? statuses.join(', ') : 'connected: 0', `   [${rate}/agent hour with ${total} total, ${drops} drops at ${dropRate} drop rate in last 5 mins]`);
   };
   report();
   setInterval(report, process.env.INTERVAL || 10000)
