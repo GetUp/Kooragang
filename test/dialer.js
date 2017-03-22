@@ -216,6 +216,23 @@ describe('.dial', () => {
       });
     });
 
+    context('with more calls in progress than available callers', () => {
+      beforeEach(async () => {
+        campaign = await Campaign.query().patchAndFetchById(campaign.id, {
+          ratio: 1, max_ratio: 4, last_checked_ratio_at: new Date(), calls_in_progress: 6
+        });
+        await Callee.query().delete();
+        const inserts = _.range(8).map(() => Callee.query().insert({phone_number: '61411111111', campaign_id: campaign.id}));
+        await Promise.all(inserts);
+      });
+
+      it('should not make any calls', async () => {
+        await Caller.query().insert({phone_number: '1', status: 'available'});
+        await Caller.query().insert({phone_number: '2', status: 'available'});
+        await dialer.dial(testUrl, campaign);
+      });
+    });
+
     context('with calls in progress', () => {
       beforeEach(async () => {
         campaign = await Campaign.query().patchAndFetchById(campaign.id, {
