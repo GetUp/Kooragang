@@ -305,7 +305,7 @@ app.post('/conference_event/caller', async ({query, body}, res, next) => {
   const conference_member_id = body.ConferenceMemberID;
   if (body.ConferenceAction === 'enter') {
     await Caller.query().where({id: query.caller_id})
-      .patch({status: 'available', conference_member_id});
+      .patch({status: 'available', conference_member_id, updated_at: new Date()});
     let campaign = await Campaign.query().where({id: query.campaign_id}).first();
     const calls_in_progress = campaign.calls_in_progress;
     if (query.start) {
