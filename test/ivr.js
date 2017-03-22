@@ -347,10 +347,11 @@ describe('/answer', () => {
 
     context('with no conferences on the line', () => {
       beforeEach(async () => Caller.query().delete());
-      it('be successful but drop the call', () => {
+      it('return hangup but drop the call', () => {
         return request.post(`/answer?name=Bridger&callee_id=${callee.id}&campaign_id=${callee.campaign_id}`)
           .type('form').send({CallStatus, CallUUID: call_uuid})
-          .expect(200)
+          .expect(/hangup/i)
+          .expect(/drop/);
       });
 
       it('should record the drop on the call and as an event', () => {

@@ -91,7 +91,6 @@ app.post('/answer', async ({body, query}, res, next) => {
       stayAlone: false,
       callbackUrl: appUrl(`conference_event/callee?caller_id=${caller.id}&campaign_id=${query.campaign_id}`)
     });
-    res.send(r.toXML());
   } else {
     await callerTransaction.commit()
     const call = await Call.query().insert({
@@ -105,8 +104,9 @@ app.post('/answer', async ({body, query}, res, next) => {
     const calls_in_progress = campaign.calls_in_progress;
     campaign = await dialer.decrementCallsInProgress(campaign);
     await Event.query().insert({call_id: call.id, name: 'drop', value: {calls_in_progress, updated_calls_in_progress: campaign.calls_in_progress} })
-    res.sendStatus(200);
+    r.addHangup({reason: 'drop'});
   }
+  res.send(r.toXML());
 });
 
 app.post('/hangup', async ({body, query}, res, next) => {
