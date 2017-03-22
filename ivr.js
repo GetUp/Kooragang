@@ -76,7 +76,7 @@ app.post('/answer', async ({body, query}, res, next) => {
     });
     if (!_.isEmpty(name)) {
       const params = {
-        conference_id: caller.id,
+        conference_id: `conference-${caller.id}`,
         member_id: caller.conference_member_id,
         text: name,
         language: 'en-GB', voice: 'MAN'
@@ -87,7 +87,7 @@ app.post('/answer', async ({body, query}, res, next) => {
         console.error('======= Unable to contact name with:', params, ' and error: ', e);
       }
     }
-    r.addConference(caller.id, {
+    r.addConference(`conference-${caller.id}`, {
       startConferenceOnEnter: false,
       stayAlone: false,
       callbackUrl: appUrl(`conference_event/callee?caller_id=${caller.id}&campaign_id=${query.campaign_id}`)
@@ -242,7 +242,7 @@ app.post('/ready', async (req, res, next) => {
     r.addSpeakAU('Remember, don\'t hangup *your* phone. Press star to end a call. Or wait for the other person to hang up.');
     callbackUrl += '&start=1';
   }
-  r.addConference(caller_id, {
+  r.addConference(`conference-${caller.id}`, {
     waitSound: appUrl('hold_music'),
     maxMembers: 2,
     timeLimit: 60 * 120,
