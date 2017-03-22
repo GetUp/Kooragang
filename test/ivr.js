@@ -60,49 +60,12 @@ describe('/connect', () => {
     });
   });
 
-  context('with an approved number', () => {
-    const payload = { From: caller.phone_number };
-    it('plays the briefing message', () => {
-      return request.post(`/connect?campaign_id=${campaign.id}`)
-        .type('form')
-        .send(payload)
-        .expect(/Hi bob/);
-    });
-  });
-
-  context('with an irregular, but approved, caller id', () => {
-    const payload = { From: '612 8888 8888' };
-    it('still identifies our caller', () => {
-      return request.post(`/connect?campaign_id=${campaign.id}`)
-        .type('form')
-        .send(payload)
-        .expect(/Hi bob/);
-    });
-  });
-
-  context('with an unknown number', () => {
-    const payload = { From: '61266666666' };
-    it('create a record', async() => {
+  context('with a sip number', () => {
+    it('should strip out sip details for caller number', async () => {
       await request.post(`/connect?campaign_id=${campaign.id}`)
         .type('form')
-        .send(payload)
-        .expect(/welcome/i);
-      const caller = await Caller.query().where({phone_number: payload.From}).first();
-      expect(caller).to.be.a(Caller);
-    });
-  });
-
-  context('with a sip number', () => {
-    const sipCaller = {
-      first_name: 'alice',
-      phone_number: 'alice123'
-    };
-    beforeEach(async () => Caller.query().insert(sipCaller));
-    it('should strip out sip details for caller number', () => {
-      return request.post(`/connect?campaign_id=${campaign.id}`)
-        .type('form')
-        .send({From: `sip:${sipCaller.phone_number}@phone.plivo.com`})
-        .expect(/alice123/i);
+        .send({From: 'sip:alice123@phone.plivo.com'})
+        .expect(/caller_number=alice123&amp;start=1/);
     });
   });
 
@@ -129,20 +92,59 @@ describe('/connect', () => {
 });
 
 describe('/ready', () => {
+  context('with an starting path', () => {
+    let startPath;
+    beforeEach(() => startPath = `/ready?campaign_id=${campaign.id}&caller_number=${caller.phone_number}&start=1`);
+
+    context('with an unknown number', () => {
+      const payload = { CallUUID: '1231' };
+      it('create a record', async() => {
+        await request.post(startPath)
+          .type('form')
+          .send(payload)
+          .expect(/call queue/i);
+        const foundCaller = await Caller.query().where({phone_number: caller.phone_number}).first();
+        expect(foundCaller).to.be.a(Caller);
+      });
+    });
+
+    context('with an existing number', () => {
+      let payload;
+      beforeEach(() => payload = {From: caller.phone_number, CallUUID: '1'});
+
+      it('create a new record', async() => {
+        await request.post(startPath)
+          .type('form')
+          .send({From: caller.phone_number})
+          .expect(/call queue/i);
+        const callers = await Caller.query().where({phone_number: caller.phone_number});
+        expect(callers.length).to.be(2);
+      });
+
+      it('record the call uuid', async() => {
+        await request.post(startPath)
+          .type('form')
+          .send(payload)
+          .expect(/call queue/i);
+        expect(await Caller.query().where({call_uuid: payload.CallUUID}).first()).to.be.a(Caller);
+      });
+    });
+  });
+
   it('should put them in a conference',
-    () => request.post(`/ready?caller_number=11111`).expect(/<Conference/i));
+    () => request.post(`/ready?caller_id=${caller.id}`).expect(/<Conference/i));
 
   it('should use the caller number as the conference name',
-    () => request.post(`/ready?caller_number=11111`).expect(/>11111<\/Conference/i));
+    () => request.post(`/ready?caller_id=${caller.id}`).expect(new RegExp(caller.id)));
 
   context('with start=1 passed', () => {
     it('should give extra instructions',
-      () => request.post(`/ready?caller_number=11111&start=1`).expect(/press star/i));
+      () => request.post(`/ready?caller_id=${caller.id}&start=1`).expect(/press star/i));
   });
 
   context('with * pressed', () => {
     it('should redirect them to disconnect', () => {
-      return request.post(`/ready?caller_number=11111&start=1`)
+      return request.post(`/ready?caller_id=${caller.id}&start=1`)
         .type('form').send({Digits: '*'})
         .expect(/disconnect/i)
     });
@@ -151,16 +153,16 @@ describe('/ready', () => {
   context('with 8 pressed', () => {
     it('should set a boolean for a call back', async () => {
       await request.post(`/ready?caller_number=${caller.phone_number}&start=1&campaign_id=${campaign.id}`)
-        .type('form').send({Digits: '8'})
+        .type('form').send({Digits: '8', CallUUID: '1234'})
         .expect(/hang up now/i)
-      const updatedCaller = await Caller.query().first();
+      const updatedCaller = await Caller.query().where({call_uuid: '1234'}).first();
       return expect(updatedCaller.callback).to.be(true);
     });
   });
 
   context('with 9 pressed', () => {
     it('should send an sms to their number', () => {
-      return request.post(`/ready?caller_number=11111&start=1&campaign_id=${campaign.id}`)
+      return request.post(`/ready?caller_number=${caller.phone_number}&start=1&campaign_id=${campaign.id}`)
         .type('form').send({Digits: '9'})
         .expect(/message/i)
     });
@@ -169,15 +171,15 @@ describe('/ready', () => {
 
 describe('/call_ended', () => {
   context('with callback not set to true', () => {
-    beforeEach(async () => caller.$query().patch({callback: null}));
+    beforeEach(async () => caller.$query().patch({callback: null, call_uuid: CallUUID}));
     it('should not call them back', () => {
       return request.post(`/call_ended?campaign_id=${campaign.id}`)
-        .type('form').send({From: caller.phone_number})
+        .type('form').send({CallUUID})
     });
   });
 
   context('with callback set to true', () => {
-    beforeEach(async () => caller.$query().patch({callback: true}));
+    beforeEach(async () => caller.$query().patch({callback: true, call_uuid: CallUUID}));
     it('should unset callback bool and call them back', async () => {
       const mockedApiCall = nock('https://api.plivo.com')
         .post(/Call/, body => {
@@ -188,30 +190,40 @@ describe('/call_ended', () => {
         })
         .query(true)
         .reply(200);
-      await request.post(`/call_ended?campaign_id=${campaign.id}`)
-        .type('form').send({From: caller.phone_number})
+      return request.post(`/call_ended?campaign_id=${campaign.id}`)
+        .type('form').send({CallUUID})
         .then(() => mockedApiCall.done());
-      const updatedCaller = await Caller.query().first();
-      await expect(updatedCaller.callback).to.be(false);
     });
   });
 
   context('with a caller with status "in-call"', () => {
-    beforeEach(async () => caller.$query().patch({status: 'in-call'}));
+    beforeEach(async () => caller.$query().patch({status: 'in-call', call_uuid: CallUUID}));
     beforeEach(async () => campaign.$query().patch({calls_in_progress: 2}));
     it('should decrement the calls_in_progress', async () => {
       await request.post(`/call_ended?campaign_id=${campaign.id}`)
-        .type('form').send({From: caller.phone_number})
+        .type('form').send({CallUUID})
       expect((await campaign.$query()).calls_in_progress).to.be(1);
+    });
+
+    it('should unset the "in-call" status', async () => {
+      await request.post(`/call_ended?campaign_id=${campaign.id}`)
+        .type('form').send({CallUUID})
+      expect((await caller.$query()).status).to.be('complete');
+    });
+
+    it('should unset the "in-call" status', async () => {
+      await request.post(`/call_ended?campaign_id=${campaign.id}`)
+        .type('form').send({CallUUID})
+      expect(await Event.query().where({name: 'caller_complete'}).first()).to.be.a(Event);
     });
   })
 
   context('with a caller with status "in-call" and ending a callback call', () => {
-    beforeEach(async () => caller.$query().patch({status: 'in-call'}));
+    beforeEach(async () => caller.$query().patch({status: 'in-call', call_uuid: CallUUID}));
     beforeEach(async () => campaign.$query().patch({calls_in_progress: 2}));
     it('should decrement the calls_in_progress', async () => {
       await request.post(`/call_ended?campaign_id=${campaign.id}&callback=1&number=${caller.phone_number}`)
-        .type('form').send({From: '1111111'})
+        .type('form').send({CallUUID})
       expect((await campaign.$query()).calls_in_progress).to.be(1);
     });
   })
@@ -237,7 +249,7 @@ describe('/conference_event/caller', () => {
 
   context('with caller entering the conference', () => {
     it('should update the caller to be available and recorder the conference_member_id', async () => {
-      await request.post(`/conference_event/caller?caller_number=${caller.phone_number}&campaign_id=${campaign.id}`)
+      await request.post(`/conference_event/caller?caller_id=${caller.id}&campaign_id=${campaign.id}`)
         .type('form')
         .send({ConferenceAction: 'enter', ConferenceFirstMember: 'true', ConferenceMemberID: '11'})
       let updatedCaller = await Caller.query().first();
@@ -248,7 +260,7 @@ describe('/conference_event/caller', () => {
 
   context('with caller exiting the conference', () => {
     it('should update the caller to be available', async () => {
-      await request.post(`/conference_event/caller?caller_number=${caller.phone_number}`)
+      await request.post(`/conference_event/caller?caller_id=${caller.id}`)
         .type('form')
         .send({ConferenceAction: 'exit', ConferenceFirstMember: 'true'})
       let updatedCaller = await Caller.query().first();
@@ -269,7 +281,7 @@ describe('/conference_event/caller', () => {
         })
         .query(true)
         .reply(200);
-      await request.post(`/conference_event/caller?caller_number=${caller.phone_number}`)
+      await request.post(`/conference_event/caller?caller_id=${caller.id}`)
         .type('form')
         .send({ConferenceAction: 'digits', ConferenceDigitsMatch: '2', CallUUID, ConferenceUUID})
         .expect(200);
@@ -293,7 +305,7 @@ describe('/conference_event/callee', () => {
 
   context('with enter event', () => {
     it('should create a Call entry', async () => {
-      await request.post(`/conference_event/callee?caller_number=${caller.phone_number}`)
+      await request.post('/conference_event/callee')
         .type('form')
         .send({
           ConferenceAction: 'enter', To: callee.phone_number,
@@ -337,7 +349,7 @@ describe('/answer', () => {
           .type('form').send({CallStatus, CallUUID: call_uuid})
           .then(async () => {
             const call = await Call.query().where({callee_id: callee.id, callee_call_uuid: call_uuid, dropped: true}).first();
-            expect(call).to.be.an(Call);
+            expect(call).to.be.a(Call);
             const event = await Event.query().where({call_id: call.id, name: 'drop'}).first();
             expect(event).to.be.an(Event);
           });
@@ -352,7 +364,7 @@ describe('/answer', () => {
       context('with the speak api mocked', () => {
         beforeEach(() => {
           mockedApiCall = nock('https://api.plivo.com')
-            .post(/\/Conference\/61288888888\/Member\/1111\/Speak/, (body) => {
+            .post(`/v1/Account/test/Conference/${caller.id}/Member/1111/Speak/`, (body) => {
                return body.text === 'Bridger';
             })
             .query(true)
@@ -362,7 +374,7 @@ describe('/answer', () => {
         it('should add the caller to the conference', () => {
           return request.post(`/answer?name=Bridger&callee_id=${callee.id}`)
             .type('form').send({CallStatus, CallUUID: call_uuid})
-            .expect(/61288888888<\/Conference/)
+            .expect(new RegExp(caller.id))
         });
 
         it('should speak the callee\'s name in the conference', () => {
