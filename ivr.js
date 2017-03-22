@@ -154,29 +154,24 @@ app.post('/connect', async (req, res, next) => {
     return res.send(r.toXML());
   }
 
-  let callerNumber = extractCallerNumber(req.query, req.body);
+  const callerNumber = extractCallerNumber(req.query, req.body);
   if (_.isEmpty(callerNumber)){
     r.addWait({length: 2});
     r.addSpeakAU('It appears you do not have caller id enabled. Please enable it and call back. Thank you.');
     return res.send(r.toXML());
   }
-  let caller = await Caller.query().where({phone_number: callerNumber}).first();
-  if (!caller){
-    caller = await Caller.query().insert({phone_number: callerNumber, first_name: ''});
-  }
-  const callerName = caller.first_name || "there";
 
   const campaignComplete = await dialer.isComplete(campaign);
   if (campaignComplete) {
     r.addWait({length: 2});
-    r.addSpeakAU(`Hi ${callerName}! Welcome to the GetUp Dialer tool.`);
+    r.addSpeakAU(`Hi! Welcome to the GetUp Dialer tool.`);
     r.addWait({length: 1});
     r.addSpeakAU('The campaign has been completed! Please contact the campaign coordinator for further instructions. Thank you and have a great day!');
     return res.send(r.toXML());
   }
 
   const briefing = r.addGetDigits({
-    action: appUrl(`ready?caller_id=${caller.id}&start=1&campaign_id=${campaign.id}`),
+    action: appUrl(`ready?campaign_id=${campaign.id}&caller_number=${callerNumber}&start=1`),
     method: 'POST',
     timeout: 5,
     numDigits: 1,
@@ -186,9 +181,9 @@ app.post('/connect', async (req, res, next) => {
 
   briefing.addWait({length: 2});
   if (req.query.callback) {
-    briefing.addSpeakAU(`Hi ${callerName}! Welcome back.`);
+    briefing.addSpeakAU(`Hi! Welcome back.`);
   } else {
-    briefing.addSpeakAU(`Hi ${callerName}! Welcome to the GetUp Dialer tool. Today you will be making calls for the ${campaign.name} campaign.`);
+    briefing.addSpeakAU(`Hi! Welcome to the GetUp Dialer tool. Today you will be making calls for the ${campaign.name} campaign.`);
     briefing.addWait({length: 1});
     briefing.addSpeakAU('If you cannot afford long phone calls and would like to be called back instead, please press the 8 key');
   }
@@ -205,7 +200,20 @@ app.post('/connect', async (req, res, next) => {
 
 app.post('/ready', async (req, res, next) => {
   const r = plivo.Response();
-  const caller_id = req.query.caller_id;
+  let caller_id;
+  if (req.query.start) {
+    if (req.body.Digits === '9') {
+      r.addMessage(`Please print or download the script and disposition codes from ${appUrl(req.query.campaign_id)}. When you are ready, call again!`, {
+        src: process.env.NUMBER || '1111111111', dst: req.query.caller_number
+      });
+      r.addSpeakAU('Sending an sms with instructions to your number. Thank you and speak soon!')
+      return res.send(r.toXML());
+    }
+    const caller = await Caller.query().insert({phone_number: req.query.caller_number, call_uuid: req.body.CallUUID});
+    caller_id = caller.id;
+  } else {
+    caller_id = req.query.caller_id;
+  }
 
   if (req.body.Digits === '*') {
     r.addRedirect(appUrl('disconnect'));
@@ -219,15 +227,6 @@ app.post('/ready', async (req, res, next) => {
   }
 
   const campaign = await Campaign.query().where({id: req.query.campaign_id}).first();
-  if (req.body.Digits === '9') {
-    const {phone_number} = await Caller.query().where({id: caller_id}).first();
-    r.addMessage(`Please print or download the script and disposition codes from ${appUrl(campaign.id)}. When you are ready, call again!`, {
-      src: process.env.NUMBER || '1111111111', dst: phone_number
-    });
-    r.addSpeakAU('Sending an sms with instructions to your number. Thank you and speak soon!')
-    return res.send(r.toXML());
-  }
-
   const campaignComplete = await dialer.isComplete(campaign);
   if (campaignComplete) {
     r.addSpeakAU('The campaign has been completed!');
@@ -256,15 +255,14 @@ app.post('/ready', async (req, res, next) => {
 });
 
 app.post('/call_ended', async (req, res) => {
-  const number = extractCallerNumber(req.query, req.body);
-  const caller = await Caller.query().where({phone_number: number}).first();
+  const caller = await Caller.query().where({call_uuid: req.body.CallUUID}).first();
 
   const campaign = await Campaign.query().where({id: req.query.campaign_id}).first();
   if(caller.status === 'in-call') await dialer.decrementCallsInProgress(campaign);
+  await caller.$query().patch({status: 'complete'});
+  await Event.query().insert({campaign_id: campaign.id, name: 'caller_complete', value: {caller_id: caller.id}})
 
   if (caller.callback) {
-    await caller.$query().patch({callback: false});
-
     const params = {
       from: campaign.phone_number || '1111111111',
       to: caller.phone_number,

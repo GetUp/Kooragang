@@ -60,25 +60,12 @@ describe('/connect', () => {
     });
   });
 
-
-  context('with an unknown number', () => {
-    const payload = { From: '61266666666' };
-    it('create a record', async() => {
-      await request.post(`/connect?campaign_id=${campaign.id}`)
-        .type('form')
-        .send(payload)
-        .expect(/welcome/i);
-      const caller = await Caller.query().where({phone_number: payload.From}).first();
-      expect(caller).to.be.a(Caller);
-    });
-  });
-
   context('with a sip number', () => {
     it('should strip out sip details for caller number', async () => {
       await request.post(`/connect?campaign_id=${campaign.id}`)
         .type('form')
-        .send({From: 'sip:alice123@phone.plivo.com'});
-      expect(await Caller.query().where({phone_number: 'alice123'}).first()).to.be.a(Caller)
+        .send({From: 'sip:alice123@phone.plivo.com'})
+        .expect(/caller_number=alice123&amp;start=1/);
     });
   });
 
@@ -99,12 +86,51 @@ describe('/connect', () => {
         .type('form')
         .send(payload)
         .expect(/Welcome back/)
-        .expect(new RegExp(caller.id));
+        .expect(new RegExp(caller.phone_number));
     });
   });
 });
 
 describe('/ready', () => {
+  context('with an starting path', () => {
+    let startPath;
+    beforeEach(() => startPath = `/ready?campaign_id=${campaign.id}&caller_number=${caller.phone_number}&start=1`);
+
+    context('with an unknown number', () => {
+      const payload = { CallUUID: '1231' };
+      it('create a record', async() => {
+        await request.post(startPath)
+          .type('form')
+          .send(payload)
+          .expect(/call queue/i);
+        const foundCaller = await Caller.query().where({phone_number: caller.phone_number}).first();
+        expect(foundCaller).to.be.a(Caller);
+      });
+    });
+
+    context('with an existing number', () => {
+      let payload;
+      beforeEach(() => payload = {From: caller.phone_number, CallUUID: '1'});
+
+      it('create a new record', async() => {
+        await request.post(startPath)
+          .type('form')
+          .send({From: caller.phone_number})
+          .expect(/call queue/i);
+        const callers = await Caller.query().where({phone_number: caller.phone_number});
+        expect(callers.length).to.be(2);
+      });
+
+      it('record the call uuid', async() => {
+        await request.post(startPath)
+          .type('form')
+          .send(payload)
+          .expect(/call queue/i);
+        expect(await Caller.query().where({call_uuid: payload.CallUUID}).first()).to.be.a(Caller);
+      });
+    });
+  });
+
   it('should put them in a conference',
     () => request.post(`/ready?caller_id=${caller.id}`).expect(/<Conference/i));
 
@@ -126,17 +152,17 @@ describe('/ready', () => {
 
   context('with 8 pressed', () => {
     it('should set a boolean for a call back', async () => {
-      await request.post(`/ready?caller_id=${caller.id}&start=1&campaign_id=${campaign.id}`)
-        .type('form').send({Digits: '8'})
+      await request.post(`/ready?caller_number=${caller.phone_number}&start=1&campaign_id=${campaign.id}`)
+        .type('form').send({Digits: '8', CallUUID: '1234'})
         .expect(/hang up now/i)
-      const updatedCaller = await Caller.query().first();
+      const updatedCaller = await Caller.query().where({call_uuid: '1234'}).first();
       return expect(updatedCaller.callback).to.be(true);
     });
   });
 
   context('with 9 pressed', () => {
     it('should send an sms to their number', () => {
-      return request.post(`/ready?caller_id=${caller.id}&start=1&campaign_id=${campaign.id}`)
+      return request.post(`/ready?caller_number=${caller.phone_number}&start=1&campaign_id=${campaign.id}`)
         .type('form').send({Digits: '9'})
         .expect(/message/i)
     });
@@ -145,15 +171,15 @@ describe('/ready', () => {
 
 describe('/call_ended', () => {
   context('with callback not set to true', () => {
-    beforeEach(async () => caller.$query().patch({callback: null}));
+    beforeEach(async () => caller.$query().patch({callback: null, call_uuid: CallUUID}));
     it('should not call them back', () => {
       return request.post(`/call_ended?campaign_id=${campaign.id}`)
-        .type('form').send({From: caller.phone_number})
+        .type('form').send({CallUUID})
     });
   });
 
   context('with callback set to true', () => {
-    beforeEach(async () => caller.$query().patch({callback: true}));
+    beforeEach(async () => caller.$query().patch({callback: true, call_uuid: CallUUID}));
     it('should unset callback bool and call them back', async () => {
       const mockedApiCall = nock('https://api.plivo.com')
         .post(/Call/, body => {
@@ -164,30 +190,40 @@ describe('/call_ended', () => {
         })
         .query(true)
         .reply(200);
-      await request.post(`/call_ended?campaign_id=${campaign.id}`)
-        .type('form').send({From: caller.phone_number})
+      return request.post(`/call_ended?campaign_id=${campaign.id}`)
+        .type('form').send({CallUUID})
         .then(() => mockedApiCall.done());
-      const updatedCaller = await Caller.query().first();
-      await expect(updatedCaller.callback).to.be(false);
     });
   });
 
   context('with a caller with status "in-call"', () => {
-    beforeEach(async () => caller.$query().patch({status: 'in-call'}));
+    beforeEach(async () => caller.$query().patch({status: 'in-call', call_uuid: CallUUID}));
     beforeEach(async () => campaign.$query().patch({calls_in_progress: 2}));
     it('should decrement the calls_in_progress', async () => {
       await request.post(`/call_ended?campaign_id=${campaign.id}`)
-        .type('form').send({From: caller.phone_number})
+        .type('form').send({CallUUID})
       expect((await campaign.$query()).calls_in_progress).to.be(1);
+    });
+
+    it('should unset the "in-call" status', async () => {
+      await request.post(`/call_ended?campaign_id=${campaign.id}`)
+        .type('form').send({CallUUID})
+      expect((await caller.$query()).status).to.be('complete');
+    });
+
+    it('should unset the "in-call" status', async () => {
+      await request.post(`/call_ended?campaign_id=${campaign.id}`)
+        .type('form').send({CallUUID})
+      expect(await Event.query().where({name: 'caller_complete'}).first()).to.be.a(Event);
     });
   })
 
   context('with a caller with status "in-call" and ending a callback call', () => {
-    beforeEach(async () => caller.$query().patch({status: 'in-call'}));
+    beforeEach(async () => caller.$query().patch({status: 'in-call', call_uuid: CallUUID}));
     beforeEach(async () => campaign.$query().patch({calls_in_progress: 2}));
     it('should decrement the calls_in_progress', async () => {
       await request.post(`/call_ended?campaign_id=${campaign.id}&callback=1&number=${caller.phone_number}`)
-        .type('form').send({From: '1111111'})
+        .type('form').send({CallUUID})
       expect((await campaign.$query()).calls_in_progress).to.be(1);
     });
   })
