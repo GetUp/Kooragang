@@ -21,8 +21,6 @@ const {
   transaction
 } = require('./models');
 
-const callEndBeep = 'https://dl.dropboxusercontent.com/u/404666/getup/kooragang/call_end_beep.wav';
-
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(express.static('public'))
 app.set('view engine', 'ejs');
