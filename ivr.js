@@ -76,7 +76,7 @@ app.post('/answer', async ({body, query}, res, next) => {
     });
     if (!_.isEmpty(name)) {
       const params = {
-        conference_id: caller.phone_number,
+        conference_id: caller.id,
         member_id: caller.conference_member_id,
         text: name,
         language: 'en-GB', voice: 'MAN'
@@ -87,10 +87,10 @@ app.post('/answer', async ({body, query}, res, next) => {
         console.error('======= Unable to contact name with:', params, ' and error: ', e);
       }
     }
-    r.addConference(caller.phone_number, {
+    r.addConference(caller.id, {
       startConferenceOnEnter: false,
       stayAlone: false,
-      callbackUrl: appUrl(`conference_event/callee?caller_number=${caller.phone_number}&campaign_id=${query.campaign_id}`)
+      callbackUrl: appUrl(`conference_event/callee?caller_id=${caller.id}&campaign_id=${query.campaign_id}`)
     });
     res.send(r.toXML());
   } else {
@@ -176,7 +176,7 @@ app.post('/connect', async (req, res, next) => {
   }
 
   const briefing = r.addGetDigits({
-    action: appUrl(`ready?caller_number=${caller.phone_number}&start=1&campaign_id=${campaign.id}`),
+    action: appUrl(`ready?caller_id=${caller.id}&start=1&campaign_id=${campaign.id}`),
     method: 'POST',
     timeout: 5,
     numDigits: 1,
@@ -205,7 +205,7 @@ app.post('/connect', async (req, res, next) => {
 
 app.post('/ready', async (req, res, next) => {
   const r = plivo.Response();
-  const caller_number = req.query.caller_number;
+  const caller_id = req.query.caller_id;
 
   if (req.body.Digits === '*') {
     r.addRedirect(appUrl('disconnect'));
@@ -213,15 +213,16 @@ app.post('/ready', async (req, res, next) => {
   }
 
   if (req.body.Digits === '8') {
-    await Caller.query().where({phone_number: caller_number}).patch({callback: true});
+    await Caller.query().where({id: caller_id}).patch({callback: true});
     r.addSpeakAU('We will call you back immediately. Please hang up now!');
     return res.send(r.toXML());
   }
 
   const campaign = await Campaign.query().where({id: req.query.campaign_id}).first();
   if (req.body.Digits === '9') {
+    const {phone_number} = await Caller.query().where({id: caller_id}).first();
     r.addMessage(`Please print or download the script and disposition codes from ${appUrl(campaign.id)}. When you are ready, call again!`, {
-      src: process.env.NUMBER || '1111111111', dst: caller_number
+      src: process.env.NUMBER || '1111111111', dst: phone_number
     });
     r.addSpeakAU('Sending an sms with instructions to your number. Thank you and speak soon!')
     return res.send(r.toXML());
@@ -235,21 +236,21 @@ app.post('/ready', async (req, res, next) => {
   }
 
   r.addSpeakAU('You are now in the call queue.')
-  let callbackUrl = `conference_event/caller?caller_number=${caller_number}&campaign_id=${req.query.campaign_id}`;
+  let callbackUrl = `conference_event/caller?caller_id=${caller_id}&campaign_id=${req.query.campaign_id}`;
   if (req.query.start) {
     r.addSpeakAU('We will connect you to a call shortly.')
     r.addWait({length: 1});
     r.addSpeakAU('Remember, don\'t hangup *your* phone. Press star to end a call. Or wait for the other person to hang up.');
     callbackUrl += '&start=1';
   }
-  r.addConference(caller_number, {
+  r.addConference(caller_id, {
     waitSound: appUrl('hold_music'),
     maxMembers: 2,
     timeLimit: 60 * 120,
     callbackUrl: appUrl(callbackUrl),
     hangupOnStar: 'true',
     digitsMatch: ['2'],
-    action: appUrl(`survey?q=disposition&caller_number=${caller_number}&campaign_id=${req.query.campaign_id}`)
+    action: appUrl(`survey?q=disposition&caller_id=${caller_id}&campaign_id=${req.query.campaign_id}`)
   });
   res.send(r.toXML());
 });
@@ -301,7 +302,7 @@ app.post('/conference_event/callee', async ({query, body}, res, next) => {
 app.post('/conference_event/caller', async ({query, body}, res, next) => {
   const conference_member_id = body.ConferenceMemberID;
   if (body.ConferenceAction === 'enter') {
-    await Caller.query().where({phone_number: query.caller_number})
+    await Caller.query().where({id: query.caller_id})
       .patch({status: 'available', conference_member_id});
     let campaign = await Campaign.query().where({id: query.campaign_id}).first();
     const calls_in_progress = campaign.calls_in_progress;
@@ -317,7 +318,7 @@ app.post('/conference_event/caller', async ({query, body}, res, next) => {
     if (call) {
       const params = {
         call_uuid: body.CallUUID,
-        aleg_url: appUrl(`survey_result?q=disposition&caller_number=${query.caller_number}&call_id=${call.id}&campaign_id=${query.campaign_id}&digit=2`),
+        aleg_url: appUrl(`survey_result?q=disposition&caller_id=${query.caller_id}&call_id=${call.id}&campaign_id=${query.campaign_id}&digit=2`),
       }
       try {
         await promisify(api.transfer_call.bind(api))(params);
@@ -332,7 +333,7 @@ app.post('/conference_event/caller', async ({query, body}, res, next) => {
 app.post('/call_again', (req, res) => {
   const r = plivo.Response();
   const callAgain = r.addGetDigits({
-    action: appUrl(`ready?caller_number=${req.query.caller_number}&campaign_id=${req.query.campaign_id}`),
+    action: appUrl(`ready?caller_id=${req.query.caller_id}&campaign_id=${req.query.campaign_id}`),
     timeout: 10,
     retries: 10,
     numDigits: 1
@@ -360,7 +361,7 @@ app.post('/survey', async (req, res) => {
   }
 
   const surveyResponse = r.addGetDigits({
-    action: appUrl(`survey_result?q=${question}&caller_number=${req.query.caller_number}&call_id=${call.id}&campaign_id=${req.query.campaign_id}`),
+    action: appUrl(`survey_result?q=${question}&caller_id=${req.query.caller_id}&call_id=${call.id}&campaign_id=${req.query.campaign_id}`),
     redirect: true,
     retries: 10,
     numDigits: 1,
@@ -386,9 +387,9 @@ app.post('/survey_result', async (req, res) => {
   await SurveyResult.query().insert(data);
   r.addSpeakAU(disposition);
   if (next === 'complete') {
-    r.addRedirect(appUrl(`call_again?caller_number=${req.query.caller_number}&campaign_id=${req.query.campaign_id}`));
+    r.addRedirect(appUrl(`call_again?caller_id=${req.query.caller_id}&campaign_id=${req.query.campaign_id}`));
   } else {
-    r.addRedirect(appUrl(`survey?q=${next}&call_id=${req.query.call_id}&caller_number=${req.query.caller_number}&campaign_id=${req.query.campaign_id}`));
+    r.addRedirect(appUrl(`survey?q=${next}&call_id=${req.query.call_id}&caller_id=${req.query.caller_id}&campaign_id=${req.query.campaign_id}`));
   }
   res.send(r.toXML());
 });
