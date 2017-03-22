@@ -60,25 +60,6 @@ describe('/connect', () => {
     });
   });
 
-  context('with an approved number', () => {
-    const payload = { From: caller.phone_number };
-    it('plays the briefing message', () => {
-      return request.post(`/connect?campaign_id=${campaign.id}`)
-        .type('form')
-        .send(payload)
-        .expect(/Hi bob/);
-    });
-  });
-
-  context('with an irregular, but approved, caller id', () => {
-    const payload = { From: '612 8888 8888' };
-    it('still identifies our caller', () => {
-      return request.post(`/connect?campaign_id=${campaign.id}`)
-        .type('form')
-        .send(payload)
-        .expect(/Hi bob/);
-    });
-  });
 
   context('with an unknown number', () => {
     const payload = { From: '61266666666' };
