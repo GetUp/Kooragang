@@ -145,7 +145,7 @@ module.exports.notifyAgents = async () => {
   const notifications = callersInConference.map(async (caller) => {
     try{
       await promisfy(api.speak_conference_member.bind(api))({
-        conference_id: caller.phone_number,
+        conference_id: `conference-${caller.id}`,
         member_id: caller.conference_member_id,
         text: 'Campaign ended. Press star to exit when ready',
         language: 'en-GB', voice: 'MAN'

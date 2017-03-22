@@ -242,7 +242,7 @@ app.post('/ready', async (req, res, next) => {
     r.addSpeakAU('Remember, don\'t hangup *your* phone. Press star to end a call. Or wait for the other person to hang up.');
     callbackUrl += '&start=1';
   }
-  r.addConference(`conference-${caller.id}`, {
+  r.addConference(`conference-${caller_id}`, {
     waitSound: appUrl('hold_music'),
     maxMembers: 2,
     timeLimit: 60 * 120,
