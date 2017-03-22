@@ -8,7 +8,6 @@ const app = express();
 const promisify = require('es6-promisify');
 const api = plivo.RestAPI({ authId: process.env.API_ID || 'test', authToken: process.env.API_TOKEN || 'test'});
 const dialer = require('./dialer');
-const questions = require('./questions');
 
 const {
   Call,
@@ -344,53 +343,57 @@ app.post('/call_again', (req, res) => {
   res.send(r.toXML());
 });
 
-app.post('/survey', async (req, res) => {
+app.post('/survey', async ({query, body}, res) => {
   let call;
   const r = plivo.Response();
-  const question = req.query.q;
+  const campaign = await Campaign.query().where({id: query.campaign_id}).first();
+  const questions = campaign.questions;
+  const question = query.q;
   const questionData = questions[question];
-
-  if (req.query.call_id) {
-    call = await Call.query().where({id: req.query.call_id}).first();
+  if (query.call_id) {
+    call = await Call.query().where({id: query.call_id}).first();
   } else {
-    call = await Call.query().where({conference_uuid: req.body.ConferenceUUID}).first();
+    call = await Call.query().where({conference_uuid: body.ConferenceUUID}).first();
   }
   if (!call) {
     r.addSpeakAU('The call has ended.');
     r.addSpeakAU('No survey required.');
     return res.send(r.toXML());
   }
-
   const surveyResponse = r.addGetDigits({
-    action: appUrl(`survey_result?q=${question}&caller_number=${req.query.caller_number}&call_id=${call.id}&campaign_id=${req.query.campaign_id}`),
+    action: appUrl(`survey_result?q=${question}&caller_number=${query.caller_number}&call_id=${call.id}&campaign_id=${query.campaign_id}`),
     redirect: true,
     retries: 10,
     numDigits: 1,
     timeout: 10,
     validDigits: Object.keys(questionData.answers),
   });
-  if (question === 'disposition') surveyResponse.addSpeakAU('The call has ended.');
+  if (question === 'disposition') {
+    surveyResponse.addSpeakAU('The call has ended.');
+  }
   surveyResponse.addSpeakAU(`Enter the ${questionData.name} code.`);
   res.send(r.toXML());
 });
 
-app.post('/survey_result', async (req, res) => {
+app.post('/survey_result', async ({query, body}, res) => {
   const r = plivo.Response();
-  const question = questions[req.query.q];
-  const disposition = question.answers[req.body.Digits || req.query.digit];
-  const next = question.next(disposition);
+  const campaign = await Campaign.query().where({id: query.campaign_id}).first();
+  const questions = campaign.questions;
+  const question = questions[query.q];
+  const disposition = question.answers[body.Digits || query.digit].value;
+  const next = question.answers[body.Digits || query.digit].next;
   const data = {
     log_id: res.locals.log_id,
-    call_id: req.query.call_id,
-    question: req.query.q,
+    call_id: query.call_id,
+    question: query.q,
     answer: disposition,
   }
   await SurveyResult.query().insert(data);
   r.addSpeakAU(disposition);
-  if (next === 'complete') {
-    r.addRedirect(appUrl(`call_again?caller_number=${req.query.caller_number}&campaign_id=${req.query.campaign_id}`));
+  if (next) {
+    r.addRedirect(appUrl(`survey?q=${next}&call_id=${query.call_id}&caller_number=${query.caller_number}&campaign_id=${query.campaign_id}`));
   } else {
-    r.addRedirect(appUrl(`survey?q=${next}&call_id=${req.query.call_id}&caller_number=${req.query.caller_number}&campaign_id=${req.query.campaign_id}`));
+    r.addRedirect(appUrl(`call_again?caller_number=${query.caller_number}&campaign_id=${query.campaign_id}`));
   }
   res.send(r.toXML());
 });
