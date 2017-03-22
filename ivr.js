@@ -429,6 +429,12 @@ app.post('/feedback', (req, res) => {
 // already logged in middleware
 app.post('/log', (req, res) => res.sendStatus(200));
 
+app.post('/fallback', (req, res) => {
+  const r = plivo.Response()
+  r.addSpeakAU('Dreadfully sorry; an error has occurred. Please call back to continue.')
+  res.send(r.toXML())
+});
+
 app.get(/^\/\d+$/, async (req, res) => {
   res.set('Content-Type', 'text/html');
   const campaign = await Campaign.query().where({id: req.path.replace(/^\//, '')}).first();
