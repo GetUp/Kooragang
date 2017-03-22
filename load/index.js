@@ -98,8 +98,7 @@ app.listen(port, () => {
         to: target,
         from : agents,
         answer_url : appUrl(`answer?agent=${agents}`),
-        hangup_url : appUrl(`hangup?agent=${agents}`),
-        time_limit: 10 * 60
+        hangup_url : appUrl(`hangup?agent=${agents}`)
       };
       try{
         await promisfy(api.make_call.bind(api))(params);
