@@ -89,9 +89,7 @@ app.post('/answer', async ({body, query}, res, next) => {
       }
       try{
         await promisify(api.speak_conference_member.bind(api))(params);
-      }catch(e){
-        console.error('======= Unable to contact name with:', params, ' and error: ', e);
-      }
+      }catch(e){}
     }
     r.addConference(`conference-${caller.id}`, {
       startConferenceOnEnter: false,
