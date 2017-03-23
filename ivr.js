@@ -281,9 +281,10 @@ app.post('/call_ended', async (req, res) => {
     return res.sendStatus(200);
   }
 
-  const seconds_waiting = caller.seconds_waiting + (caller.status === 'available' ? Math.round((new Date() - caller.updated_at) / 1000) : 0);
-  await caller.$query().patch({status: 'complete', seconds_waiting});
-  await Event.query().insert({campaign_id: campaign.id, name: 'caller_complete', value: {caller_id: caller.id, seconds_waiting}})
+  const seconds_waiting = caller.status === 'available' ? Math.round((new Date() - caller.updated_at) / 1000) : 0;
+  const cumulative_seconds_waiting = caller.seconds_waiting + seconds_waiting;
+  await caller.$query().patch({status: 'complete', seconds_waiting: cumulative_seconds_waiting});
+  await Event.query().insert({campaign_id: campaign.id, name: 'caller_complete', value: {caller_id: caller.id, seconds_waiting, cumulative_seconds_waiting}})
 
   if (caller.callback) {
     const params = {
