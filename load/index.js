@@ -54,7 +54,7 @@ app.all('/hangup', async (req, res, next) => {
 });
 
 app.all('/cycle', async (req, res, next) => {
-  const caller = await Caller.query().orderBy('created_at', 'desc').where({phone_number: req.query.agent}).first();
+  const caller = await Caller.query().orderBy('created_at', 'desc').where({phone_number: req.query.agent}).limit(1).first();
   const r = plivo.Response();
   if (debug) console.error(`Agent ${caller.phone_number} has status ${caller.status}`);
   if (caller.status === 'in-call') {
@@ -84,8 +84,8 @@ app.listen(port, () => {
     const dropStatus = _.find(statusCounts, ({dropped}) => dropped);
     const drops = dropStatus ? parseInt(dropStatus.count, 10) : 0;
     const rate = agents ? Math.round(total*12/agents) : 0;
-    const dropRate = total ? Math.round(drops/total, 2) : 0;
-    console.log(moment().format('h:mm:ss a ⇨ '), statuses.length ? statuses.join(', ') : 'connected: 0', `   [${rate}/agent hour with ${total} total, ${drops} drops at ${dropRate} drop rate in last 5 mins]`);
+    const dropRate = total ? Math.round(drops*100/total) : 0;
+    console.log(moment().format('h:mm:ss a ⇨ '), statuses.length ? statuses.join(', ') : 'connected: 0', `   [${rate}/agent hour with ${total} total, ${drops} drops at ${dropRate}% drop rate in last 5 mins]`);
   };
   report();
   setInterval(report, process.env.INTERVAL || 10000);

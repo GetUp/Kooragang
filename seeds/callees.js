@@ -7,8 +7,26 @@ exports.seed = function(knex, Promise) {
       knex('campaigns').del()
     ).then(() => {
       return Promise.join(
-        knex('campaigns').insert({id: 1, name: 'Power Dialler Test', phone_number: '61285994346', dialer: 'power', status: 'active', questions: questions_json}),
-        knex('campaigns').insert({id: 2, name: 'Predictive Dialler Test', phone_number: '61285994346', dialer: 'ratio', status: 'active', ratio: 1, max_ratio: 1, questions: questions_json})
+        knex('campaigns').insert({
+            id: 1,
+            name: 'Power Dialler Test',
+            phone_number: '61285994346',
+            dialer: 'power',
+            status: 'active',
+            questions: questions_json,
+            script_url: "https://docs.google.com/document/d/1_2uhubfXoW8zokuhKXdRAdz8_WMH7R0wAQM5YWZii-4/pub?embedded=true",
+        }),
+        knex('campaigns').insert({
+            id: 2,
+            name: 'Predictive Dialler Test',
+            phone_number: '61285994346',
+            dialer: 'ratio',
+            status: 'active',
+            ratio: 1,
+            max_ratio: 1,
+            questions: questions_json,
+            script_url: "https://docs.google.com/document/d/1_2uhubfXoW8zokuhKXdRAdz8_WMH7R0wAQM5YWZii-4/pub?embedded=true",
+        })
       );
     }).then(() => {
       return Promise.join(
