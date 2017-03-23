@@ -158,6 +158,14 @@ app.post('/connect', async (req, res, next) => {
     return res.send(r.toXML());
   }
 
+  if (campaign.status === "paused" || campaign.status === null){
+    r.addWait({length: 2});
+    r.addSpeakAU('Hi! Welcome to the GetUp Dialer tool.');
+    r.addWait({length: 1});
+    r.addSpeakAU('The campaign is currently paused! Please contact the campaign coordinator for further instructions. Thank you and have a great day!');
+    return res.send(r.toXML());
+  }
+
   const callerNumber = extractCallerNumber(req.query, req.body);
   if (_.isEmpty(callerNumber)){
     r.addWait({length: 2});
@@ -166,7 +174,7 @@ app.post('/connect', async (req, res, next) => {
   }
 
   const campaignComplete = await dialer.isComplete(campaign);
-  if (campaignComplete) {
+  if (campaignComplete || campaign.status == "inactive") {
     r.addWait({length: 2});
     r.addSpeakAU(`Hi! Welcome to the GetUp Dialer tool.`);
     r.addWait({length: 1});
@@ -397,8 +405,17 @@ app.post('/survey_result', async ({query, body}, res) => {
   }
   await SurveyResult.query().insert(data);
   r.addSpeakAU(disposition);
+
   if (next) {
     r.addRedirect(appUrl(`survey?q=${next}&call_id=${query.call_id}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`));
+  }else if (campaign.status === 'paused' || campaign.status === null) {
+    r.addWait({length: 1});
+    r.addSpeakAU('The campaign is currently paused! Please contact the campaign coordinator for further instructions. Thank you and have a great day!');
+    return res.send(r.toXML());
+  } else if (campaign.status === 'inactive') {
+    r.addWait({length: 1});
+    r.addSpeakAU('The campaign has been completed! Please contact the campaign coordinator for further instructions. Thank you and have a great day!');
+    return res.send(r.toXML());
   } else {
     r.addRedirect(appUrl(`call_again?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`));
   }

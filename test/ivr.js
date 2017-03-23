@@ -90,6 +90,42 @@ describe('/connect', () => {
         .expect(new RegExp(caller.phone_number));
     });
   });
+
+  context('with a paused campaign', () => {
+    beforeEach(async () => { await Campaign.query().delete() });
+    beforeEach(async () => campaign = await Campaign.query().insert({id: 1, name: 'test', status: 'paused', questions: questions_json}));
+    const payload = { From: caller.phone_number };
+    it('plays the paused briefing message ', () => {
+      return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
+        .type('form')
+        .send(payload)
+        .expect(/currently paused/);
+    });
+  });
+
+  context('with a statusless campaign', () => {
+    beforeEach(async () => { await Campaign.query().delete() });
+    beforeEach(async () => campaign = await Campaign.query().insert({id: 1, name: 'test', questions: questions_json}));
+    const payload = { From: caller.phone_number };
+    it('plays the paused briefing message ', () => {
+      return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
+        .type('form')
+        .send(payload)
+        .expect(/currently paused/);
+    });
+  });
+
+  context('with a statusless campaign', () => {
+    beforeEach(async () => { await Campaign.query().delete() });
+    beforeEach(async () => campaign = await Campaign.query().insert({id: 1, name: 'test', status: 'inactive', questions: questions_json}));
+    const payload = { From: caller.phone_number };
+    it('plays the paused briefing message ', () => {
+      return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
+        .type('form')
+        .send(payload)
+        .expect(/has been completed/);
+    });
+  });
 });
 
 describe('/ready', () => {
@@ -537,6 +573,79 @@ describe('/survey_result', () => {
         .expect(/survey\?q=/);
     });
   });
+
+  context('with a non-meaningful disposition & a now paused campaign', () => {
+    beforeEach(async () => { await Campaign.query().delete() });
+    beforeEach(async () => campaign = await Campaign.query().insert({id: 1, name: 'test', status: 'paused', questions: questions_json}));
+    const payload = { Digits: '2' };
+    it ('should announce the result, notify user that campaign is currently paused', () => {
+      return request.post('/survey_result?q=disposition&campaign_id=1')
+        .type('form').send(payload)
+        .expect(/answering machine/)
+        .expect(/currently paused/);
+    });
+  });
+
+  context('with a non-meaningful disposition & a statusless campaign', () => {
+    beforeEach(async () => { await Campaign.query().delete() });
+    beforeEach(async () => campaign = await Campaign.query().insert({id: 1, name: 'test', questions: questions_json}));
+    const payload = { Digits: '2' };
+    it ('should announce the result, notify user that campaign is currently paused', () => {
+      return request.post('/survey_result?q=disposition&campaign_id=1')
+        .type('form').send(payload)
+        .expect(/answering machine/)
+        .expect(/currently paused/);
+    });
+  });
+
+  context('with a non-meaningful disposition & an inactive campaign', () => {
+    beforeEach(async () => { await Campaign.query().delete() });
+    beforeEach(async () => campaign = await Campaign.query().insert({id: 1, name: 'test', status: 'inactive', questions: questions_json}));
+    const payload = { Digits: '2' };
+    it ('should announce the result, notify user that campaign is currently completed', () => {
+      return request.post('/survey_result?q=disposition&campaign_id=1')
+        .type('form').send(payload)
+        .expect(/answering machine/)
+        .expect(/has been completed/);
+    });
+  });
+
+  context('with a non-meaningful disposition & a now paused campaign', () => {
+    beforeEach(async () => { await Campaign.query().delete() });
+    beforeEach(async () => campaign = await Campaign.query().insert({id: 1, name: 'test', status: 'paused', questions: questions_json}));
+    const payload = { Digits: '7' };
+    it ('should announce the result & redirect to the next question', () => {
+      return request.post('/survey_result?q=disposition&campaign_id=1')
+        .type('form').send(payload)
+        .expect(/meaningful/)
+        .expect(/survey\?q=/);
+    });
+  });
+
+  context('with a non-meaningful disposition & a statusless campaign', () => {
+    beforeEach(async () => { await Campaign.query().delete() });
+    beforeEach(async () => campaign = await Campaign.query().insert({id: 1, name: 'test', questions: questions_json}));
+    const payload = { Digits: '7' };
+    it ('should announce the result & redirect to the next question', () => {
+      return request.post('/survey_result?q=disposition&campaign_id=1')
+        .type('form').send(payload)
+        .expect(/meaningful/)
+        .expect(/survey\?q=/);
+    });
+  });
+
+  context('with a non-meaningful disposition & an inactive campaign', () => {
+    beforeEach(async () => { await Campaign.query().delete() });
+    beforeEach(async () => campaign = await Campaign.query().insert({id: 1, name: 'test', status: 'inactive', questions: questions_json}));
+    const payload = { Digits: '7' };
+    it ('should announce the result & redirect to the next question', () => {
+      return request.post('/survey_result?q=disposition&campaign_id=1')
+        .type('form').send(payload)
+        .expect(/meaningful/)
+        .expect(/survey\?q=/);
+    });
+  });
+
 });
 
 describe('/fallback', () => {
