@@ -433,6 +433,7 @@ app.get(/^\/\d+$/, async (req, res) => {
   res.set('Content-Type', 'text/html');
   const campaign = await Campaign.query().where({id: req.path.replace(/^\//, '')}).first();
   if (!campaign) res.sendStatus(404);
+  const questions = campaign.questions;
   return res.render('campaign.ejs', {campaign, questions})
 });
 

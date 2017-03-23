@@ -38,6 +38,7 @@ const unassociatedCallee = {
   location: 'drummoyne',
   campaign_id: 1
 };
+var questions_json = require('../questions.example.json');
 
 beforeEach(async () => {
   await Event.query().delete();
@@ -46,7 +47,7 @@ beforeEach(async () => {
   await Campaign.query().delete();
   await Caller.query().delete();
 });
-beforeEach(async () => campaign = await Campaign.query().insert({id: 1, name: 'test', status: 'active'}));
+beforeEach(async () => campaign = await Campaign.query().insert({id: 1, name: 'test', status: 'active', questions: questions_json}));
 beforeEach(async () => caller = await Caller.query().insert(caller));
 
 describe('/connect', () => {
@@ -492,7 +493,7 @@ describe('/survey', () => {
     await SurveyResult.query().delete();
   });
   beforeEach(async () => call = await Call.query().insert({callee_call_uuid: CallUUID, conference_uuid, status: 'answered'}));
-  beforeEach(async () => campaign = await Campaign.query().insert({id: 1, name: 'test', status: 'active'}));
+  beforeEach(async () => campaign = await Campaign.query().insert({id: 1, name: 'test', status: 'active', questions: questions_json}));
 
   it ('should return the question specified by the q param', () => {
     const question = 'action';
@@ -506,7 +507,7 @@ describe('/survey_result', () => {
   beforeEach(async () => await SurveyResult.query().delete());
 
   it('stores the result', () => {
-    return request.post('/survey_result?q=disposition')
+    return request.post('/survey_result?q=disposition&campaign_id=1')
       .type('form').send({ Digits: '2' })
       .then(async () => {
         const result = await SurveyResult.query()
@@ -519,7 +520,7 @@ describe('/survey_result', () => {
   context('with a non-meaningful disposition', () => {
     const payload = { Digits: '2' };
     it ('should announce the result & redirect to call_again', () => {
-      return request.post('/survey_result?q=disposition')
+      return request.post('/survey_result?q=disposition&campaign_id=1')
         .type('form').send(payload)
         .expect(/answering machine/)
         .expect(/call_again/);
@@ -529,7 +530,7 @@ describe('/survey_result', () => {
   context('with a meaningful disposition', () => {
     const payload = { Digits: '7' };
     it ('should announce the result & redirect to the next question', () => {
-      return request.post('/survey_result?q=disposition')
+      return request.post('/survey_result?q=disposition&campaign_id=1')
         .type('form').send(payload)
         .expect(/meaningful/)
         .expect(/survey\?q=/);

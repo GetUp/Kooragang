@@ -78,7 +78,7 @@
             <% Object.keys(questions).map(key => { %>
               <h3><%= `${questions[key].name} codes` %></h3>
               <ul style="margin-top:1em; list-style: none; font-size: 110%;">
-                <%- Object.keys(questions[key].answers).map(a => `<li><strong>${a}</strong> - ${questions[key].answers[a]}</li>`).join('') %>
+                <%- Object.keys(questions[key].answers).map(a => `<li><strong>${a}</strong> - ${questions[key].answers[a].value}</li>`).join('') %>
               </ul>
             <% }).join('') %>
           </div>
