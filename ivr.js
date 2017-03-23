@@ -58,14 +58,21 @@ app.get('/', (req, res) => res.send('<_-.-_>I\'m awake.</_-.-_>'));
 
 app.post('/answer', async ({body, query}, res, next) => {
   const r = plivo.Response();
-
   const name = query.name;
+  let errorFindingCaller, caller;
+
   const callerTransaction = await transaction.start(Caller.knex());
-  const caller = await Caller.bindTransaction(callerTransaction).query()
-    .where({status: 'available'}).orderBy('updated_at').first();
-  if (caller) {
-    await Caller.query().patchAndFetchById(caller.id, {status: 'in-call'});
+  try{
+    caller = await Caller.bindTransaction(callerTransaction).query().forUpdate()
+      .where({status: 'available'}).orderBy('updated_at').limit(1).first();
+    if (caller) await caller.$query().patch({status: 'in-call'})
     await callerTransaction.commit()
+  } catch (e) {
+    await callerTransaction.rollback();
+    errorFindingCaller = e;
+  }
+
+  if (!errorFindingCaller && caller) {
     await Call.query().insert({
       log_id: res.locals.log_id,
       caller_id: caller.id,
@@ -92,7 +99,6 @@ app.post('/answer', async ({body, query}, res, next) => {
       callbackUrl: appUrl(`conference_event/callee?caller_id=${caller.id}&campaign_id=${query.campaign_id}`)
     });
   } else {
-    await callerTransaction.commit()
     const call = await Call.query().insert({
       log_id: res.locals.log_id,
       callee_id: query.callee_id,
@@ -103,7 +109,8 @@ app.post('/answer', async ({body, query}, res, next) => {
     let campaign = await Campaign.query().where({id: query.campaign_id}).first();
     const calls_in_progress = campaign.calls_in_progress;
     campaign = await dialer.decrementCallsInProgress(campaign);
-    await Event.query().insert({call_id: call.id, name: 'drop', value: {calls_in_progress, updated_calls_in_progress: campaign.calls_in_progress} })
+    const status = errorFindingCaller ? 'drop from error' : 'drop';
+    await Event.query().insert({call_id: call.id, name: status, value: {calls_in_progress, updated_calls_in_progress: campaign.calls_in_progress, errorFindingCaller} })
     r.addHangup({reason: 'drop'});
   }
   res.send(r.toXML());

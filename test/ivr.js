@@ -382,7 +382,7 @@ describe('/answer', () => {
         });
 
         it('should add the caller to the conference', () => {
-          return request.post(`/answer?name=Bridger&callee_id=${callee.id}`)
+          return request.post(`/answer?name=Bridger&callee_id=${callee.id}&campaign_id=${campaign.id}`)
             .type('form').send({CallStatus, CallUUID: call_uuid})
             .expect(new RegExp(caller.id))
         });
