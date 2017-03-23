@@ -14,6 +14,7 @@ const promisfy = require('es6-promisify');
 Model.knex(knex);
 const target = process.env.TARGET;
 const debug = process.env.DEBUG;
+let wrap;
 
 let state = {};
 let agents = 0;
@@ -54,8 +55,12 @@ app.all('/hangup', async (req, res, next) => {
 });
 
 app.all('/cycle', async (req, res, next) => {
-  const caller = await Caller.query().orderBy('created_at', 'desc').where({phone_number: req.query.agent}).limit(1).first();
   const r = plivo.Response();
+  if (wrap) {
+    r.addHangup();
+    return res.send(r.toXML());
+  }
+  const caller = await Caller.query().orderBy('created_at', 'desc').where({phone_number: req.query.agent}).limit(1).first();
   if (debug) console.error(`Agent ${caller.phone_number} has status ${caller.status}`);
   if (caller.status === 'in-call') {
     if (debug) console.error(`Agent ${caller.phone_number} is on a call. Setting disposition.`);
@@ -112,11 +117,14 @@ app.listen(port, () => {
   process.stdin.setRawMode(true);
   process.stdin.on('keypress', async (str, key) => {
     if (key.ctrl && key.name === 'c') {
-      console.error('exiting..')
+      console.error('All done!')
       process.exit();
+    } else if (key.name === 'p') {
+      wrap = !wrap;
+      console.error(wrap ? 'Hanging up all agents' : 'OK to resume');
     } else if (key.name.match(/[1-9]/)){
       await addAgent(parseInt(key.name, 10));
     }
   });
-  console.log('Press a number to add that many agents');
+  console.log('Press a number to add that many agents and p to pause/resume the simulation');
 });
