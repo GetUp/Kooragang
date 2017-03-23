@@ -123,10 +123,10 @@ describe('.dial', () => {
       beforeEach(async () => {
         await Call.query().insert({callee_id: callee.id, dropped: true, ended_at: new Date()})
       });
-      it('should decrease the calling ratio', async () => {
+      it('should decrease the calling ratio using the ratio_decrease_factor', async () => {
         await dialer.dial(testUrl, campaign)
         const updatedCampaign = await Campaign.query().where({id: campaign.id}).first();
-        expect(updatedCampaign.ratio).to.be(campaign.max_ratio - campaign.ratio_increment);
+        expect(updatedCampaign.ratio).to.be(campaign.max_ratio - campaign.ratio_increment * campaign.ratio_decrease_factor);
       });
     });
 

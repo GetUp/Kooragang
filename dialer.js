@@ -67,7 +67,7 @@ const recalculateRatio = async(campaign) => {
     const dropRow = _.find(statusCounts, ({dropped}) => dropped);
     const drops = dropRow ? parseInt(dropRow.count, 10) : 0;
     if (drops / total > dropRatio) {
-      newRatio = campaign.ratio - campaign.ratio_increment;
+      newRatio = campaign.ratio - campaign.ratio_increment * campaign.ratio_decrease_factor;
     }else {
       newRatio = campaign.ratio + campaign.ratio_increment;
     }
