@@ -20,6 +20,7 @@ const {
 } = require('../models');
 
 const CallUUID = '111';
+let campaign
 let caller = {
   first_name: 'bob',
   phone_number: '61288888888',
@@ -244,33 +245,16 @@ describe('/call_ended', () => {
 
   context('with a caller with status "in-call"', () => {
     beforeEach(async () => caller.$query().patch({status: 'in-call', call_uuid: CallUUID}));
-    beforeEach(async () => campaign.$query().patch({calls_in_progress: 2}));
-    it('should decrement the calls_in_progress', async () => {
-      await request.post(`/call_ended?campaign_id=${campaign.id}`)
-        .type('form').send({CallUUID})
-      expect((await campaign.$query()).calls_in_progress).to.be(1);
-    });
-
     it('should unset the "in-call" status', async () => {
       await request.post(`/call_ended?campaign_id=${campaign.id}`)
         .type('form').send({CallUUID})
       expect((await caller.$query()).status).to.be('complete');
     });
 
-    it('should unset the "in-call" status', async () => {
+    it('should create a caller_complete event', async () => {
       await request.post(`/call_ended?campaign_id=${campaign.id}`)
         .type('form').send({CallUUID})
       expect(await Event.query().where({name: 'caller_complete'}).first()).to.be.a(Event);
-    });
-  })
-
-  context('with a caller with status "in-call" and ending a callback call', () => {
-    beforeEach(async () => caller.$query().patch({status: 'in-call', call_uuid: CallUUID}));
-    beforeEach(async () => campaign.$query().patch({calls_in_progress: 2}));
-    it('should decrement the calls_in_progress', async () => {
-      await request.post(`/call_ended?campaign_id=${campaign.id}&callback=1&number=${caller.phone_number}`)
-        .type('form').send({CallUUID})
-      expect((await campaign.$query()).calls_in_progress).to.be(1);
     });
   })
 });
@@ -282,7 +266,6 @@ describe('/hold_music', () => {
 });
 
 describe('/conference_event/caller', () => {
-  let campaign;
   beforeEach( async () => {
     await Event.query().delete();
     await Call.query().delete();
@@ -380,11 +363,12 @@ describe('/answer', () => {
     beforeEach(async () => Callee.query().insert(associatedCallee));
     beforeEach(async () => {
       callee = await Callee.query().where({phone_number: associatedCallee.phone_number}).first();
+      campaign = await campaign.$query().patch({calls_in_progress: 1}).returning('*').first()
     });
 
-    context('with no conferences on the line', () => {
+    context('with no callers available', () => {
       beforeEach(async () => Caller.query().delete());
-      it('return hangup but drop the call', () => {
+      it('returns hangup but drops the call', () => {
         return request.post(`/answer?name=Bridger&callee_id=${callee.id}&campaign_id=${callee.campaign_id}`)
           .type('form').send({CallStatus, CallUUID: call_uuid})
           .expect(/hangup/i)
@@ -401,12 +385,25 @@ describe('/answer', () => {
             expect(event).to.be.an(Event);
           });
       });
+
+      it('should decrement calls_in_progress', async () => {
+        await request.post(`/answer?name=Bridger&callee_id=${callee.id}&campaign_id=${callee.campaign_id}`)
+          .type('form').send({CallStatus, CallUUID: call_uuid})
+        campaign = await campaign.$query()
+        expect(campaign.calls_in_progress).to.be(0)
+      });
     });
 
-    context('with available member', () => {
+    context('with available caller', () => {
       beforeEach(async () => {
         return Caller.query().where({phone_number: caller.phone_number})
           .patch({status: 'available', conference_member_id})
+      });
+      it('should also decrement calls_in_progress', async () => {
+        await request.post(`/answer?name=Bridger&callee_id=${callee.id}&campaign_id=${callee.campaign_id}`)
+          .type('form').send({CallStatus, CallUUID: call_uuid})
+        campaign = await campaign.$query()
+        expect(campaign.calls_in_progress).to.be(0)
       });
       context('with the speak api mocked', () => {
         beforeEach(() => {
@@ -425,13 +422,13 @@ describe('/answer', () => {
         });
 
         it('should speak the callee\'s name in the conference', () => {
-          return request.post(`/answer?name=Bridger&callee_id=${callee.id}`)
+          return request.post(`/answer?name=Bridger&callee_id=${callee.id}&campaign_id=${campaign.id}`)
             .type('form').send({CallStatus, CallUUID: call_uuid})
             .then(() => mockedApiCall.done() );
         });
 
         it('should create a call record', () => {
-          return request.post(`/answer?name=Bridger&callee_id=${callee.id}`)
+          return request.post(`/answer?name=Bridger&callee_id=${callee.id}&campaign_id=${campaign.id}`)
             .type('form').send({CallStatus, CallUUID: call_uuid})
             .then(async () => {
               const call = await Call.query().where({callee_id: callee.id, callee_call_uuid: call_uuid}).first();
@@ -442,7 +439,7 @@ describe('/answer', () => {
 
       context('when the callee has no name set', () => {
         it('should not say anything', () => {
-          return request.post(`/answer?callee_id=${callee.id}&name=`)
+          return request.post(`/answer?callee_id=${callee.id}&name=&campaign_id=${campaign.id}`)
             .type('form').send({CallStatus, CallUUID: call_uuid})
         });
       });

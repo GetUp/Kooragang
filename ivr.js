@@ -72,8 +72,12 @@ app.post('/answer', async ({body, query}, res, next) => {
     errorFindingCaller = e;
   }
 
+  let campaign = await Campaign.query().where({id: query.campaign_id}).first();
+  const calls_in_progress = campaign.calls_in_progress;
+  campaign = await dialer.decrementCallsInProgress(campaign);
+
   if (!errorFindingCaller && caller) {
-    await Call.query().insert({
+    const call = await Call.query().insert({
       log_id: res.locals.log_id,
       caller_id: caller.id,
       callee_id: query.callee_id,
@@ -91,6 +95,8 @@ app.post('/answer', async ({body, query}, res, next) => {
         await promisify(api.speak_conference_member.bind(api))(params);
       }catch(e){}
     }
+
+    await Event.query().insert({call_id: call.id, name: 'answered', value: {calls_in_progress, updated_calls_in_progress: campaign.calls_in_progress} })
     r.addConference(`conference-${caller.id}`, {
       startConferenceOnEnter: false,
       stayAlone: false,
@@ -104,9 +110,6 @@ app.post('/answer', async ({body, query}, res, next) => {
       dropped: true,
       callee_call_uuid: body.CallUUID
     });
-    let campaign = await Campaign.query().where({id: query.campaign_id}).first();
-    const calls_in_progress = campaign.calls_in_progress;
-    campaign = await dialer.decrementCallsInProgress(campaign);
     const status = errorFindingCaller ? 'drop from error' : 'drop';
     await Event.query().insert({call_id: call.id, name: status, value: {calls_in_progress, updated_calls_in_progress: campaign.calls_in_progress, errorFindingCaller} })
     r.addHangup({reason: 'drop'});
@@ -276,7 +279,6 @@ app.post('/call_ended', async (req, res) => {
     return res.sendStatus(200);
   }
 
-  if(caller.status === 'in-call') await dialer.decrementCallsInProgress(campaign);
   await caller.$query().patch({status: 'complete'});
   await Event.query().insert({campaign_id: campaign.id, name: 'caller_complete', value: {caller_id: caller.id}})
 
@@ -325,7 +327,6 @@ app.post('/conference_event/caller', async ({query, body}, res, next) => {
     if (query.start) {
       await Event.query().insert({campaign_id: campaign.id, name: 'join', value: {calls_in_progress}})
     }else {
-      campaign = await dialer.decrementCallsInProgress(campaign);
       await Event.query().insert({campaign_id: campaign.id, name: 'available', value: {calls_in_progress, updated_calls_in_progress: campaign.calls_in_progress}})
     }
     await dialer.dial(appUrl(), campaign);
