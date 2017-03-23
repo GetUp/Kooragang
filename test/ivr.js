@@ -348,10 +348,11 @@ describe('/answer', () => {
 
     context('with no conferences on the line', () => {
       beforeEach(async () => Caller.query().delete());
-      it('be successful but drop the call', () => {
+      it('return hangup but drop the call', () => {
         return request.post(`/answer?name=Bridger&callee_id=${callee.id}&campaign_id=${callee.campaign_id}`)
           .type('form').send({CallStatus, CallUUID: call_uuid})
-          .expect(200)
+          .expect(/hangup/i)
+          .expect(/drop/);
       });
 
       it('should record the drop on the call and as an event', () => {
@@ -382,7 +383,7 @@ describe('/answer', () => {
         });
 
         it('should add the caller to the conference', () => {
-          return request.post(`/answer?name=Bridger&callee_id=${callee.id}`)
+          return request.post(`/answer?name=Bridger&callee_id=${callee.id}&campaign_id=${campaign.id}`)
             .type('form').send({CallStatus, CallUUID: call_uuid})
             .expect(new RegExp(caller.id))
         });
@@ -535,5 +536,26 @@ describe('/survey_result', () => {
         .expect(/meaningful/)
         .expect(/survey\?q=/);
     });
+  });
+});
+
+describe('/fallback', () => {
+  it('stores a caller fallback event', async () => {
+    await request.post('/fallback?campaign_id=1')
+      .type('form').send({CallUUID})
+      .expect(/call back/)
+    const event = await Event.query().where({campaign_id: 1, name: 'caller fallback'}).first()
+    expect(event.value).to.be(`{"CallUUID":"${CallUUID}"}`)
+  });
+});
+
+describe('/callee_fallback', () => {
+  it('stores a callee fallback event', async () => {
+    await request.post('/callee_fallback?callee_id=357&campaign_id=1')
+      .type('form').send({CallUUID})
+      .expect(/Hangup/)
+    const event = await Event.query().where({campaign_id: 1, name: 'callee fallback'}).first()
+    expect(event.value).to.match(new RegExp(CallUUID))
+    expect(event.value).to.match(/357/)
   });
 });

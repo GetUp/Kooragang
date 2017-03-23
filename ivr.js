@@ -58,14 +58,21 @@ app.get('/', (req, res) => res.send('<_-.-_>I\'m awake.</_-.-_>'));
 
 app.post('/answer', async ({body, query}, res, next) => {
   const r = plivo.Response();
-
   const name = query.name;
+  let errorFindingCaller, caller;
+
   const callerTransaction = await transaction.start(Caller.knex());
-  const caller = await Caller.bindTransaction(callerTransaction).query()
-    .where({status: 'available'}).orderBy('updated_at').first();
-  if (caller) {
-    await Caller.query().patchAndFetchById(caller.id, {status: 'in-call'});
+  try{
+    caller = await Caller.bindTransaction(callerTransaction).query().forUpdate()
+      .where({status: 'available'}).orderBy('updated_at').limit(1).first();
+    if (caller) await caller.$query().patch({status: 'in-call'})
     await callerTransaction.commit()
+  } catch (e) {
+    await callerTransaction.rollback();
+    errorFindingCaller = e;
+  }
+
+  if (!errorFindingCaller && caller) {
     await Call.query().insert({
       log_id: res.locals.log_id,
       caller_id: caller.id,
@@ -82,18 +89,14 @@ app.post('/answer', async ({body, query}, res, next) => {
       }
       try{
         await promisify(api.speak_conference_member.bind(api))(params);
-      }catch(e){
-        console.error('======= Unable to contact name with:', params, ' and error: ', e);
-      }
+      }catch(e){}
     }
     r.addConference(`conference-${caller.id}`, {
       startConferenceOnEnter: false,
       stayAlone: false,
       callbackUrl: appUrl(`conference_event/callee?caller_id=${caller.id}&campaign_id=${query.campaign_id}`)
     });
-    res.send(r.toXML());
   } else {
-    await callerTransaction.commit()
     const call = await Call.query().insert({
       log_id: res.locals.log_id,
       callee_id: query.callee_id,
@@ -104,9 +107,11 @@ app.post('/answer', async ({body, query}, res, next) => {
     let campaign = await Campaign.query().where({id: query.campaign_id}).first();
     const calls_in_progress = campaign.calls_in_progress;
     campaign = await dialer.decrementCallsInProgress(campaign);
-    await Event.query().insert({call_id: call.id, name: 'drop', value: {calls_in_progress, updated_calls_in_progress: campaign.calls_in_progress} })
-    res.sendStatus(200);
+    const status = errorFindingCaller ? 'drop from error' : 'drop';
+    await Event.query().insert({call_id: call.id, name: status, value: {calls_in_progress, updated_calls_in_progress: campaign.calls_in_progress, errorFindingCaller} })
+    r.addHangup({reason: 'drop'});
   }
+  res.send(r.toXML());
 });
 
 app.post('/hangup', async ({body, query}, res, next) => {
@@ -428,6 +433,20 @@ app.post('/feedback', (req, res) => {
 });
 // already logged in middleware
 app.post('/log', (req, res) => res.sendStatus(200));
+
+app.post('/fallback', async ({body, query}, res) => {
+  await Event.query().insert({campaign_id: query.campaign_id, name: 'caller fallback', value: body})
+  const r = plivo.Response()
+  r.addSpeakAU('Dreadfully sorry; an error has occurred. Please call back to continue.')
+  res.send(r.toXML())
+});
+
+app.post('/callee_fallback', async ({body, query}, res) => {
+  await Event.query().insert({campaign_id: query.campaign_id, name: 'callee fallback', value: {body, query}})
+  const r = plivo.Response()
+  r.addHangup()
+  res.send(r.toXML())
+});
 
 app.get(/^\/\d+$/, async (req, res) => {
   res.set('Content-Type', 'text/html');

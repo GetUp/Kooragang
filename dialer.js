@@ -63,18 +63,21 @@ const recalculateRatio = async(campaign) => {
     .where({campaign_id: campaign.id})
     .groupBy('dropped');
   const total = _.sumBy(statusCounts, ({count}) => parseInt(count, 10));
-  const dropStatus = _.find(statusCounts, ({dropped}) => dropped);
-  const drops = dropStatus ? parseInt(dropStatus.count, 10) : 0;
-  if (drops / total > dropRatio) {
-    newRatio = campaign.ratio - campaign.ratio_increment;
-  }else {
-    newRatio = campaign.ratio + campaign.ratio_increment;
+  if (total !== 0) {
+    const dropRow = _.find(statusCounts, ({dropped}) => dropped);
+    const drops = dropRow ? parseInt(dropRow.count, 10) : 0;
+    if (drops / total > dropRatio) {
+      newRatio = campaign.ratio - campaign.ratio_increment;
+    }else {
+      newRatio = campaign.ratio + campaign.ratio_increment;
+    }
+    if (newRatio < 1) newRatio = 1;
+    if (newRatio > campaign.max_ratio) newRatio = campaign.max_ratio;
+  } else {
+    newRatio = 1;
   }
-  if (newRatio < 1) newRatio = 1;
-  if (newRatio > campaign.max_ratio) newRatio = campaign.max_ratio;
-  if (process.env.NODE_ENV === 'development') console.error(`UPDATING RATIO TO ${newRatio}`)
-  await Event.query().insert({campaign_id: campaign.id, name: 'ratio', value: newRatio});
-  return await Campaign.query().patchAndFetchById(campaign.id, {ratio: newRatio, last_checked_ratio_at: new Date()});
+  await Event.query().insert({campaign_id: campaign.id, name: 'ratio', value: {ratio: newRatio, old_ratio: campaign.ratio}});
+  return Campaign.query().patchAndFetchById(campaign.id, {ratio: newRatio, last_checked_ratio_at: new Date()});
 }
 
 const powerDial = async (appUrl, campaign) => {
@@ -102,7 +105,7 @@ const updateAndCall = async (campaign, callee, appUrl) => {
     from : process.env.NUMBER || '1111111111',
     answer_url : `${appUrl}/answer?name=${callee.first_name || ''}&callee_id=${callee.id}&campaign_id=${callee.campaign_id}`,
     hangup_url : `${appUrl}/hangup?callee_id=${callee.id}&campaign_id=${callee.campaign_id}`,
-    fallback_url : `${appUrl}/log?callee_id=${callee.id}&campaign_id=${callee.campaign_id}`,
+    fallback_url : `${appUrl}/callee_fallback?callee_id=${callee.id}&campaign_id=${callee.campaign_id}`,
     time_limit: 10 * 60,
     ring_timeout: 30
   };

@@ -82,7 +82,20 @@ describe('.dial', () => {
         .reply(200);
     });
 
+    context('with no calls in the last 10 minutes', () => {
+      beforeEach(async () => {
+        campaign = await Campaign.query().patchAndFetchById(campaign.id, {dialer: 'ratio', ratio: 1.2});
+      });
+
+      it('should reset the ratio to 1', async () => {
+        await dialer.dial(testUrl, campaign)
+        const updatedCampaign = await Campaign.query().where({id: campaign.id}).first();
+        expect(updatedCampaign.ratio).to.be(1);
+      });
+    });
+
     context('with no drops in the last 10 minutes', () => {
+      beforeEach(async () => await Call.query().insert({callee_id: callee.id, ended_at: new Date()}))
       it('should increase the calling ratio by the campaign ratio_increment', async () => {
         await dialer.dial(testUrl, campaign)
         const updatedCampaign = await Campaign.query().where({id: campaign.id}).first();
@@ -140,7 +153,7 @@ describe('.dial', () => {
         await dialer.dial(testUrl, campaign)
         const event = await Event.query().where({campaign_id: campaign.id, name: 'ratio'}).first();
         expect(event).to.be.an(Event);
-        expect(event.value).to.be((currentRatio + 0.2).toString());
+        expect(event.value).to.be('{"ratio":2.2,"old_ratio":2}');
       });
     });
 
