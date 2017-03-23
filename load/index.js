@@ -24,6 +24,10 @@ class Caller extends Model {
   static get tableName() { return 'callers' }
 }
 
+class Event extends Model {
+  static get tableName() { return 'events' }
+}
+
 class Call extends Model {
   static get tableName() { return 'calls' }
 }
@@ -85,15 +89,16 @@ const report = async () => {
     .count('calls.id as count')
     .whereRaw("ended_at >= NOW() - INTERVAL '5 minutes'")
     .groupBy('dropped');
-  const waitSum = await Caller.knexQuery()
-    .avg('seconds_waiting as seconds_waiting')
-    .whereIn('id', agentIds).first();
+  const waitEvents = await Event.knexQuery()
+    .whereIn('name', ['caller_complete', 'answered'])
+    .whereRaw("created_at >= NOW() - INTERVAL '5 minutes'");
+  const wait = waitEvents.length ? Math.round(_.sum(waitEvents, event => JSON.parse(event.value).seconds_waiting || 0) / waitEvents.length) : 1;
   const total = _.sumBy(statusCounts, ({count}) => parseInt(count, 10));
   const dropStatus = _.find(statusCounts, ({dropped}) => dropped);
   const drops = dropStatus ? parseInt(dropStatus.count, 10) : 0;
   const rate = agents ? Math.round(total*12/agents) : 0;
   const dropRate = total ? Math.round(drops*100/total) : 0;
-  console.log(moment().format('h:mm:ss a ⇨ '), statuses.length ? statuses.join(', ') : 'connected: 0', ` average wait: ${Math.round(waitSum.seconds_waiting) || 0}s   [${rate}/agent hour with ${total} total, ${drops} drops at ${dropRate}% drop rate in last 5 mins ]`);
+  console.log(moment().format('h:mm:ss a ⇨ '), statuses.length ? statuses.join(', ') : 'connected: 0', ` average wait: ${wait}s   [${rate}/agent hour with ${total} total, ${drops} drops at ${dropRate}% drop rate in last 5 mins ]`);
 };
 
 const addAgent = async (count) => {
