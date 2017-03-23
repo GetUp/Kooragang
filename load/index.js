@@ -93,7 +93,7 @@ const report = async () => {
   const drops = dropStatus ? parseInt(dropStatus.count, 10) : 0;
   const rate = agents ? Math.round(total*12/agents) : 0;
   const dropRate = total ? Math.round(drops*100/total) : 0;
-  console.log(moment().format('h:mm:ss a ⇨ '), statuses.length ? statuses.join(', ') : 'connected: 0', ` average wait: ${waitSum.seconds_waiting || 0}s   [${rate}/agent hour with ${total} total, ${drops} drops at ${dropRate}% drop rate in last 5 mins ]`);
+  console.log(moment().format('h:mm:ss a ⇨ '), statuses.length ? statuses.join(', ') : 'connected: 0', ` average wait: ${Math.round(waitSum.seconds_waiting) || 0}s   [${rate}/agent hour with ${total} total, ${drops} drops at ${dropRate}% drop rate in last 5 mins ]`);
 };
 
 const addAgent = async (count) => {
