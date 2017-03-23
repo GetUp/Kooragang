@@ -254,15 +254,16 @@ app.post('/ready', async (req, res, next) => {
     r.addSpeakAU('Remember, don\'t hangup *your* phone. Press star to end a call. Or wait for the other person to hang up.');
     callbackUrl += '&start=1';
   }
-  r.addConference(`conference-${caller_id}`, {
+  let params = {
     waitSound: appUrl('hold_music'),
     maxMembers: 2,
     timeLimit: 60 * 120,
     callbackUrl: appUrl(callbackUrl),
     hangupOnStar: 'true',
-    digitsMatch: ['2'],
     action: appUrl(`survey?q=disposition&caller_id=${caller_id}&campaign_id=${req.query.campaign_id}`)
-  });
+  }
+  if (process.env.ENABLE_ANSWER_MACHINE_SHORTCUT) params.digitsMatch = ['2']
+  r.addConference(`conference-${caller_id}`, params);
   res.send(r.toXML());
 });
 

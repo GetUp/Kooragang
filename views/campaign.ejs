@@ -71,7 +71,12 @@
           </div>
           <h2>Call result codes</h2>
           <div class="well">
-            <p><strong>Remember:</strong> to end a call press the <strong>* key</strong> . If you hit an answering machine, press <strong>2</strong> to move to the next call.</p>
+            <p>
+              <strong>Remember:</strong> to end a call press the <strong>* key</strong>.
+              <% if (process.env.ENABLE_ANSWER_MACHINE_SHORTCUT) { %>
+                If you hit an answering machine, press <strong>2</strong> to move to the next call.
+              <% } %>
+             </p>
 
             <p>You will be asked to enter one of these codes to record the outcome of the call:</p>
 
