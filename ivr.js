@@ -429,7 +429,8 @@ app.post('/feedback', (req, res) => {
 // already logged in middleware
 app.post('/log', (req, res) => res.sendStatus(200));
 
-app.post('/fallback', (req, res) => {
+app.post('/fallback', async ({body, query}, res) => {
+  await Event.query().insert({campaign_id: query.campaign_id, name: 'caller fallback', value: body})
   const r = plivo.Response()
   r.addSpeakAU('Dreadfully sorry; an error has occurred. Please call back to continue.')
   res.send(r.toXML())

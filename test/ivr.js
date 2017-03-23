@@ -537,3 +537,13 @@ describe('/survey_result', () => {
     });
   });
 });
+
+describe('/fallback', () => {
+  it('stores an event', async () => {
+    await request.post('/fallback?campaign_id=1')
+      .type('form').send({CallUUID})
+      .expect(/call back/)
+    const event = await Event.query().where({campaign_id: 1, name: 'caller fallback'}).first()
+    expect(event.value).to.be(`{"CallUUID":"${CallUUID}"}`)
+  });
+});
