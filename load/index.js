@@ -18,6 +18,7 @@ let wrap;
 
 let state = {};
 let agents = 0;
+let agentIds = [];
 
 class Caller extends Model {
   static get tableName() { return 'callers' }
@@ -61,6 +62,7 @@ app.all('/cycle', async (req, res, next) => {
     return res.send(r.toXML());
   }
   const caller = await Caller.query().orderBy('created_at', 'desc').where({phone_number: req.query.agent}).limit(1).first();
+  if (!agentIds.includes(caller.id)) agentIds.push(caller.id);
   if (debug) console.error(`Agent ${caller.phone_number} has status ${caller.status}`);
   if (caller.status === 'in-call') {
     if (debug) console.error(`Agent ${caller.phone_number} is on a call. Setting disposition.`);
@@ -83,12 +85,15 @@ const report = async () => {
     .count('calls.id as count')
     .whereRaw("ended_at >= NOW() - INTERVAL '5 minutes'")
     .groupBy('dropped');
+  const waitSum = await Caller.knexQuery()
+    .avg('seconds_waiting as seconds_waiting')
+    .whereIn('id', agentIds).first();
   const total = _.sumBy(statusCounts, ({count}) => parseInt(count, 10));
   const dropStatus = _.find(statusCounts, ({dropped}) => dropped);
   const drops = dropStatus ? parseInt(dropStatus.count, 10) : 0;
   const rate = agents ? Math.round(total*12/agents) : 0;
   const dropRate = total ? Math.round(drops*100/total) : 0;
-  console.log(moment().format('h:mm:ss a ⇨ '), statuses.length ? statuses.join(', ') : 'connected: 0', `   [${rate}/agent hour with ${total} total, ${drops} drops at ${dropRate}% drop rate in last 5 mins]`);
+  console.log(moment().format('h:mm:ss a ⇨ '), statuses.length ? statuses.join(', ') : 'connected: 0', ` average wait: ${waitSum.seconds_waiting || 0}s   [${rate}/agent hour with ${total} total, ${drops} drops at ${dropRate}% drop rate in last 5 mins ]`);
 };
 
 const addAgent = async (count) => {
