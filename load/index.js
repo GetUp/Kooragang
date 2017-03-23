@@ -59,7 +59,7 @@ app.all('/cycle', async (req, res, next) => {
   if (debug) console.error(`Agent ${caller.phone_number} has status ${caller.status}`);
   if (caller.status === 'in-call') {
     if (debug) console.error(`Agent ${caller.phone_number} is on a call. Setting disposition.`);
-    r.addDTMF(2);
+    r.addDTMF(3);
     r.addWait({length: 5});
     r.addDTMF(1);
   } else {
