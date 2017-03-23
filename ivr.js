@@ -2,7 +2,6 @@ const express = require('express');
 const plivo = require('plivo');
 const bodyParser = require('body-parser');
 const async = require('async');
-const moment = require('moment');
 const _ = require('lodash');
 const app = express();
 const promisify = require('es6-promisify');
@@ -59,13 +58,16 @@ app.get('/', (req, res) => res.send('<_-.-_>I\'m awake.</_-.-_>'));
 app.post('/answer', async ({body, query}, res, next) => {
   const r = plivo.Response();
   const name = query.name;
-  let errorFindingCaller, caller;
+  let errorFindingCaller, caller, seconds_waiting;
 
   const callerTransaction = await transaction.start(Caller.knex());
   try{
     caller = await Caller.bindTransaction(callerTransaction).query().forUpdate()
       .where({status: 'available'}).orderBy('updated_at').limit(1).first();
-    if (caller) await caller.$query().patch({status: 'in-call'})
+    if (caller) {
+      seconds_waiting = Math.round((new Date() - caller.updated_at) / 1000);
+      await caller.$query().patch({status: 'in-call', seconds_waiting: caller.seconds_waiting + seconds_waiting})
+    }
     await callerTransaction.commit()
   } catch (e) {
     await callerTransaction.rollback();
@@ -96,7 +98,7 @@ app.post('/answer', async ({body, query}, res, next) => {
       }catch(e){}
     }
 
-    await Event.query().insert({call_id: call.id, name: 'answered', value: {calls_in_progress, updated_calls_in_progress: campaign.calls_in_progress} })
+    await Event.query().insert({call_id: call.id, name: 'answered', value: {calls_in_progress, updated_calls_in_progress: campaign.calls_in_progress, caller_id: caller.id, seconds_waiting} })
     r.addConference(`conference-${caller.id}`, {
       startConferenceOnEnter: false,
       stayAlone: false,
@@ -279,8 +281,9 @@ app.post('/call_ended', async (req, res) => {
     return res.sendStatus(200);
   }
 
-  await caller.$query().patch({status: 'complete'});
-  await Event.query().insert({campaign_id: campaign.id, name: 'caller_complete', value: {caller_id: caller.id}})
+  const seconds_waiting = caller.seconds_waiting + (caller.status === 'available' ? Math.round((new Date() - caller.updated_at) / 1000) : 0);
+  await caller.$query().patch({status: 'complete', seconds_waiting});
+  await Event.query().insert({campaign_id: campaign.id, name: 'caller_complete', value: {caller_id: caller.id, seconds_waiting}})
 
   if (caller.callback) {
     const params = {

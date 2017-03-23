@@ -1,6 +1,7 @@
 const expect = require('expect.js');
 const nock = require('nock');
 const proxyquire = require('proxyquire');
+const moment = require('moment');
 const app = proxyquire('../ivr', {
   './dialer': {
     dial: async (appUrl) => {},
@@ -257,6 +258,17 @@ describe('/call_ended', () => {
       expect(await Event.query().where({name: 'caller_complete'}).first()).to.be.a(Event);
     });
   })
+
+  context('with a caller with status "available"', () => {
+    beforeEach(async () => caller.$query().patch({status: 'available', call_uuid: CallUUID, updated_at: moment().subtract(1, 'seconds').toDate(), seconds_waiting: 4}));
+    it('should update their seconds_waiting', async () => {
+      await request.post(`/call_ended?campaign_id=${campaign.id}`)
+        .type('form').send({CallUUID})
+      caller = await caller.$query()
+      expect(caller.seconds_waiting).to.be(5);
+      expect(caller.status).to.be('complete');
+    });
+  });
 });
 
 describe('/hold_music', () => {
@@ -284,16 +296,6 @@ describe('/conference_event/caller', () => {
       let updatedCaller = await Caller.query().first();
       expect(updatedCaller.status).to.be('available');
       expect(updatedCaller.conference_member_id).to.be('11');
-    })
-  });
-
-  context('with caller exiting the conference', () => {
-    it('should update the caller to be available', async () => {
-      await request.post(`/conference_event/caller?caller_id=${caller.id}`)
-        .type('form')
-        .send({ConferenceAction: 'exit', ConferenceFirstMember: 'true'})
-      let updatedCaller = await Caller.query().first();
-      expect(updatedCaller.status).to.be(null);
     })
   });
 
@@ -399,12 +401,7 @@ describe('/answer', () => {
         return Caller.query().where({phone_number: caller.phone_number})
           .patch({status: 'available', conference_member_id})
       });
-      it('should also decrement calls_in_progress', async () => {
-        await request.post(`/answer?name=Bridger&callee_id=${callee.id}&campaign_id=${callee.campaign_id}`)
-          .type('form').send({CallStatus, CallUUID: call_uuid})
-        campaign = await campaign.$query()
-        expect(campaign.calls_in_progress).to.be(0)
-      });
+
       context('with the speak api mocked', () => {
         beforeEach(() => {
           mockedApiCall = nock('https://api.plivo.com')
@@ -413,6 +410,22 @@ describe('/answer', () => {
             })
             .query(true)
             .reply(200);
+        });
+
+        it('should also decrement calls_in_progress', async () => {
+          await request.post(`/answer?name=Bridger&callee_id=${callee.id}&campaign_id=${callee.campaign_id}`)
+            .type('form').send({CallStatus, CallUUID: call_uuid})
+          campaign = await campaign.$query()
+          expect(campaign.calls_in_progress).to.be(0)
+        });
+
+        it('should set their status to in-call and update the seconds_waiting', async () => {
+          await caller.$query().patch({updated_at: moment().subtract(1, 'seconds').toDate(), seconds_waiting: 4 });
+          await request.post(`/answer?name=Bridger&callee_id=${callee.id}&campaign_id=${callee.campaign_id}`)
+            .type('form').send({CallStatus, CallUUID: call_uuid})
+          caller = await caller.$query()
+          expect(caller.status).to.be('in-call')
+          expect(caller.seconds_waiting).to.be(5)
         });
 
         it('should add the caller to the conference', () => {
