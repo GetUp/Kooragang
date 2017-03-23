@@ -214,7 +214,7 @@ describe('/call_ended', () => {
       await request.post(`/call_ended?campaign_id=${campaign.id}`)
         .type('form').send({CallUUID})
         .expect(200)
-      expect(await Event.query().where({name: 'unknown call ended'}).first()).to.be.a(Event);
+      expect(await Event.query().where({name: 'caller ended without entering queue'}).first()).to.be.a(Event);
     });
   });
 

@@ -98,7 +98,7 @@ app.post('/answer', async ({body, query}, res, next) => {
       }catch(e){}
     }
 
-    await Event.query().insert({call_id: call.id, name: 'answered', value: {calls_in_progress, updated_calls_in_progress: campaign.calls_in_progress, caller_id: caller.id, seconds_waiting} })
+    await Event.query().insert({name: 'answered', campaign_id: campaign.id, call_id: call.id, caller_id: caller.id, value: {calls_in_progress, updated_calls_in_progress: campaign.calls_in_progress, seconds_waiting} })
     r.addConference(`conference-${caller.id}`, {
       startConferenceOnEnter: false,
       stayAlone: false,
@@ -134,7 +134,7 @@ app.post('/hangup', async ({body, query}, res, next) => {
     let {campaign} = await Callee.query().eager('campaign').where({id: call.callee_id}).first();
     const calls_in_progress = campaign.calls_in_progress;
     campaign = await dialer.decrementCallsInProgress(campaign);
-    await Event.query().insert({call_id: call.id, name: 'filter', value: {status, calls_in_progress, updated_calls_in_progress: campaign.calls_in_progress}})
+    await Event.query().insert({name: 'filter', campaign_id: campaign.id, call_id: call.id, value: {status, calls_in_progress, updated_calls_in_progress: campaign.calls_in_progress}})
     await dialer.dial(appUrl(), campaign);
   }
   res.sendStatus(200);
@@ -277,14 +277,14 @@ app.post('/call_ended', async (req, res) => {
 
   const caller = await Caller.query().where({call_uuid: req.body.CallUUID}).first();
   if (!caller) {
-    await Event.query().insert({campaign_id: campaign.id, name: 'unknown call ended', value: req.body});
+    await Event.query().insert({name: 'caller ended without entering queue', campaign_id: campaign.id, value: req.body});
     return res.sendStatus(200);
   }
 
   const seconds_waiting = caller.status === 'available' ? Math.round((new Date() - caller.updated_at) / 1000) : 0;
   const cumulative_seconds_waiting = caller.seconds_waiting + seconds_waiting;
   await caller.$query().patch({status: 'complete', seconds_waiting: cumulative_seconds_waiting});
-  await Event.query().insert({campaign_id: campaign.id, name: 'caller_complete', value: {caller_id: caller.id, seconds_waiting, cumulative_seconds_waiting}})
+  await Event.query().insert({name: 'caller_complete', campaign_id: campaign.id, caller_id: caller.id, value: {seconds_waiting, cumulative_seconds_waiting}})
 
   if (caller.callback) {
     const params = {
@@ -298,7 +298,7 @@ app.post('/call_ended', async (req, res) => {
       await sleep(5000);
       await promisify(api.make_call.bind(api))(params);
     }catch(e){
-      await Event.query().insert({campaign_id: campaign.id, name: 'failed_callback', value: {caller_id: caller.id, error: e}})
+      await Event.query().insert({name: 'failed_callback', campaign_id: campaign.id, caller_id: caller.id, value: {error: e}})
     }
   }
   return res.sendStatus(200);
@@ -324,14 +324,15 @@ app.post('/conference_event/callee', async ({query, body}, res, next) => {
 app.post('/conference_event/caller', async ({query, body}, res, next) => {
   const conference_member_id = body.ConferenceMemberID;
   if (body.ConferenceAction === 'enter') {
-    await Caller.query().where({id: query.caller_id})
-      .patch({status: 'available', conference_member_id, updated_at: new Date()});
+    const caller = await Caller.query().where({id: query.caller_id})
+      .patch({status: 'available', conference_member_id, updated_at: new Date()})
+      .returning('*').first()
     let campaign = await Campaign.query().where({id: query.campaign_id}).first();
     const calls_in_progress = campaign.calls_in_progress;
     if (query.start) {
-      await Event.query().insert({campaign_id: campaign.id, name: 'join', value: {calls_in_progress}})
+      await Event.query().insert({name: 'join', campaign_id: campaign.id, caller_id: caller.id, value: {calls_in_progress}})
     }else {
-      await Event.query().insert({campaign_id: campaign.id, name: 'available', value: {calls_in_progress, updated_calls_in_progress: campaign.calls_in_progress}})
+      await Event.query().insert({name: 'available', campaign_id: campaign.id, caller_id: caller.id, value: {calls_in_progress, updated_calls_in_progress: campaign.calls_in_progress}})
     }
     await dialer.dial(appUrl(), campaign);
   } else if (body.ConferenceAction === 'digits' && body.ConferenceDigitsMatch === '2') {
