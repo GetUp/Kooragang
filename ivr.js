@@ -436,6 +436,13 @@ app.post('/fallback', async ({body, query}, res) => {
   res.send(r.toXML())
 });
 
+app.post('/callee_fallback', async ({body, query}, res) => {
+  await Event.query().insert({campaign_id: query.campaign_id, name: 'callee fallback', value: {body, query}})
+  const r = plivo.Response()
+  r.addHangup()
+  res.send(r.toXML())
+});
+
 app.get(/^\/\d+$/, async (req, res) => {
   res.set('Content-Type', 'text/html');
   const campaign = await Campaign.query().where({id: req.path.replace(/^\//, '')}).first();

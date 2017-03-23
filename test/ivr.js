@@ -539,11 +539,22 @@ describe('/survey_result', () => {
 });
 
 describe('/fallback', () => {
-  it('stores an event', async () => {
+  it('stores a caller fallback event', async () => {
     await request.post('/fallback?campaign_id=1')
       .type('form').send({CallUUID})
       .expect(/call back/)
     const event = await Event.query().where({campaign_id: 1, name: 'caller fallback'}).first()
     expect(event.value).to.be(`{"CallUUID":"${CallUUID}"}`)
+  });
+});
+
+describe('/callee_fallback', () => {
+  it('stores a callee fallback event', async () => {
+    await request.post('/callee_fallback?callee_id=357&campaign_id=1')
+      .type('form').send({CallUUID})
+      .expect(/Hangup/)
+    const event = await Event.query().where({campaign_id: 1, name: 'callee fallback'}).first()
+    expect(event.value).to.match(new RegExp(CallUUID))
+    expect(event.value).to.match(/357/)
   });
 });

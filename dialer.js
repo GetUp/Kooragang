@@ -102,7 +102,7 @@ const updateAndCall = async (campaign, callee, appUrl) => {
     from : process.env.NUMBER || '1111111111',
     answer_url : `${appUrl}/answer?name=${callee.first_name || ''}&callee_id=${callee.id}&campaign_id=${callee.campaign_id}`,
     hangup_url : `${appUrl}/hangup?callee_id=${callee.id}&campaign_id=${callee.campaign_id}`,
-    fallback_url : `${appUrl}/log?callee_id=${callee.id}&campaign_id=${callee.campaign_id}`,
+    fallback_url : `${appUrl}/callee_fallback?callee_id=${callee.id}&campaign_id=${callee.campaign_id}`,
     time_limit: 10 * 60,
     ring_timeout: 30
   };
