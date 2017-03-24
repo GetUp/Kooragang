@@ -94,7 +94,7 @@ app.post('/answer', async ({body, query}, res, next) => {
         language: 'en-GB', voice: 'MAN'
       }
       try{
-        await promisify(api.speak_conference_member.bind(api))(params);
+        if (process.env.DONT_SPEAK_NAMES) await promisify(api.speak_conference_member.bind(api))(params);
       }catch(e){}
     }
 
