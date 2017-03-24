@@ -21,6 +21,7 @@ module.exports.dial = async (...args) => {
 };
 
 const ratioDial = async (appUrl, campaign) => {
+  const timer = new Date();
   campaign = await recalculateRatio(campaign);
   const callers = await Caller.query().where({status: 'available'});
   const callsToMake = Math.floor(callers.length * campaign.ratio);
@@ -44,13 +45,11 @@ const ratioDial = async (appUrl, campaign) => {
     }
   }
   const updated_calls_in_progress = campaign.calls_in_progress + callees.length;
-  const value = {ratio: campaign.ratio, callers: callers.length, callsToMake, callees: callees.length, callsToMakeExcludingCurrentCalls, calls_in_progress: campaign.calls_in_progress, updated_calls_in_progress}
   if (callees.length) {
-    await Event.query().insert({campaign_id: campaign.id, name: 'calling', value});
     await campaign.$query().increment('calls_in_progress', callees.length);
     await Promise.all(callees.map(callee => updateAndCall(campaign, callee, appUrl)))
-  } else {
-    await Event.query().insert({campaign_id: campaign.id, name: 'nocalling', value});
+    const value = {ratio: campaign.ratio, callers: callers.length, callsToMake, callees: callees.length, callsToMakeExcludingCurrentCalls, calls_in_progress: campaign.calls_in_progress, updated_calls_in_progress, time: new Date() - timer}
+    await Event.query().insert({campaign_id: campaign.id, name: 'calling', value});
   }
 };
 
