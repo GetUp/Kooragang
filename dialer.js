@@ -76,7 +76,7 @@ const recalculateRatio = async(campaign) => {
   } else {
     newRatio = 1;
   }
-  await Event.query().insert({campaign_id: campaign.id, name: 'ratio', value: {ratio: newRatio, old_ratio: campaign.ratio}});
+  await Event.query().insert({campaign_id: campaign.id, name: 'ratio', value: {ratio: newRatio.toPrecision(2), old_ratio: campaign.ratio}});
   return Campaign.query().patchAndFetchById(campaign.id, {ratio: newRatio, last_checked_ratio_at: new Date()});
 }
 
