@@ -89,10 +89,10 @@ const report = async () => {
     .count('calls.id as count')
     .whereRaw("ended_at >= NOW() - INTERVAL '5 minutes'")
     .groupBy('dropped');
-  const waitEvents = await Event.knexQuery()
+  const waitEvents = await Event.query()
     .whereIn('name', ['caller_complete', 'answered'])
     .whereRaw("created_at >= NOW() - INTERVAL '5 minutes'");
-  const wait = waitEvents.length ? Math.round(_.sum(waitEvents, event => JSON.parse(event.value).seconds_waiting || 0) / waitEvents.length) : 1;
+  const wait = waitEvents.length ? Math.round(_.sumBy(waitEvents, event => JSON.parse(event.value).seconds_waiting) / waitEvents.length) : 0;
   const total = _.sumBy(statusCounts, ({count}) => parseInt(count, 10));
   const dropStatus = _.find(statusCounts, ({dropped}) => dropped);
   const drops = dropStatus ? parseInt(dropStatus.count, 10) : 0;
