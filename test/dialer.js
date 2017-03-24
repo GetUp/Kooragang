@@ -153,7 +153,7 @@ describe('.dial', () => {
         await dialer.dial(testUrl, campaign)
         const event = await Event.query().where({campaign_id: campaign.id, name: 'ratio'}).first();
         expect(event).to.be.an(Event);
-        expect(event.value).to.be('{"ratio":2.2,"old_ratio":2}');
+        expect(event.value).to.be('{"ratio":"2.2","old_ratio":2}');
       });
     });
 
