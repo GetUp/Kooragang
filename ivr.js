@@ -218,16 +218,15 @@ app.post('/connect', async (req, res, next) => {
     briefing.addWait({length: 1});
   }
   if (req.query.entry_key != "2") {
-    briefing.addSpeakAU('For more information on the dialing tool you will be using, please press the 2 key');
+    briefing.addSpeakAU('For info on the dialing tool you are using, please press the 2 key');
     briefing.addWait({length: 1});
   }
 
   for (key in campaign.more_info) {
-    if (req.query.entry_key != key) {
-      let info_item = campaign.more_info[key];
-      briefing.addSpeakAU('For more information on '+ info_item.title +' please press the '+ key + 'key');
-      briefing.addWait({length: 1});
-    }    
+    if (req.query.entry_key != key) { continue };
+    let info_item = campaign.more_info[key];
+    briefing.addSpeakAU('For info on '+ info_item.title +' please press the '+ key + 'key');
+    briefing.addWait({length: 1});  
   }
 
   briefing.addSpeakAU('Otherwise, press 1 to get started!');
@@ -405,7 +404,6 @@ app.post('/call_again', async ({query, body}, res) => {
     numDigits: 1
   });
   callAgain.addSpeakAU('Press 1 to continue calling. To finish your calling session, press star.');
-  callAgain.addSpeakAU('For more infromation on the dialing tool, press the 2 key.');
   r.addRedirect(appUrl('disconnect'));
   res.send(r.toXML());
 });
