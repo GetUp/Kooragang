@@ -7,6 +7,15 @@ const sinon = require('sinon');
 
 const { Callee, Caller, Call, Campaign, Event } = require('../models');
 
+const defaultCampaign = {
+  name: 'test',
+  status: 'active',
+  max_ratio: 3.0,
+  acceptable_drop_rate: 0.05,
+  recalculate_ratio_window: 180,
+  ratio_window: 600
+}
+
 const dropAll = async () => {
   await Event.query().delete();
   await Call.query().delete();
@@ -20,7 +29,7 @@ describe('.dial', () => {
   const testUrl = 'http://test'
   beforeEach(dropAll);
   beforeEach(async () => {
-    campaign = await Campaign.query().insert({name: 'test', max_ratio: 3.0, acceptable_drop_rate: 0.05, recalculate_ratio_window: 180, ratio_window: 600});
+    campaign = await Campaign.query().insert(defaultCampaign);
     invalidCallee = await Callee.query().insert({phone_number: '9', campaign_id: campaign.id});
     callee = await Callee.query().insert({phone_number: '123456789', campaign_id: campaign.id});
   });

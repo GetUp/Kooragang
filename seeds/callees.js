@@ -1,5 +1,6 @@
 const seq = require('promise-sequential');
-var questions_json = require('../questions.example.json');
+var questions_json = require('./questions.example.json');
+var questions_json = require('./more_info.example.json');
 exports.seed = function(knex, Promise) {
   return Promise.join(
       knex('calls').del(),
@@ -14,6 +15,7 @@ exports.seed = function(knex, Promise) {
             dialer: 'power',
             status: 'active',
             questions: questions_json,
+            more_info: more_info_json,
             script_url: "https://docs.google.com/document/d/1_2uhubfXoW8zokuhKXdRAdz8_WMH7R0wAQM5YWZii-4/pub?embedded=true",
         }),
         knex('campaigns').insert({
@@ -25,6 +27,7 @@ exports.seed = function(knex, Promise) {
             ratio: 1,
             max_ratio: 1,
             questions: questions_json,
+            more_info: more_info_json,
             script_url: "https://docs.google.com/document/d/1_2uhubfXoW8zokuhKXdRAdz8_WMH7R0wAQM5YWZii-4/pub?embedded=true",
         })
       );

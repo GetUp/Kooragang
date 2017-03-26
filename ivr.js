@@ -182,28 +182,49 @@ app.post('/connect', async (req, res, next) => {
     return res.send(r.toXML());
   }
 
+  let valid_digits = ['1', '2', '8', '9'];
+  if(Object.keys(campaign.more_info).length > 0) {
+    let more_info_digits = Object.keys(campaign.more_info);
+    valid_digits = valid_digits.concat(more_info_digits);
+  }
+
   const briefing = r.addGetDigits({
     action: appUrl(`ready?campaign_id=${campaign.id}&caller_number=${callerNumber}&start=1`),
     method: 'POST',
     timeout: 5,
     numDigits: 1,
     retries: 10,
-    validDigits: ['1', '8', '9']
+    validDigits: valid_digits
   });
 
   briefing.addWait({length: 2});
-  if (req.query.callback) {
-    briefing.addSpeakAU(`Hi! Welcome back.`);
-  } else {
-    briefing.addSpeakAU(`Hi! Welcome to the GetUp Dialer tool. Today you will be making calls for the ${campaign.name} campaign.`);
+  if (!req.query.entry) {
+    if (req.query.callback) {
+      briefing.addSpeakAU(`Hi! Welcome back.`);
+    } else {
+      briefing.addSpeakAU(`Hi! Welcome to the GetUp Dialer tool. Today you will be making calls for the ${campaign.name} campaign.`);
+      briefing.addWait({length: 1});
+      briefing.addSpeakAU('If you cannot afford long phone calls and would like to be called back instead, please press the 8 key');
+    }
     briefing.addWait({length: 1});
-    briefing.addSpeakAU('If you cannot afford long phone calls and would like to be called back instead, please press the 8 key');
+    briefing.addSpeakAU('You should have a copy of the script and the disposition codes in front of you.');
+    briefing.addWait({length: 1});
+    briefing.addSpeakAU('If not, please press the 9 key');
+    briefing.addWait({length: 1});
   }
-  briefing.addWait({length: 1});
-  briefing.addSpeakAU('You should have a copy of the script and the disposition codes in front of you.');
-  briefing.addWait({length: 1});
-  briefing.addSpeakAU('If not, please press the 9 key');
-  briefing.addWait({length: 1});
+  if (req.query.entry_key != "2") {
+    briefing.addSpeakAU('For more information on the dialing tool you will be using, please press the 2 key');
+    briefing.addWait({length: 1});
+  }
+
+  for (key in campaign.more_info) {
+    if (req.query.entry_key != key) {
+      let info_item = campaign.more_info[key];
+      briefing.addSpeakAU('For more information on '+ info_item.title +' please press the '+ key + 'key');
+      briefing.addWait({length: 1});
+    }    
+  }
+
   briefing.addSpeakAU('Otherwise, press 1 to get started!');
   briefing.addWait({length: 8});
   briefing.addSpeakAU('This message will automatically replay until you select a number on your phone\'s key pad.');
@@ -227,6 +248,14 @@ app.post('/ready', async (req, res, next) => {
     caller_id = req.query.caller_id;
   }
 
+  const campaign = await Campaign.query().where({id: req.query.campaign_id}).first();
+  const campaignComplete = await dialer.isComplete(campaign);
+  if (campaignComplete) {
+    r.addSpeakAU('The campaign has been completed!');
+    r.addRedirect(appUrl('disconnect?completed=1'));
+    return res.send(r.toXML());
+  }
+
   if (req.body.Digits === '*') {
     r.addRedirect(appUrl('disconnect'));
     return res.send(r.toXML());
@@ -238,11 +267,15 @@ app.post('/ready', async (req, res, next) => {
     return res.send(r.toXML());
   }
 
-  const campaign = await Campaign.query().where({id: req.query.campaign_id}).first();
-  const campaignComplete = await dialer.isComplete(campaign);
-  if (campaignComplete) {
-    r.addSpeakAU('The campaign has been completed!');
-    r.addRedirect(appUrl('disconnect?completed=1'));
+  if (req.body.Digits === '2') {
+    r.addSpeakAU('This is an explanation fo the dialer tool! It does great things for those who want to speak out about injustices in our society!');
+    r.addRedirect(appUrl(`connect?campaign_id=${campaign.id}&entry=more_info&entry_key=2`));
+    return res.send(r.toXML());
+  }
+
+  if(Object.keys(campaign.more_info).length > 0 && Object.keys(campaign.more_info).includes(req.body.Digits)) {
+    r.addSpeakAU(campaign.more_info[req.body.Digits].content);
+    r.addRedirect(appUrl(`connect?campaign_id=${campaign.id}&entry=more_info&entry_key=${req.body.Digits}`));
     return res.send(r.toXML());
   }
 
@@ -268,7 +301,6 @@ app.post('/ready', async (req, res, next) => {
 
 app.post('/call_ended', async (req, res) => {
   const campaign = await Campaign.query().where({id: req.query.campaign_id}).first();
-
   const caller = await Caller.query().where({call_uuid: req.body.CallUUID}).first();
   if (!caller) {
     await Event.query().insert({campaign_id: campaign.id, name: 'unknown call ended', value: req.body});
@@ -345,15 +377,28 @@ app.post('/conference_event/caller', async ({query, body}, res, next) => {
   res.sendStatus(200);
 });
 
-app.post('/call_again', (req, res) => {
+app.post('/call_again', async ({query, body}, res) => {
   const r = plivo.Response();
+  const campaign = await Campaign.query().where({id: query.campaign_id}).first();
+  if (campaign.calls_in_progress === 0) {
+    if (campaign.status === 'paused' || campaign.status === null) {
+      r.addWait({length: 1});
+      r.addSpeakAU('The campaign is currently paused! Please contact the campaign coordinator for further instructions. Thank you and have a great day!');
+      return res.send(r.toXML());
+    } else if (campaign.status === 'inactive') {
+      r.addWait({length: 1});
+      r.addSpeakAU('The campaign has been completed! Please contact the campaign coordinator for further instructions. Thank you and have a great day!');
+      return res.send(r.toXML());
+    }
+  }
   const callAgain = r.addGetDigits({
-    action: appUrl(`ready?caller_id=${req.query.caller_id}&campaign_id=${req.query.campaign_id}`),
+    action: appUrl(`ready?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`),
     timeout: 10,
     retries: 10,
     numDigits: 1
   });
   callAgain.addSpeakAU('Press 1 to continue calling. To finish your calling session, press star.');
+  callAgain.addSpeakAU('For more infromation on the dialing tool, press the 2 key.');
   r.addRedirect(appUrl('disconnect'));
   res.send(r.toXML());
 });
@@ -408,14 +453,6 @@ app.post('/survey_result', async ({query, body}, res) => {
 
   if (next) {
     r.addRedirect(appUrl(`survey?q=${next}&call_id=${query.call_id}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`));
-  }else if (campaign.status === 'paused' || campaign.status === null) {
-    r.addWait({length: 1});
-    r.addSpeakAU('The campaign is currently paused! Please contact the campaign coordinator for further instructions. Thank you and have a great day!');
-    return res.send(r.toXML());
-  } else if (campaign.status === 'inactive') {
-    r.addWait({length: 1});
-    r.addSpeakAU('The campaign has been completed! Please contact the campaign coordinator for further instructions. Thank you and have a great day!');
-    return res.send(r.toXML());
   } else {
     r.addRedirect(appUrl(`call_again?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`));
   }

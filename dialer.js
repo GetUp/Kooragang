@@ -14,7 +14,10 @@ const {
 } = require('./models');
 
 module.exports.dial = async (...args) => {
-  return args[1].dialer === 'ratio' ? ratioDial(...args) : powerDial(...args);
+  const campaign = args[1];
+  if (campaign.status === 'active') {
+    return campaign.dialer === 'ratio' ? ratioDial(...args) : powerDial(...args);
+  }
 };
 
 const ratioDial = async (appUrl, campaign) => {
