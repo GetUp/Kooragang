@@ -10,6 +10,7 @@
     "start": "heroku local",
     "nodemon": "nodemon --exec npm run web",
     "web": "node ./index.js",
+    "worker": "node ./worker.js",
     "debug": "node debug ./index.js",
     "test": "find . -name '*.js' -not -path './node_modules/*' | NODE_ENV=test entr -c mocha "
   },
