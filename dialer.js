@@ -110,7 +110,7 @@ const updateAndCall = async (campaign, callee, appUrl) => {
     hangup_url : `${appUrl}/hangup?callee_id=${callee.id}&campaign_id=${callee.campaign_id}`,
     fallback_url : `${appUrl}/callee_fallback?callee_id=${callee.id}&campaign_id=${callee.campaign_id}`,
     time_limit: 10 * 60,
-    ring_timeout: process.env.RING_TIMEOUT
+    ring_timeout: process.env.RING_TIMEOUT || 15
   };
   if (campaign.detect_answering_machine) {
     params.machine_detection = 'hangup';
