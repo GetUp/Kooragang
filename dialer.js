@@ -79,7 +79,7 @@ const recalculateRatio = async(campaign) => {
   } else {
     newRatio = 1;
   }
-  await Event.query().insert({campaign_id: campaign.id, name: 'ratio', value: {ratio: newRatio, old_ratio: campaign.ratio}});
+  await Event.query().insert({campaign_id: campaign.id, name: 'ratio', value: {ratio: newRatio.toPrecision(2), old_ratio: campaign.ratio}});
   return Campaign.query().patchAndFetchById(campaign.id, {ratio: newRatio, last_checked_ratio_at: new Date()});
 }
 
@@ -110,7 +110,7 @@ const updateAndCall = async (campaign, callee, appUrl) => {
     hangup_url : `${appUrl}/hangup?callee_id=${callee.id}&campaign_id=${callee.campaign_id}`,
     fallback_url : `${appUrl}/callee_fallback?callee_id=${callee.id}&campaign_id=${callee.campaign_id}`,
     time_limit: 10 * 60,
-    ring_timeout: 30
+    ring_timeout: process.env.RING_TIMEOUT
   };
   if (campaign.detect_answering_machine) {
     params.machine_detection = 'hangup';

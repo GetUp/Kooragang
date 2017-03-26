@@ -18,9 +18,14 @@ let wrap;
 
 let state = {};
 let agents = 0;
+let agentIds = [];
 
 class Caller extends Model {
   static get tableName() { return 'callers' }
+}
+
+class Event extends Model {
+  static get tableName() { return 'events' }
 }
 
 class Call extends Model {
@@ -61,6 +66,7 @@ app.all('/cycle', async (req, res, next) => {
     return res.send(r.toXML());
   }
   const caller = await Caller.query().orderBy('created_at', 'desc').where({phone_number: req.query.agent}).limit(1).first();
+  if (!agentIds.includes(caller.id)) agentIds.push(caller.id);
   if (debug) console.error(`Agent ${caller.phone_number} has status ${caller.status}`);
   if (caller.status === 'in-call') {
     if (debug) console.error(`Agent ${caller.phone_number} is on a call. Setting disposition.`);
@@ -76,42 +82,48 @@ app.all('/cycle', async (req, res, next) => {
   return res.send(r.toXML());
 });
 
+const report = async () => {
+  const summary = _.invertBy(state);
+  const statuses = Object.keys(summary).map((status) => `${status} = ${summary[status].length}`);
+  const statusCounts = await Call.knexQuery().select('dropped')
+    .count('calls.id as count')
+    .whereRaw("ended_at >= NOW() - INTERVAL '5 minutes'")
+    .groupBy('dropped');
+  const waitEvents = await Event.query()
+    .whereIn('name', ['caller_complete', 'answered'])
+    .whereRaw("created_at >= NOW() - INTERVAL '5 minutes'");
+  const wait = waitEvents.length ? Math.round(_.sumBy(waitEvents, event => JSON.parse(event.value).seconds_waiting) / waitEvents.length) : 0;
+  const total = _.sumBy(statusCounts, ({count}) => parseInt(count, 10));
+  const dropStatus = _.find(statusCounts, ({dropped}) => dropped);
+  const drops = dropStatus ? parseInt(dropStatus.count, 10) : 0;
+  const rate = agents ? Math.round(total*12/agents) : 0;
+  const dropRate = total ? Math.round(drops*100/total) : 0;
+  console.log(moment().format('h:mm:ss a ⇨ '), statuses.length ? statuses.join(', ') : 'connected: 0', ` average wait: ${wait}s   [${rate}/agent hour with ${total} total, ${drops} drops at ${dropRate}% drop rate in last 5 mins ]`);
+};
+
+const addAgent = async (count) => {
+  console.log(`Adding ${count} agents`);
+  _.times(count, async() => {
+    agents++;
+    const params = {
+      to: target,
+      from : agents,
+      answer_url : appUrl(`answer?agent=${agents}`),
+      hangup_url : appUrl(`hangup?agent=${agents}`)
+    };
+    try{
+      await promisfy(api.make_call.bind(api))(params);
+    } catch (e) {
+      console.error(`Agent ${agents} could not connect - `, e)
+    }
+  })
+}
+
 app.listen(port, () => {
   console.log('Load tester running on port', port);
-  const report = async () => {
-    const summary = _.invertBy(state);
-    const statuses = Object.keys(summary).map((status) => `${status} = ${summary[status].length}`);
-    const statusCounts = await Call.knexQuery().select('dropped')
-      .count('calls.id as count')
-      .whereRaw("ended_at >= NOW() - INTERVAL '5 minutes'")
-      .groupBy('dropped');
-    const total = _.sumBy(statusCounts, ({count}) => parseInt(count, 10));
-    const dropStatus = _.find(statusCounts, ({dropped}) => dropped);
-    const drops = dropStatus ? parseInt(dropStatus.count, 10) : 0;
-    const rate = agents ? Math.round(total*12/agents) : 0;
-    const dropRate = total ? Math.round(drops*100/total) : 0;
-    console.log(moment().format('h:mm:ss a ⇨ '), statuses.length ? statuses.join(', ') : 'connected: 0', `   [${rate}/agent hour with ${total} total, ${drops} drops at ${dropRate}% drop rate in last 5 mins]`);
-  };
+
   report();
   setInterval(report, process.env.INTERVAL || 10000);
-
-  const addAgent = async (count) => {
-    console.log(`Adding ${count} agents`);
-    _.times(count, async() => {
-      agents++;
-      const params = {
-        to: target,
-        from : agents,
-        answer_url : appUrl(`answer?agent=${agents}`),
-        hangup_url : appUrl(`hangup?agent=${agents}`)
-      };
-      try{
-        await promisfy(api.make_call.bind(api))(params);
-      } catch (e) {
-        console.error(`Agent ${agents} could not connect - `, e)
-      }
-    })
-  }
 
   readline.emitKeypressEvents(process.stdin);
   process.stdin.setRawMode(true);

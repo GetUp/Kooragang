@@ -2,7 +2,6 @@ const express = require('express');
 const plivo = require('plivo');
 const bodyParser = require('body-parser');
 const async = require('async');
-const moment = require('moment');
 const _ = require('lodash');
 const app = express();
 const promisify = require('es6-promisify');
@@ -59,21 +58,28 @@ app.get('/', (req, res) => res.send('<_-.-_>I\'m awake.</_-.-_>'));
 app.post('/answer', async ({body, query}, res, next) => {
   const r = plivo.Response();
   const name = query.name;
-  let errorFindingCaller, caller;
+  let errorFindingCaller, caller, seconds_waiting;
 
   const callerTransaction = await transaction.start(Caller.knex());
   try{
     caller = await Caller.bindTransaction(callerTransaction).query().forUpdate()
       .where({status: 'available'}).orderBy('updated_at').limit(1).first();
-    if (caller) await caller.$query().patch({status: 'in-call'})
+    if (caller) {
+      seconds_waiting = Math.round((new Date() - caller.updated_at) / 1000);
+      await caller.$query().patch({status: 'in-call', seconds_waiting: caller.seconds_waiting + seconds_waiting})
+    }
     await callerTransaction.commit()
   } catch (e) {
     await callerTransaction.rollback();
     errorFindingCaller = e;
   }
 
+  let campaign = await Campaign.query().where({id: query.campaign_id}).first();
+  const calls_in_progress = campaign.calls_in_progress;
+  campaign = await dialer.decrementCallsInProgress(campaign);
+
   if (!errorFindingCaller && caller) {
-    await Call.query().insert({
+    const call = await Call.query().insert({
       log_id: res.locals.log_id,
       caller_id: caller.id,
       callee_id: query.callee_id,
@@ -88,9 +94,11 @@ app.post('/answer', async ({body, query}, res, next) => {
         language: 'en-GB', voice: 'MAN'
       }
       try{
-        await promisify(api.speak_conference_member.bind(api))(params);
+        if (!process.env.SPEAK_NAMES) await promisify(api.speak_conference_member.bind(api))(params);
       }catch(e){}
     }
+
+    await Event.query().insert({name: 'answered', campaign_id: campaign.id, call_id: call.id, caller_id: caller.id, value: {calls_in_progress, updated_calls_in_progress: campaign.calls_in_progress, seconds_waiting} })
     r.addConference(`conference-${caller.id}`, {
       startConferenceOnEnter: false,
       stayAlone: false,
@@ -104,9 +112,6 @@ app.post('/answer', async ({body, query}, res, next) => {
       dropped: true,
       callee_call_uuid: body.CallUUID
     });
-    let campaign = await Campaign.query().where({id: query.campaign_id}).first();
-    const calls_in_progress = campaign.calls_in_progress;
-    campaign = await dialer.decrementCallsInProgress(campaign);
     const status = errorFindingCaller ? 'drop from error' : 'drop';
     await Event.query().insert({call_id: call.id, name: status, value: {calls_in_progress, updated_calls_in_progress: campaign.calls_in_progress, errorFindingCaller} })
     r.addHangup({reason: 'drop'});
@@ -129,7 +134,7 @@ app.post('/hangup', async ({body, query}, res, next) => {
     let {campaign} = await Callee.query().eager('campaign').where({id: call.callee_id}).first();
     const calls_in_progress = campaign.calls_in_progress;
     campaign = await dialer.decrementCallsInProgress(campaign);
-    await Event.query().insert({call_id: call.id, name: 'filter', value: {status, calls_in_progress, updated_calls_in_progress: campaign.calls_in_progress}})
+    await Event.query().insert({name: 'filter', campaign_id: campaign.id, call_id: call.id, value: {status, calls_in_progress, updated_calls_in_progress: campaign.calls_in_progress}})
     await dialer.dial(appUrl(), campaign);
   }
   res.sendStatus(200);
@@ -287,15 +292,16 @@ app.post('/ready', async (req, res, next) => {
     r.addSpeakAU('Remember, don\'t hangup *your* phone. Press star to end a call. Or wait for the other person to hang up.');
     callbackUrl += '&start=1';
   }
-  r.addConference(`conference-${caller_id}`, {
+  let params = {
     waitSound: appUrl('hold_music'),
     maxMembers: 2,
     timeLimit: 60 * 120,
     callbackUrl: appUrl(callbackUrl),
     hangupOnStar: 'true',
-    digitsMatch: ['2'],
     action: appUrl(`survey?q=disposition&caller_id=${caller_id}&campaign_id=${req.query.campaign_id}`)
-  });
+  }
+  if (process.env.ENABLE_ANSWER_MACHINE_SHORTCUT) params.digitsMatch = ['2']
+  r.addConference(`conference-${caller_id}`, params);
   res.send(r.toXML());
 });
 
@@ -303,13 +309,14 @@ app.post('/call_ended', async (req, res) => {
   const campaign = await Campaign.query().where({id: req.query.campaign_id}).first();
   const caller = await Caller.query().where({call_uuid: req.body.CallUUID}).first();
   if (!caller) {
-    await Event.query().insert({campaign_id: campaign.id, name: 'unknown call ended', value: req.body});
+    await Event.query().insert({name: 'caller ended without entering queue', campaign_id: campaign.id, value: req.body});
     return res.sendStatus(200);
   }
 
-  if(caller.status === 'in-call') await dialer.decrementCallsInProgress(campaign);
-  await caller.$query().patch({status: 'complete'});
-  await Event.query().insert({campaign_id: campaign.id, name: 'caller_complete', value: {caller_id: caller.id}})
+  const seconds_waiting = caller.status === 'available' ? Math.round((new Date() - caller.updated_at) / 1000) : 0;
+  const cumulative_seconds_waiting = caller.seconds_waiting + seconds_waiting;
+  await caller.$query().patch({status: 'complete', seconds_waiting: cumulative_seconds_waiting});
+  await Event.query().insert({name: 'caller_complete', campaign_id: campaign.id, caller_id: caller.id, value: {seconds_waiting, cumulative_seconds_waiting}})
 
   if (caller.callback) {
     const params = {
@@ -323,7 +330,7 @@ app.post('/call_ended', async (req, res) => {
       await sleep(5000);
       await promisify(api.make_call.bind(api))(params);
     }catch(e){
-      await Event.query().insert({campaign_id: campaign.id, name: 'failed_callback', value: {caller_id: caller.id, error: e}})
+      await Event.query().insert({name: 'failed_callback', campaign_id: campaign.id, caller_id: caller.id, value: {error: e}})
     }
   }
   return res.sendStatus(200);
@@ -349,15 +356,15 @@ app.post('/conference_event/callee', async ({query, body}, res, next) => {
 app.post('/conference_event/caller', async ({query, body}, res, next) => {
   const conference_member_id = body.ConferenceMemberID;
   if (body.ConferenceAction === 'enter') {
-    await Caller.query().where({id: query.caller_id})
-      .patch({status: 'available', conference_member_id, updated_at: new Date()});
+    const caller = await Caller.query().where({id: query.caller_id})
+      .patch({status: 'available', conference_member_id, updated_at: new Date()})
+      .returning('*').first()
     let campaign = await Campaign.query().where({id: query.campaign_id}).first();
     const calls_in_progress = campaign.calls_in_progress;
     if (query.start) {
-      await Event.query().insert({campaign_id: campaign.id, name: 'join', value: {calls_in_progress}})
+      await Event.query().insert({name: 'join', campaign_id: campaign.id, caller_id: caller.id, value: {calls_in_progress}})
     }else {
-      campaign = await dialer.decrementCallsInProgress(campaign);
-      await Event.query().insert({campaign_id: campaign.id, name: 'available', value: {calls_in_progress, updated_calls_in_progress: campaign.calls_in_progress}})
+      await Event.query().insert({name: 'available', campaign_id: campaign.id, caller_id: caller.id, value: {calls_in_progress, updated_calls_in_progress: campaign.calls_in_progress}})
     }
     await dialer.dial(appUrl(), campaign);
   } else if (body.ConferenceAction === 'digits' && body.ConferenceDigitsMatch === '2') {
