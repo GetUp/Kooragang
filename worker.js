@@ -1,7 +1,8 @@
 const dialer = require('./dialer');
 const {sleep} = require('./utils');
 const {Campaign} = require('./models');
-const host = process.env.BASE_URL || throw `BASE_URL must be set`;
+const host = process.env.BASE_URL;
+if (!host) throw `BASE_URL must be set`;
 const period = process.env.DIALER_PERIOD || 1000;
 
 const work = async () => {
