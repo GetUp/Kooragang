@@ -66,6 +66,13 @@ const recalculateRatio = async(campaign) => {
     .groupBy('dropped');
   const total = _.sumBy(statusCounts, ({count}) => parseInt(count, 10));
   if (total !== 0) {
+    if (campaign.last_checked_ratio_at) {
+      const callsInWindow = await Call.query()
+        .innerJoin('callees', 'calls.callee_id', 'callees.id')
+        .where('ended_at', '>', campaign.last_checked_ratio_at)
+        .where({campaign_id: campaign.id}).limit(1)
+      if (!callsInWindow.length) return campaign;
+    }
     const dropRow = _.find(statusCounts, ({dropped}) => dropped);
     const drops = dropRow ? parseInt(dropRow.count, 10) : 0;
     if (drops / total > dropRatio) {

@@ -103,6 +103,18 @@ describe('.dial', () => {
       });
     });
 
+    context('with no calls since last recalculation', () => {
+      beforeEach(async () => {
+        await Call.query().insert({callee_id: callee.id, ended_at: moment().subtract(5, 'minutes').toDate()})
+        campaign = await Campaign.query().patchAndFetchById(campaign.id, {last_checked_ratio_at: moment().subtract(4, 'minutes').toDate()});
+      });
+      it('should not recalculate the ratio', async () => {
+        await dialer.dial(testUrl, campaign)
+        const updatedCampaign = await Campaign.query().where({id: campaign.id}).first();
+        expect(updatedCampaign.ratio).to.be(1.0);
+      });
+    });
+
     context('with no drops in the last 10 minutes', () => {
       beforeEach(async () => await Call.query().insert({callee_id: callee.id, ended_at: new Date()}))
       it('should increase the calling ratio by the campaign ratio_increment', async () => {
