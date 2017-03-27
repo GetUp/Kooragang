@@ -1,7 +1,7 @@
 exports.up = function(knex, Promise) {
   return knex.schema
     .table('callers', table => {
-      table.integer('campaign_id').references('id').inTable('campaigns').notNull();
+      table.integer('campaign_id').references('id').inTable('campaigns');
       table.index(['status', 'campaign_id']);
     });
 };
