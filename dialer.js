@@ -82,8 +82,10 @@ const recalculateRatio = async(campaign) => {
     }
     if (newRatio < 1) newRatio = 1;
     if (newRatio > campaign.max_ratio) newRatio = campaign.max_ratio;
-  } else {
+  } else if (campaign.ratio !== 1){
     newRatio = 1;
+  } else {
+    return campaign;
   }
   await Event.query().insert({campaign_id: campaign.id, name: 'ratio', value: {ratio: newRatio.toPrecision(2), old_ratio: campaign.ratio}});
   return Campaign.query().patchAndFetchById(campaign.id, {ratio: newRatio, last_checked_ratio_at: new Date()});

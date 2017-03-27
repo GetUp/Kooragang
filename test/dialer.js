@@ -101,6 +101,15 @@ describe('.dial', () => {
         const updatedCampaign = await Campaign.query().where({id: campaign.id}).first();
         expect(updatedCampaign.ratio).to.be(1);
       });
+
+      context('and the ratio was already 1.0', () => {
+        beforeEach(async () => campaign = await campaign.$query().patch({ratio: 1.0}));
+
+        it('should not create an event', async () => {
+          await dialer.dial(testUrl, campaign)
+          expect((await Event.query()).length).to.be(0);
+        })
+      })
     });
 
     context('with no calls since last recalculation', () => {
