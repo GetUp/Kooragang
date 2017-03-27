@@ -64,7 +64,7 @@ app.post('/answer', async ({body, query}, res, next) => {
   const callerTransaction = await transaction.start(Caller.knex());
   try{
     caller = await Caller.bindTransaction(callerTransaction).query().forUpdate()
-      .where({status: 'available'}).orderBy('updated_at').limit(1).first();
+      .where({status: 'available', campaign_id: query.campaign_id}).orderBy('updated_at').limit(1).first();
     if (caller) {
       seconds_waiting = Math.round((new Date() - caller.updated_at) / 1000);
       await caller.$query().patch({status: 'in-call', seconds_waiting: caller.seconds_waiting + seconds_waiting})
@@ -246,7 +246,7 @@ app.post('/ready', async (req, res, next) => {
       r.addSpeakAU('Sending an sms with instructions to your number. Thank you and speak soon!')
       return res.send(r.toXML());
     }
-    const caller = await Caller.query().insert({phone_number: req.query.caller_number, call_uuid: req.body.CallUUID});
+    const caller = await Caller.query().insert({phone_number: req.query.caller_number, call_uuid: req.body.CallUUID, campaign_id: req.query.campaign_id});
     caller_id = caller.id;
   } else {
     caller_id = req.query.caller_id;

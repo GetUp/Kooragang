@@ -38,7 +38,8 @@ let campaign
 let caller = {
   first_name: 'bob',
   phone_number: '61288888888',
-  location: 'balmain'
+  location: 'balmain',
+  campaign_id: 1
 };
 const associatedCallee = {
   first_name: 'chris',
@@ -58,11 +59,10 @@ beforeEach(async () => {
   await Event.query().delete();
   await Call.query().delete();
   await Callee.query().delete();
-  await Campaign.query().delete();
   await Caller.query().delete();
+  await Campaign.query().delete();
 });
 beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign));
-beforeEach(async () => caller = await Caller.query().insert(caller));
 
 describe('/connect', () => {
   context('with no campaign id specified', () => {
@@ -162,6 +162,7 @@ describe('/ready', () => {
     context('with an existing number', () => {
       let payload;
       beforeEach(() => payload = {From: caller.phone_number, CallUUID: '1'});
+      beforeEach(async () => caller = await Caller.query().insert(caller));
 
       it('create a new record', async() => {
         await request.post(startPath)
@@ -180,6 +181,9 @@ describe('/ready', () => {
         expect(await Caller.query().where({call_uuid: payload.CallUUID}).first()).to.be.a(Caller);
       });
     });
+
+    it('should give extra instructions',
+      () => request.post(`/ready?caller_id=${caller.id}&start=1&campaign_id=${campaign.id}`).expect(/press star/i));
   });
 
   it('should put them in a conference',
@@ -187,11 +191,6 @@ describe('/ready', () => {
 
   it('should use the caller number as the conference name',
     () => request.post(`/ready?caller_id=${caller.id}&campaign_id=${campaign.id}`).expect(new RegExp(caller.id)));
-
-  context('with start=1 passed', () => {
-    it('should give extra instructions',
-      () => request.post(`/ready?caller_id=${caller.id}&start=1&campaign_id=${campaign.id}`).expect(/press star/i));
-  });
 
   context('with * pressed', () => {
     it('should redirect them to disconnect', () => {
@@ -250,7 +249,7 @@ describe('/call_ended', () => {
   });
 
   context('with callback not set to true', () => {
-    beforeEach(async () => caller.$query().patch({callback: null, call_uuid: CallUUID}));
+    beforeEach(async () => caller = await Caller.query().insert({callback: null, call_uuid: CallUUID, campaign_id: campaign.id}));
     it('should not call them back', () => {
       return request.post(`/call_ended?campaign_id=${campaign.id}`)
         .type('form').send({CallUUID})
@@ -258,11 +257,12 @@ describe('/call_ended', () => {
   });
 
   context('with callback set to true', () => {
-    beforeEach(async () => caller.$query().patch({callback: true, call_uuid: CallUUID}));
-    it('should unset callback bool and call them back', async () => {
+    let caller;
+    beforeEach(async () => caller = await Caller.query().insert({callback: true, call_uuid: CallUUID, campaign_id: campaign.id, phone_number: '1234'}));
+    it('should call them back', async () => {
       const mockedApiCall = nock('https://api.plivo.com')
         .post(/Call/, body => {
-          return body.to === caller.phone_number && body.from === '1111111111'
+          return body.to === caller.phone_number && body.from === campaign.phone_number
             && body.answer_url.match(/connect/)
             && body.answer_url.match(/callback=1/)
             && body.answer_url.match(/campaign_id=1/);
@@ -276,7 +276,7 @@ describe('/call_ended', () => {
   });
 
   context('with a caller with status "in-call"', () => {
-    beforeEach(async () => caller.$query().patch({status: 'in-call', call_uuid: CallUUID}));
+    beforeEach(async () => caller = await Caller.query().insert({status: 'in-call', call_uuid: CallUUID, campaign_id: campaign.id}));
     it('should unset the "in-call" status', async () => {
       await request.post(`/call_ended?campaign_id=${campaign.id}`)
         .type('form').send({CallUUID})
@@ -291,7 +291,7 @@ describe('/call_ended', () => {
   })
 
   context('with a caller with status "available"', () => {
-    beforeEach(async () => caller.$query().patch({status: 'available', call_uuid: CallUUID, updated_at: moment().subtract(1, 'seconds').toDate(), seconds_waiting: 4}));
+    beforeEach(async () => caller = await Caller.query().insert({status: 'available', call_uuid: CallUUID, updated_at: moment().subtract(1, 'seconds').toDate(), seconds_waiting: 4, campaign_id: campaign.id}));
     it('should update their seconds_waiting', async () => {
       await request.post(`/call_ended?campaign_id=${campaign.id}`)
         .type('form').send({CallUUID})
@@ -313,11 +313,13 @@ describe('/conference_event/caller', () => {
     await Event.query().delete();
     await Call.query().delete();
     await Callee.query().delete();
-    await Campaign.query().delete();
     await Caller.query().delete();
+    await Campaign.query().delete();
   });
-  beforeEach(async () => await Caller.query().insert(caller));
-  beforeEach(async () => campaign = await Campaign.query().insert({id: 1, name: 'test', status: 'active'}));
+  beforeEach(async () => {
+    campaign = await Campaign.query().insert({id: 1, name: 'test', status: 'active'});
+    await Caller.query().insert(caller);
+  });
 
   context('with caller entering the conference', () => {
     it('should update the caller to be available and recorder the conference_member_id', async () => {
@@ -392,11 +394,11 @@ describe('/answer', () => {
     beforeEach(async () => Event.query().delete());
     beforeEach(async () => Call.query().delete());
     beforeEach(async () => Caller.query().delete());
-    beforeEach(async () => Caller.query().insert(caller));
     beforeEach(async () => Callee.query().insert(associatedCallee));
     beforeEach(async () => {
       callee = await Callee.query().where({phone_number: associatedCallee.phone_number}).first();
       campaign = await campaign.$query().patch({calls_in_progress: 1}).returning('*').first()
+      await Caller.query().insert(caller);
     });
 
     context('with no callers available', () => {
@@ -431,6 +433,19 @@ describe('/answer', () => {
       beforeEach(async () => {
         return Caller.query().where({phone_number: caller.phone_number})
           .patch({status: 'available', conference_member_id})
+      });
+
+      context('but the caller is from another campaign', () => {
+        beforeEach(async() => {
+          const anotherCampaign = await Campaign.query().insert({name: 'another'});
+          return caller.$query().patch({campaign_id: anotherCampaign.id});
+        });
+        it('returns hangup and drops the call', () => {
+          return request.post(`/answer?name=Bridger&callee_id=${callee.id}&campaign_id=${callee.campaign_id}`)
+            .type('form').send({CallStatus, CallUUID: call_uuid})
+            .expect(/hangup/i)
+            .expect(/drop/);
+        });
       });
 
       context('with the speak api mocked', () => {

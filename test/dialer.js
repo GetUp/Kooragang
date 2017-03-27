@@ -20,8 +20,8 @@ const dropAll = async () => {
   await Event.query().delete();
   await Call.query().delete();
   await Callee.query().delete();
-  await Campaign.query().delete();
   await Caller.query().delete();
+  await Campaign.query().delete();
 }
 
 describe('.dial', () => {
@@ -194,10 +194,10 @@ describe('.dial', () => {
 
     context('with 2 available agents and ratio of 2', () => {
       beforeEach(async () => {
-        await Promise.all(_.range(2).map(() => Caller.query().insert({phone_number: '1', status: 'available'})));
         campaign = await Campaign.query().patchAndFetchById(campaign.id, {
           ratio: 3, max_ratio: 4, last_checked_ratio_at: new Date()
         });
+        await Promise.all(_.range(2).map(() => Caller.query().insert({phone_number: '1', status: 'available', campaign_id: campaign.id})));
       });
       beforeEach(async () => {
         const inserts = _.range(4).map(() => Callee.query().insert({phone_number: '61411111111', campaign_id: campaign.id}));
@@ -228,10 +228,10 @@ describe('.dial', () => {
 
     context('with 2 available agents and of 1.2', () => {
       beforeEach(async () => {
-        await Promise.all(_.range(2).map(() => Caller.query().insert({phone_number: '1', status: 'available'})));
         campaign = await Campaign.query().patchAndFetchById(campaign.id, {
           ratio: 1.2, max_ratio: 4, last_checked_ratio_at: new Date()
         });
+        await Promise.all(_.range(2).map(() => Caller.query().insert({phone_number: '1', status: 'available', campaign_id: campaign.id})));
       });
       beforeEach(async () => {
         await Callee.query().delete();
@@ -261,8 +261,8 @@ describe('.dial', () => {
       });
 
       it('should not make any calls', async () => {
-        await Caller.query().insert({phone_number: '1', status: 'available'});
-        await Caller.query().insert({phone_number: '2', status: 'available'});
+        await Caller.query().insert({phone_number: '1', status: 'available', campaign_id: campaign.id});
+        await Caller.query().insert({phone_number: '2', status: 'available', campaign_id: campaign.id});
         await dialer.dial(testUrl, campaign);
       });
     });
@@ -287,9 +287,9 @@ describe('.dial', () => {
           .query(true)
           .times(4)
           .reply(200);
-        await Caller.query().insert({phone_number: '1', status: 'available'});
-        await Caller.query().insert({phone_number: '2', status: 'available'});
-        await Caller.query().insert({phone_number: '3', status: 'available'});
+        await Caller.query().insert({phone_number: '1', status: 'available', campaign_id: campaign.id});
+        await Caller.query().insert({phone_number: '2', status: 'available', campaign_id: campaign.id});
+        await Caller.query().insert({phone_number: '3', status: 'available', campaign_id: campaign.id});
         await dialer.dial(testUrl, campaign);
         campaign = await dialer.decrementCallsInProgress(campaign);
         expect(campaign.calls_in_progress).to.be(2);
@@ -300,7 +300,7 @@ describe('.dial', () => {
 
     context('with 2 available agents and of 1.6', () => {
       beforeEach(async () => {
-        await Promise.all(_.range(2).map(() => Caller.query().insert({phone_number: '1', status: 'available'})));
+        await Promise.all(_.range(2).map(() => Caller.query().insert({phone_number: '1', status: 'available', campaign_id: campaign.id})));
         campaign = await Campaign.query().patchAndFetchById(campaign.id, {
           ratio: 1.6, max_ratio: 4, last_checked_ratio_at: new Date(), calls_in_progress: 0
         });
