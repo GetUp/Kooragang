@@ -109,7 +109,8 @@ const addAgent = async (count) => {
       to: target,
       from : agents,
       answer_url : appUrl(`answer?agent=${agents}`),
-      hangup_url : appUrl(`hangup?agent=${agents}`)
+      hangup_url : appUrl(`hangup?agent=${agents}`),
+      time_limit: 60 * 120
     };
     try{
       await promisfy(api.make_call.bind(api))(params);

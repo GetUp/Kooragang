@@ -226,7 +226,7 @@ app.post('/connect', async (req, res, next) => {
     if (req.query.entry_key != key) { continue };
     let info_item = campaign.more_info[key];
     briefing.addSpeakAU('For info on '+ info_item.title +' please press the '+ key + 'key');
-    briefing.addWait({length: 1});  
+    briefing.addWait({length: 1});
   }
 
   briefing.addSpeakAU('Otherwise, press 1 to get started!');
