@@ -200,29 +200,29 @@ describe('/ready', () => {
     });
   });
 
-  context('with 8 pressed', () => {
+  context('with 2 pressed', () => {
     it('should set a boolean for a call back', async () => {
       await request.post(`/ready?caller_number=${caller.phone_number}&start=1&campaign_id=${campaign.id}`)
-        .type('form').send({Digits: '8', CallUUID: '1234'})
+        .type('form').send({Digits: '2', CallUUID: '1234'})
         .expect(/hang up now/i)
       const updatedCaller = await Caller.query().where({call_uuid: '1234'}).first();
       return expect(updatedCaller.callback).to.be(true);
     });
   });
 
-  context('with 9 pressed', () => {
+  context('with 3 pressed', () => {
     it('should send an sms to their number', () => {
       return request.post(`/ready?caller_number=${caller.phone_number}&start=1&campaign_id=${campaign.id}`)
-        .type('form').send({Digits: '9'})
+        .type('form').send({Digits: '3'})
         .expect(/message/i)
     });
   });
 
-  context('with 2 pressed', () => {
+  context('with 4 pressed', () => {
     it('should give the caller information on the dialing tool', async () => {
       return request.post(`/ready?caller_number=${caller.phone_number}&start=1&campaign_id=${campaign.id}`)
-        .type('form').send({Digits: '2'})
-        .expect(/explanation/i)
+        .type('form').send({Digits: '4'})
+        .expect(/system works/i)
     });
   });
 

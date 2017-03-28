@@ -149,10 +149,6 @@ app.post('/connect', async ({body, query}, res, next) => {
   if (body.CallStatus === 'completed') return res.sendStatus(200);
   const r = plivo.Response();
   const campaign = await Campaign.query().where({id: query.campaign_id}).first();
-  const callback = query.callback ? query.callback === "1" : false;
-  const authenticated = query.authenticated ? query.authenticated === "1" : false;
-  const promptAuth = authenticationNeeded(callback, query.entry, campaign.passcode, authenticated);
-  const promptIntro = introductionNeeded(query.entry);
 
   if (process.env.RECORD_CALLS === 'true') {
     r.addRecord({
@@ -170,6 +166,11 @@ app.post('/connect', async ({body, query}, res, next) => {
     r.addSpeakAU('GetUp technical staff have been notified. Hanging up now.');
     return res.send(r.toXML());
   }
+
+  const callback = query.callback ? query.callback === "1" : false;
+  const authenticated = query.authenticated ? query.authenticated === "1" : false;
+  const promptAuth = authenticationNeeded(callback, query.entry, campaign.passcode, authenticated);
+  const promptIntro = introductionNeeded(query.entry);
 
   if (campaign.status === "paused" || campaign.status === null){
     r.addWait({length: 2});
@@ -549,7 +550,7 @@ app.post('/passcode', async ({query, body}, res) => {
   res.send(r.toXML());
 });
 
-app.get(/^\/\d+$/, async ({body, query}, res) => {
+app.get(/^\/\d+$/, async ({body, query, path}, res) => {
   res.set('Content-Type', 'text/html');
   const campaign = await Campaign.query().where({id: path.replace(/^\//, '')}).first();
   if (!campaign) res.sendStatus(404);
