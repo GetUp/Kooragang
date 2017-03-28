@@ -596,8 +596,7 @@ app.get('/stats/:id', async ({body, params}, res) => {
       dropRate,
       available: getCountForStatus('available'),
       "in-call": getCountForStatus('in-call'),
-      completed: getCountForStatus('complete'),
-      joining: getCountForStatus(null)
+      completed: getCountForStatus('complete')
     }
     const currentCallers = data.available + data['in-call'];
     data.rate = currentCallers ? Math.round(total*12 / currentCallers) : 0;
