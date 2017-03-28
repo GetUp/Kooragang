@@ -6,9 +6,14 @@ const _ = require('lodash');
 const app = express();
 const promisify = require('es6-promisify');
 const api = plivo.RestAPI({ authId: process.env.API_ID || 'test', authToken: process.env.API_TOKEN || 'test'});
-const {sleep} = require('./utils');
 const dialer = require('./dialer');
-
+const {
+  sleep,
+  extractCallerNumber,
+  authenticationNeeded,
+  introductionNeeded,
+  validPasscode
+} = require('./utils');
 const {
   Call,
   Callee,
@@ -551,36 +556,5 @@ app.get(/^\/\d+$/, async ({body, query}, res) => {
   const questions = campaign.questions;
   return res.render('campaign.ejs', {campaign, questions})
 });
-
-const extractCallerNumber = (query, body) => {
-  if (query.callback) {
-    return query.number;
-  } else {
-    const sip = body.From.match(/sip:(\w+)@/);
-    return sip ? sip[1] : body.From.replace(/\s/g, '').replace(/^0/, '61');
-  }
-};
-
-const authenticationNeeded = (callback, entry, campaign_passcode, authenticated) => {
-  if (callback) { return false };
-  if (entry === "more_info") { return false }
-  if (!campaign_passcode) { return false };
-  if (authenticated) { return false };
-  return true;
-};
-
-const introductionNeeded = (entry) => {
-  if (entry === "more_info") { return false };
-  return true;
-};
-
-const validPasscode = (campaign_passcode, digits) => {
-  return campaign_passcode === digits;
-};
-
-const sleep = (ms=0) => {
-  const timeout = process.env.NODE_ENV === "test" ? 0 : ms;
-  return new Promise(r => setTimeout(r, timeout));
-}
 
 module.exports = app;
