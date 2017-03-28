@@ -202,7 +202,7 @@ app.post('/connect', async ({body, query}, res, next) => {
       action: appUrl(`passcode?campaign_id=${query.campaign_id}`),
       timeout: 10,
       retries: 10,
-      numDigits: 6
+      numDigits: campaign.passcode.length
     });
     r.addRedirect(appUrl('passcode'));
     return res.send(r.toXML());
