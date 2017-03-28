@@ -581,7 +581,6 @@ app.get('/stats/:id', async ({body, params}, res) => {
       .whereRaw("created_at >= NOW() - INTERVAL '10 minutes'");
     const wait = waitEvents.length ? Math.round(_.sumBy(waitEvents, event => JSON.parse(event.value).seconds_waiting) / waitEvents.length) : 0;
     const total = _.sumBy(statusCounts, ({count}) => parseInt(count, 10));
-    console.error(statusCounts)
     const dropStatus = _.find(statusCounts, ({dropped}) => dropped);
     const drops = dropStatus ? parseInt(dropStatus.count, 10) : 0;
     const dropRate = total ? Math.round(drops*100/total) : 0;
