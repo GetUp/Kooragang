@@ -140,10 +140,14 @@ app.post('/hangup', async ({body, query}, res, next) => {
   res.sendStatus(200);
 });
 
-app.post('/connect', async (req, res, next) => {
-  if (req.body.CallStatus === 'completed') return res.sendStatus(200);
-
+app.post('/connect', async ({body, query}, res, next) => {
+  if (body.CallStatus === 'completed') return res.sendStatus(200);
   const r = plivo.Response();
+  const campaign = await Campaign.query().where({id: query.campaign_id}).first();
+  const callback = query.callback ? query.callback === "1" : false;
+  const authenticated = query.authenticated ? query.authenticated === "1" : false;
+  const promptAuth = authenticationNeeded(callback, query.entry, campaign.passcode, authenticated);
+  const promptIntro = introductionNeeded(query.entry);
 
   if (process.env.RECORD_CALLS === 'true') {
     r.addRecord({
@@ -154,7 +158,6 @@ app.post('/connect', async (req, res, next) => {
     });
   }
 
-  const campaign = await Campaign.query().where({id: req.query.campaign_id}).first();
   if (!campaign){
     r.addWait({length: 2});
     r.addSpeakAU('An error has occurred. The number is not associated with a campaign');
@@ -171,7 +174,7 @@ app.post('/connect', async (req, res, next) => {
     return res.send(r.toXML());
   }
 
-  const callerNumber = extractCallerNumber(req.query, req.body);
+  const callerNumber = extractCallerNumber(query, body);
   if (_.isEmpty(callerNumber)){
     r.addWait({length: 2});
     r.addSpeakAU('It appears you do not have caller id enabled. Please enable it and call back. Thank you.');
@@ -186,15 +189,28 @@ app.post('/connect', async (req, res, next) => {
     r.addSpeakAU('The campaign has been completed! Please contact the campaign coordinator for further instructions. Thank you and have a great day!');
     return res.send(r.toXML());
   }
+  
+  if (promptAuth) {
+    r.addWait({length: 2});
+    r.addSpeakAU('Please enter the campaign passcode on your keypad now.')
+    const passcodeAction = r.addGetDigits({
+      action: appUrl(`passcode?campaign_id=${query.campaign_id}`),
+      timeout: 10,
+      retries: 10,
+      numDigits: 6
+    });
+    r.addRedirect(appUrl('passcode'));
+    return res.send(r.toXML());
+  }
 
-  let valid_digits = ['1', '2', '8', '9'];
+  let valid_digits = ['1', '2', '3', '4'];
   if(Object.keys(campaign.more_info).length > 0) {
     let more_info_digits = Object.keys(campaign.more_info);
     valid_digits = valid_digits.concat(more_info_digits);
   }
 
   const briefing = r.addGetDigits({
-    action: appUrl(`ready?campaign_id=${campaign.id}&caller_number=${callerNumber}&start=1`),
+    action: appUrl(`ready?campaign_id=${campaign.id}&caller_number=${callerNumber}&start=1&authenticated=${query.authenticated ? '1' : '0'}`),
     method: 'POST',
     timeout: 5,
     numDigits: 1,
@@ -203,30 +219,31 @@ app.post('/connect', async (req, res, next) => {
   });
 
   briefing.addWait({length: 2});
-  if (!req.query.entry) {
-    if (req.query.callback) {
+  if (promptIntro) {
+    if (query.callback) {
       briefing.addSpeakAU(`Hi! Welcome back.`);
     } else {
       briefing.addSpeakAU(`Hi! Welcome to the GetUp Dialer tool. Today you will be making calls for the ${campaign.name} campaign.`);
       briefing.addWait({length: 1});
-      briefing.addSpeakAU('If you cannot afford long phone calls and would like to be called back instead, please press the 8 key');
+      briefing.addSpeakAU('If you cannot afford long phone calls and would like to be called back instead, please press the 2 key');
     }
     briefing.addWait({length: 1});
     briefing.addSpeakAU('You should have a copy of the script and the disposition codes in front of you.');
     briefing.addWait({length: 1});
-    briefing.addSpeakAU('If not, please press the 9 key');
+    briefing.addSpeakAU('If not, please press the 3 key');
     briefing.addWait({length: 1});
   }
-  if (req.query.entry_key != "2") {
-    briefing.addSpeakAU('For info on the dialing tool you are using, please press the 2 key');
+  if (query.entry_key != "4") {
+    briefing.addSpeakAU('For info on the dialing tool you are using, please press the 4 key');
     briefing.addWait({length: 1});
   }
 
   for (key in campaign.more_info) {
-    if (req.query.entry_key != key) { continue };
-    let info_item = campaign.more_info[key];
-    briefing.addSpeakAU('For info on '+ info_item.title +' please press the '+ key + 'key');
-    briefing.addWait({length: 1});  
+    if (query.entry_key != key) {
+      let info_item = campaign.more_info[key];
+      briefing.addSpeakAU('For info on '+ info_item.title +' please press the '+ key + 'key');
+      briefing.addWait({length: 1});
+    }
   }
 
   briefing.addSpeakAU('Otherwise, press 1 to get started!');
@@ -235,24 +252,24 @@ app.post('/connect', async (req, res, next) => {
   res.send(r.toXML());
 });
 
-app.post('/ready', async (req, res, next) => {
+app.post('/ready', async ({body, query}, res, next) => {
   const r = plivo.Response();
+  const authenticated = query.authenticated ? query.authenticated === "1" : false;
   let caller_id;
-  if (req.query.start) {
-    if (req.body.Digits === '9') {
-      r.addMessage(`Please print or download the script and disposition codes from ${appUrl(req.query.campaign_id)}. When you are ready, call again!`, {
-        src: process.env.NUMBER || '1111111111', dst: req.query.caller_number
+  if (query.start) {
+    if (body.Digits === '3') {
+      r.addMessage(`Please print or download the script and disposition codes from ${appUrl(query.campaign_id)}. When you are ready, call again!`, {
+        src: process.env.NUMBER || '1111111111', dst: query.caller_number
       });
       r.addSpeakAU('Sending an sms with instructions to your number. Thank you and speak soon!')
       return res.send(r.toXML());
     }
-    const caller = await Caller.query().insert({phone_number: req.query.caller_number, call_uuid: req.body.CallUUID});
+    const caller = await Caller.query().insert({phone_number: query.caller_number, call_uuid: body.CallUUID});
     caller_id = caller.id;
   } else {
-    caller_id = req.query.caller_id;
+    caller_id = query.caller_id;
   }
-
-  const campaign = await Campaign.query().where({id: req.query.campaign_id}).first();
+  const campaign = await Campaign.query().where({id: query.campaign_id}).first();
   const campaignComplete = await dialer.isComplete(campaign);
   if (campaignComplete) {
     r.addSpeakAU('The campaign has been completed!');
@@ -260,55 +277,56 @@ app.post('/ready', async (req, res, next) => {
     return res.send(r.toXML());
   }
 
-  if (req.body.Digits === '*') {
+  if (body.Digits === '*') {
     r.addRedirect(appUrl('disconnect'));
     return res.send(r.toXML());
   }
 
-  if (req.body.Digits === '8') {
+  if (body.Digits === '2') {
     await Caller.query().where({id: caller_id}).patch({callback: true});
     r.addSpeakAU('We will call you back immediately. Please hang up now!');
     return res.send(r.toXML());
   }
 
-  if (req.body.Digits === '2') {
-    r.addSpeakAU('This is an explanation fo the dialer tool! It does great things for those who want to speak out about injustices in our society!');
-    r.addRedirect(appUrl(`connect?campaign_id=${campaign.id}&entry=more_info&entry_key=2`));
+  if (body.Digits === '4') {
+    r.addSpeakAU("Welcome to the Get Up dialer tool! This system works by dialing a number of people and patching them through to you when they pick up. Until they pick up, you'll hear music playing. When the music stops, that's your queue to start talking. Then you can attempt to have a conversation with them. At the end of the conversation, you'll be prompted to enter numbers into your phone to indicate the outcome of the call. It's important to remember that you never have to hang up your phone to end a call. If you need to end a call, just press star.");
+    r.addRedirect(appUrl(`connect?campaign_id=${campaign.id}&entry=more_info&entry_key=4&authenticated=${query.authenticated}`));
     return res.send(r.toXML());
   }
 
-  if(Object.keys(campaign.more_info).length > 0 && Object.keys(campaign.more_info).includes(req.body.Digits)) {
-    r.addSpeakAU(campaign.more_info[req.body.Digits].content);
-    r.addRedirect(appUrl(`connect?campaign_id=${campaign.id}&entry=more_info&entry_key=${req.body.Digits}`));
+  if(Object.keys(campaign.more_info).length > 0 && Object.keys(campaign.more_info).includes(body.Digits)) {
+    r.addSpeakAU(campaign.more_info[body.Digits].content);
+    r.addRedirect(appUrl(`connect?campaign_id=${campaign.id}&entry=more_info&entry_key=${body.Digits}&authenticated=${query.authenticated}`));
     return res.send(r.toXML());
   }
 
   r.addSpeakAU('You are now in the call queue.')
-  let callbackUrl = `conference_event/caller?caller_id=${caller_id}&campaign_id=${req.query.campaign_id}`;
-  if (req.query.start) {
+  let callbackUrl = `conference_event/caller?caller_id=${caller_id}&campaign_id=${query.campaign_id}`;
+  if (query.start) {
     r.addSpeakAU('We will connect you to a call shortly.')
     r.addWait({length: 1});
     r.addSpeakAU('Remember, don\'t hangup *your* phone. Press star to end a call. Or wait for the other person to hang up.');
     callbackUrl += '&start=1';
   }
+
   let params = {
     waitSound: appUrl('hold_music'),
     maxMembers: 2,
     timeLimit: 60 * 120,
     callbackUrl: appUrl(callbackUrl),
     hangupOnStar: 'true',
-    action: appUrl(`survey?q=disposition&caller_id=${caller_id}&campaign_id=${req.query.campaign_id}`)
+    action: appUrl(`survey?q=disposition&caller_id=${caller_id}&campaign_id=${query.campaign_id}`)
   }
   if (process.env.ENABLE_ANSWER_MACHINE_SHORTCUT) params.digitsMatch = ['2']
   r.addConference(`conference-${caller_id}`, params);
   res.send(r.toXML());
 });
 
-app.post('/call_ended', async (req, res) => {
-  const campaign = await Campaign.query().where({id: req.query.campaign_id}).first();
-  const caller = await Caller.query().where({call_uuid: req.body.CallUUID}).first();
+app.post('/call_ended', async ({body, query}, res) => {
+  const campaign = await Campaign.query().where({id: query.campaign_id}).first();
+  const caller = await Caller.query().where({call_uuid: body.CallUUID}).first();
   if (!caller) {
-    await Event.query().insert({name: 'caller ended without entering queue', campaign_id: campaign.id, value: req.body});
+    await Event.query().insert({name: 'caller ended without entering queue', campaign_id: campaign.id, value: body});
     return res.sendStatus(200);
   }
 
@@ -507,9 +525,29 @@ app.post('/callee_fallback', async ({body, query}, res) => {
   res.send(r.toXML())
 });
 
-app.get(/^\/\d+$/, async (req, res) => {
+app.post('/passcode', async ({query, body}, res) => {
+  const r = plivo.Response();
+  const campaign = await Campaign.query().where({id: query.campaign_id}).first();
+  const authenticatedCaller = validPasscode(campaign.passcode, body.Digits);
+
+  if (authenticatedCaller) {
+    r.addWait({length: 1});
+    r.addSpeakAU('Thanks for that.')
+    r.addWait({length: 1});
+    r.addRedirect(appUrl(`connect?campaign_id=${campaign.id}&authenticated=1`));
+    return res.send(r.toXML());
+  }
+
+  r.addWait({length: 1});
+  r.addSpeakAU('You have entered the incorrect passcode. Please call back and try again.')
+  r.addWait({length: 1});
+  r.addHangup();
+  res.send(r.toXML());
+});
+
+app.get(/^\/\d+$/, async ({body, query}, res) => {
   res.set('Content-Type', 'text/html');
-  const campaign = await Campaign.query().where({id: req.path.replace(/^\//, '')}).first();
+  const campaign = await Campaign.query().where({id: path.replace(/^\//, '')}).first();
   if (!campaign) res.sendStatus(404);
   const questions = campaign.questions;
   return res.render('campaign.ejs', {campaign, questions})
@@ -522,6 +560,23 @@ const extractCallerNumber = (query, body) => {
     const sip = body.From.match(/sip:(\w+)@/);
     return sip ? sip[1] : body.From.replace(/\s/g, '').replace(/^0/, '61');
   }
+};
+
+const authenticationNeeded = (callback, entry, campaign_passcode, authenticated) => {
+  if (callback) { return false };
+  if (entry === "more_info") { return false }
+  if (!campaign_passcode) { return false };
+  if (authenticated) { return false };
+  return true;
+};
+
+const introductionNeeded = (entry) => {
+  if (entry === "more_info") { return false };
+  return true;
+};
+
+const validPasscode = (campaign_passcode, digits) => {
+  return campaign_passcode === digits;
 };
 
 function sleep(ms = 0) {
