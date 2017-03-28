@@ -21,6 +21,7 @@ module.exports.dial = async (...args) => {
 };
 
 const ratioDial = async (appUrl, campaign) => {
+  const timer = new Date();
   campaign = await recalculateRatio(campaign);
   const callers = await Caller.query().where({status: 'available'});
   const callsToMake = Math.floor(callers.length * campaign.ratio);
@@ -44,13 +45,11 @@ const ratioDial = async (appUrl, campaign) => {
     }
   }
   const updated_calls_in_progress = campaign.calls_in_progress + callees.length;
-  const value = {ratio: campaign.ratio, callers: callers.length, callsToMake, callees: callees.length, callsToMakeExcludingCurrentCalls, calls_in_progress: campaign.calls_in_progress, updated_calls_in_progress}
   if (callees.length) {
-    await Event.query().insert({campaign_id: campaign.id, name: 'calling', value});
     await campaign.$query().increment('calls_in_progress', callees.length);
     await Promise.all(callees.map(callee => updateAndCall(campaign, callee, appUrl)))
-  } else {
-    await Event.query().insert({campaign_id: campaign.id, name: 'nocalling', value});
+    const value = {ratio: campaign.ratio, callers: callers.length, callsToMake, callees: callees.length, callsToMakeExcludingCurrentCalls, calls_in_progress: campaign.calls_in_progress, updated_calls_in_progress, time: new Date() - timer}
+    await Event.query().insert({campaign_id: campaign.id, name: 'calling', value});
   }
 };
 
@@ -67,6 +66,13 @@ const recalculateRatio = async(campaign) => {
     .groupBy('dropped');
   const total = _.sumBy(statusCounts, ({count}) => parseInt(count, 10));
   if (total !== 0) {
+    if (campaign.last_checked_ratio_at) {
+      const callsInWindow = await Call.query()
+        .innerJoin('callees', 'calls.callee_id', 'callees.id')
+        .where('ended_at', '>', campaign.last_checked_ratio_at)
+        .where({campaign_id: campaign.id}).limit(1)
+      if (!callsInWindow.length) return campaign;
+    }
     const dropRow = _.find(statusCounts, ({dropped}) => dropped);
     const drops = dropRow ? parseInt(dropRow.count, 10) : 0;
     if (drops / total > dropRatio) {
@@ -76,8 +82,10 @@ const recalculateRatio = async(campaign) => {
     }
     if (newRatio < 1) newRatio = 1;
     if (newRatio > campaign.max_ratio) newRatio = campaign.max_ratio;
-  } else {
+  } else if (campaign.ratio !== 1){
     newRatio = 1;
+  } else {
+    return campaign;
   }
   await Event.query().insert({campaign_id: campaign.id, name: 'ratio', value: {ratio: newRatio.toPrecision(2), old_ratio: campaign.ratio}});
   return Campaign.query().patchAndFetchById(campaign.id, {ratio: newRatio, last_checked_ratio_at: new Date()});

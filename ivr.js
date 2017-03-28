@@ -6,6 +6,7 @@ const _ = require('lodash');
 const app = express();
 const promisify = require('es6-promisify');
 const api = plivo.RestAPI({ authId: process.env.API_ID || 'test', authToken: process.env.API_TOKEN || 'test'});
+const {sleep} = require('./utils');
 const dialer = require('./dialer');
 
 const {
@@ -63,7 +64,7 @@ app.post('/answer', async ({body, query}, res, next) => {
   const callerTransaction = await transaction.start(Caller.knex());
   try{
     caller = await Caller.bindTransaction(callerTransaction).query().forUpdate()
-      .where({status: 'available'}).orderBy('updated_at').limit(1).first();
+      .where({status: 'available', campaign_id: query.campaign_id}).orderBy('updated_at').limit(1).first();
     if (caller) {
       seconds_waiting = Math.round((new Date() - caller.updated_at) / 1000);
       await caller.$query().patch({status: 'in-call', seconds_waiting: caller.seconds_waiting + seconds_waiting})
@@ -135,7 +136,6 @@ app.post('/hangup', async ({body, query}, res, next) => {
     const calls_in_progress = campaign.calls_in_progress;
     campaign = await dialer.decrementCallsInProgress(campaign);
     await Event.query().insert({name: 'filter', campaign_id: campaign.id, call_id: call.id, value: {status, calls_in_progress, updated_calls_in_progress: campaign.calls_in_progress}})
-    await dialer.dial(appUrl(), campaign);
   }
   res.sendStatus(200);
 });
@@ -264,7 +264,7 @@ app.post('/ready', async ({body, query}, res, next) => {
       r.addSpeakAU('Sending an sms with instructions to your number. Thank you and speak soon!')
       return res.send(r.toXML());
     }
-    const caller = await Caller.query().insert({phone_number: query.caller_number, call_uuid: body.CallUUID});
+    const caller = await Caller.query().insert({phone_number: query.caller_number, call_uuid: body.CallUUID, campaign_id: query.campaign_id});
     caller_id = caller.id;
   } else {
     caller_id = query.caller_id;
@@ -383,7 +383,6 @@ app.post('/conference_event/caller', async ({query, body}, res, next) => {
     }else {
       await Event.query().insert({name: 'available', campaign_id: campaign.id, caller_id: caller.id, value: {calls_in_progress, updated_calls_in_progress: campaign.calls_in_progress}})
     }
-    await dialer.dial(appUrl(), campaign);
   } else if (body.ConferenceAction === 'digits' && body.ConferenceDigitsMatch === '2') {
     const call = await Call.query().where({conference_uuid: body.ConferenceUUID}).first();
     if (call) {
@@ -579,7 +578,7 @@ const validPasscode = (campaign_passcode, digits) => {
   return campaign_passcode === digits;
 };
 
-function sleep(ms = 0) {
+const sleep = (ms=0) => {
   const timeout = process.env.NODE_ENV === "test" ? 0 : ms;
   return new Promise(r => setTimeout(r, timeout));
 }
