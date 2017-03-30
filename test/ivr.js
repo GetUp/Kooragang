@@ -564,7 +564,7 @@ describe('/hangup', () => {
   });
 });
 
-describe('with campaign id in path', () => {
+describe('/stats/:id', () => {
   beforeEach(async () => {
     await Event.query().delete();
     await Call.query().delete();
@@ -575,7 +575,7 @@ describe('with campaign id in path', () => {
   beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign));
 
   it ('should return a page with the campaign name', () => {
-    return request.get(`/${campaign.id}`)
+    return request.get(`/stats/${campaign.id}`)
       .expect(/test/);
   });
 });

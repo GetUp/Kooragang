@@ -551,14 +551,6 @@ app.post('/passcode', async ({query, body}, res) => {
   res.send(r.toXML());
 });
 
-app.get(/^\/\d+$/, async ({body, query, path}, res) => {
-  res.set('Content-Type', 'text/html');
-  const campaign = await Campaign.query().where({id: path.replace(/^\//, '')}).first();
-  if (!campaign) res.sendStatus(404);
-  const questions = campaign.questions;
-  return res.render('campaign.ejs', {campaign, questions})
-});
-
 app.get('/stats/:id', async ({body, params}, res) => {
   res.set('Content-Type', 'text/html');
   const campaign = await Campaign.query().where({id: params.id}).first();
