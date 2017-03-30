@@ -461,7 +461,7 @@ app.post('/survey', async ({query, body}, res) => {
   if (question === 'disposition') {
     surveyResponse.addSpeakAU('The call has ended.');
   }
-  surveyResponse.addSpeakAU(`Enter the ${questionData.name} code.`);
+  surveyResponse.addSpeakAU(`${questionData.name}`);
   res.send(r.toXML());
 });
 
