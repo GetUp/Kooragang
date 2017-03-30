@@ -15,9 +15,7 @@ const {
 
 module.exports.dial = async (...args) => {
   const campaign = args[1];
-  if (campaign.status === 'active') {
-    return campaign.dialer === 'ratio' ? ratioDial(...args) : powerDial(...args);
-  }
+  return campaign.dialer === 'ratio' ? ratioDial(...args) : powerDial(...args);
 };
 
 const ratioDial = async (appUrl, campaign) => {
@@ -147,24 +145,27 @@ module.exports.decrementCallsInProgress = decrementCallsInProgress;
 // TODO need a way to test if all calls have been processed and not just dialed.
 // Potentially join against calls that are ended to make sure every callee has an ended call
 module.exports.isComplete = async (campaign) => {
-  const {count} = await Callee.knexQuery().count('id as count')
+  //if (campaign.calls_in_progress > 0) return false;
+  const {count} = await Callee.query().count('id as count')
     .where({campaign_id: campaign.id})
     .whereNull('last_called_at').first();
   return parseInt(count, 10) === 0;
 }
 
-module.exports.notifyAgents = async () => {
-  const callersInConference = await Caller.whereNotNull('status');
-  if (process.env.NODE_ENV === 'development') console.error(`NOTIFYING ${callersInConference.length} CALLERS`)
-  const notifications = callersInConference.map(async (caller) => {
+module.exports.isPausing = async (campaign) => {
+  return campaign.status === "isPausing";
+}
+
+module.exports.notifyAgents = async (campaign) => {
+  const availableCallers = await Caller.query().where({status: 'available', campaign_id: campaign.id});
+  availableCallers.forEach(async caller => {
     try{
       await promisfy(api.speak_conference_member.bind(api))({
         conference_id: `conference-${caller.id}`,
         member_id: caller.conference_member_id,
-        text: 'Campaign ended. Press star to exit when ready',
+        text: 'Campaign ended. Press star to exit',
         language: 'en-GB', voice: 'MAN'
       });
     }catch(e){};
   });
-  return Promise.all(notifications);
 }
