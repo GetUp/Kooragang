@@ -425,7 +425,8 @@ app.post('/call_again', async ({query, body}, res) => {
     action: appUrl(`ready?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`),
     timeout: 10,
     retries: 10,
-    numDigits: 1
+    numDigits: 1,
+    validDigits: ['1', '*']
   });
   callAgain.addSpeakAU('Press 1 to continue calling. To finish your calling session, press star.');
   r.addRedirect(appUrl('disconnect'));
