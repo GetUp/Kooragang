@@ -30,6 +30,7 @@ const defaultCampaign = {
   phone_number: '1111'
 }
 const activeCampaign = Object.assign({status: 'active'}, defaultCampaign, {})
+const activeCampaignWithPascode = Object.assign({status: 'active', passcode: '012345'}, defaultCampaign, {})
 const pausedCampaign = Object.assign({status: 'paused'}, defaultCampaign, {})
 const inactiveCampaign = Object.assign({status: 'inactive'}, defaultCampaign, {})
 const statuslessCampaign = Object.assign({status: null}, defaultCampaign, {})

@@ -168,8 +168,8 @@ app.post('/connect', async ({body, query}, res, next) => {
     return res.send(r.toXML());
   }
 
-  const callback = query.callback ? query.callback === "1" : false;
-  const authenticated = query.authenticated ? query.authenticated === "1" : false;
+  const callback = query.callback === "1";
+  const authenticated = query.authenticated === "1";
   const promptAuth = authenticationNeeded(callback, query.entry, campaign.passcode, authenticated);
   const promptIntro = introductionNeeded(query.entry);
 
@@ -217,7 +217,7 @@ app.post('/connect', async ({body, query}, res, next) => {
   }
 
   const briefing = r.addGetDigits({
-    action: appUrl(`ready?campaign_id=${campaign.id}&caller_number=${callerNumber}&start=1&authenticated=${query.authenticated ? '1' : '0'}`),
+    action: appUrl(`ready?campaign_id=${campaign.id}&caller_number=${callerNumber}&start=1&authenticated=${authenticated ? '1' : '0'}`),
     method: 'POST',
     timeout: 5,
     numDigits: 1,
@@ -261,7 +261,6 @@ app.post('/connect', async ({body, query}, res, next) => {
 
 app.post('/ready', async ({body, query}, res, next) => {
   const r = plivo.Response();
-  const authenticated = query.authenticated ? query.authenticated === "1" : false;
   const campaign = await Campaign.query().where({id: query.campaign_id}).first();
   let caller_id;
   if (query.start) {
