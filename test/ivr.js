@@ -211,10 +211,12 @@ describe('/ready', () => {
   });
 
   context('with 3 pressed', () => {
-    it('should send an sms to their number', () => {
-      return request.post(`/ready?caller_number=${caller.phone_number}&start=1&campaign_id=${campaign.id}`)
+    it('should send an sms to their number with the script_url', async() => {
+      await campaign.$query().patch({script_url: 'http://test.com/script'});
+      await request.post(`/ready?caller_number=${caller.phone_number}&start=1&campaign_id=${campaign.id}`)
         .type('form').send({Digits: '3'})
         .expect(/message/i)
+        .expect(/test.com/i)
     });
   });
 

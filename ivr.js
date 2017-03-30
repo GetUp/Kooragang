@@ -262,10 +262,11 @@ app.post('/connect', async ({body, query}, res, next) => {
 app.post('/ready', async ({body, query}, res, next) => {
   const r = plivo.Response();
   const authenticated = query.authenticated ? query.authenticated === "1" : false;
+  const campaign = await Campaign.query().where({id: query.campaign_id}).first();
   let caller_id;
   if (query.start) {
     if (body.Digits === '3') {
-      r.addMessage(`Please print or download the script and disposition codes from ${appUrl(query.campaign_id)}. When you are ready, call again!`, {
+      r.addMessage(`Please print or download the script and disposition codes from ${_.escape(campaign.script_url)}. When you are ready, call again!`, {
         src: process.env.NUMBER || '1111111111', dst: query.caller_number
       });
       r.addSpeakAU('Sending an sms with instructions to your number. Thank you and speak soon!')
@@ -276,7 +277,6 @@ app.post('/ready', async ({body, query}, res, next) => {
   } else {
     caller_id = query.caller_id;
   }
-  const campaign = await Campaign.query().where({id: query.campaign_id}).first();
   const campaignComplete = await dialer.isComplete(campaign);
   if (campaignComplete) {
     r.addSpeakAU('The campaign has been completed!');
