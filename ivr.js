@@ -262,10 +262,11 @@ app.post('/connect', async ({body, query}, res, next) => {
 app.post('/ready', async ({body, query}, res, next) => {
   const r = plivo.Response();
   const authenticated = query.authenticated ? query.authenticated === "1" : false;
+  const campaign = await Campaign.query().where({id: query.campaign_id}).first();
   let caller_id;
   if (query.start) {
     if (body.Digits === '3') {
-      r.addMessage(`Please print or download the script and disposition codes from ${appUrl(query.campaign_id)}. When you are ready, call again!`, {
+      r.addMessage(`Please print or download the script and disposition codes from ${_.escape(campaign.script_url)}. When you are ready, call again!`, {
         src: process.env.NUMBER || '1111111111', dst: query.caller_number
       });
       r.addSpeakAU('Sending an sms with instructions to your number. Thank you and speak soon!')
@@ -276,7 +277,6 @@ app.post('/ready', async ({body, query}, res, next) => {
   } else {
     caller_id = query.caller_id;
   }
-  const campaign = await Campaign.query().where({id: query.campaign_id}).first();
   const campaignComplete = await dialer.isComplete(campaign);
   if (campaignComplete) {
     r.addSpeakAU('The campaign has been completed!');
@@ -425,7 +425,8 @@ app.post('/call_again', async ({query, body}, res) => {
     action: appUrl(`ready?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`),
     timeout: 10,
     retries: 10,
-    numDigits: 1
+    numDigits: 1,
+    validDigits: ['1', '*']
   });
   callAgain.addSpeakAU('Press 1 to continue calling. To finish your calling session, press star.');
   r.addRedirect(appUrl('disconnect'));
@@ -551,14 +552,6 @@ app.post('/passcode', async ({query, body}, res) => {
   res.send(r.toXML());
 });
 
-app.get(/^\/\d+$/, async ({body, query, path}, res) => {
-  res.set('Content-Type', 'text/html');
-  const campaign = await Campaign.query().where({id: path.replace(/^\//, '')}).first();
-  if (!campaign) res.sendStatus(404);
-  const questions = campaign.questions;
-  return res.render('campaign.ejs', {campaign, questions})
-});
-
 app.get('/stats/:id', async ({body, params}, res) => {
   res.set('Content-Type', 'text/html');
   const campaign = await Campaign.query().where({id: params.id}).first();
@@ -599,7 +592,7 @@ app.get('/stats/:id', async ({body, params}, res) => {
       completed: getCountForStatus('complete')
     }
     const currentCallers = data.available + data['in-call'];
-    data.rate = currentCallers ? Math.round(total*12 / currentCallers) : 0;
+    data.rate = currentCallers ? Math.round(total*6 / currentCallers) : 0;
     return data;
   };
   const report = await generateReport();

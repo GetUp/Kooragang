@@ -211,10 +211,12 @@ describe('/ready', () => {
   });
 
   context('with 3 pressed', () => {
-    it('should send an sms to their number', () => {
-      return request.post(`/ready?caller_number=${caller.phone_number}&start=1&campaign_id=${campaign.id}`)
+    it('should send an sms to their number with the script_url', async() => {
+      await campaign.$query().patch({script_url: 'http://test.com/script'});
+      await request.post(`/ready?caller_number=${caller.phone_number}&start=1&campaign_id=${campaign.id}`)
         .type('form').send({Digits: '3'})
         .expect(/message/i)
+        .expect(/test.com/i)
     });
   });
 
@@ -562,7 +564,7 @@ describe('/hangup', () => {
   });
 });
 
-describe('with campaign id in path', () => {
+describe('/stats/:id', () => {
   beforeEach(async () => {
     await Event.query().delete();
     await Call.query().delete();
@@ -573,7 +575,7 @@ describe('with campaign id in path', () => {
   beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign));
 
   it ('should return a page with the campaign name', () => {
-    return request.get(`/${campaign.id}`)
+    return request.get(`/stats/${campaign.id}`)
       .expect(/test/);
   });
 });
