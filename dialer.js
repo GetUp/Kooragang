@@ -153,7 +153,7 @@ module.exports.isComplete = async (campaign) => {
 }
 
 module.exports.isPausing = async (campaign) => {
-  return campaign.status === "isPausing";
+  return campaign.status === "pausing";
 }
 
 module.exports.notifyAgents = async (campaign) => {
