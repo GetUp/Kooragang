@@ -11,6 +11,7 @@ const dialer = require('./dialer');
 const {
   sleep,
   extractCallerNumber,
+  extractCalleeNumber,
   authenticationNeeded,
   introductionNeeded,
   validPasscode
@@ -461,7 +462,7 @@ app.post('/survey', async ({query, body}, res) => {
   if (question === 'disposition') {
     surveyResponse.addSpeakAU('The call has ended.');
   }
-  surveyResponse.addSpeakAU(`Enter the ${questionData.name} code.`);
+  surveyResponse.addSpeakAU(`${questionData.name}`);
   res.send(r.toXML());
 });
 
@@ -472,6 +473,22 @@ app.post('/survey_result', async ({query, body}, res) => {
   const question = questions[query.q];
   const disposition = question.answers[body.Digits || query.digit].value;
   const next = question.answers[body.Digits || query.digit].next;
+
+  const type = question.type;
+  const deliver = question.answers[body.Digits || query.digit].deliver;
+  const content = question.answers[body.Digits || query.digit].content;
+  const calleeNumber = extractCalleeNumber(query, body);
+
+  r.addSpeakAU(disposition);
+  const sendDropInfoSMS = (content, calleeNumber) => {
+    r.addMessage(`${content}`, {
+      src: process.env.NUMBER || '1111111111',
+      dst: calleeNumber
+    });
+  }
+  if (type === 'SMS' && deliver) {
+    sendDropInfoSMS(content, calleeNumber)
+  }
   const data = {
     log_id: res.locals.log_id,
     call_id: query.call_id,
@@ -479,7 +496,6 @@ app.post('/survey_result', async ({query, body}, res) => {
     answer: disposition,
   }
   await SurveyResult.query().insert(data);
-  r.addSpeakAU(disposition);
 
   if (next) {
     r.addRedirect(appUrl(`survey?q=${next}&call_id=${query.call_id}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`));
