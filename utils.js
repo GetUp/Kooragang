@@ -12,6 +12,11 @@ module.exports.extractCallerNumber = (query, body) => {
   }
 };
 
+module.exports.extractCalleeNumber = (query, body) => {
+  const sip = body.To.match(/sip:(\w+)@/);
+  return sip ? sip[1] : body.To.replace(/\s/g, '').replace(/^0/, '61');
+};
+
 module.exports.authenticationNeeded = (callback, entry, campaign_passcode, authenticated) => {
   if (callback) { return false };
   if (entry === "more_info") { return false }

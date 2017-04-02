@@ -594,16 +594,16 @@ describe('/survey', () => {
     const question = 'action';
     return request.post(`/survey?q=${question}&call_id=${call.id}&campaign_id=${campaign.id}`)
       .expect(new RegExp(`q=${question}`))
-      .expect(new RegExp(`Enter the ${question} code`, 'i'));
+      .expect(new RegExp(`${question}`, 'i'));
   });
 });
 
 describe('/survey_result', () => {
   beforeEach(async () => await SurveyResult.query().delete());
-
+  const payload = { Digits: '2', To: '614000100'};
   it('stores the result', () => {
     return request.post('/survey_result?q=disposition&campaign_id=1')
-      .type('form').send({ Digits: '2' })
+      .type('form').send(payload)
       .then(async () => {
         const result = await SurveyResult.query()
           .where({question: 'disposition'})
@@ -613,7 +613,7 @@ describe('/survey_result', () => {
   });
 
   context('with a non-meaningful disposition', () => {
-    const payload = { Digits: '2' };
+    const payload = { Digits: '2', To: '614000100'};
     it ('should announce the result & redirect to call_again', () => {
       return request.post('/survey_result?q=disposition&campaign_id=1')
         .type('form').send(payload)
@@ -623,12 +623,22 @@ describe('/survey_result', () => {
   });
 
   context('with a meaningful disposition', () => {
-    const payload = { Digits: '7' };
+    const payload = { Digits: '7', To: '614000100'};
     it ('should announce the result & redirect to the next question', () => {
       return request.post('/survey_result?q=disposition&campaign_id=1')
         .type('form').send(payload)
         .expect(/meaningful/)
         .expect(/survey\?q=/);
+    });
+  });
+
+  context('with a callee that wants more info', () => {
+    const payload = { Digits: '2', To: '614000100'};
+    it ('should recieve an sms', () => {
+      return request.post('/survey_result?q=drop_info&campaign_id=1')
+        .type('form').send(payload)
+        .expect(/takeaway/i)
+        .expect(/getup.org.au/i);
     });
   });
 });
