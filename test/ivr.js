@@ -635,15 +635,25 @@ describe('/survey_result', () => {
 
   context('with a callee that wants more info', () => {
     const payload = { Digits: '2', To: '614000100'};
-    it ('should recieve an sms', () => {
+    let callee, call;
+    beforeEach(async () => {
+      callee = await Callee.query().insert(associatedCallee);
+      call = await Call.query().insert({callee_id: callee.id});
+    });
+    it ('should receive an sms', () => {
       return request.post('/survey_result?q=action&campaign_id=1')
         .type('form').send(payload)
         .expect(/call/i);
     });
-    it ('should recieve an sms from the number set on the campaign', () => {
+    it ('should receive an sms from the number set on the campaign', () => {
       return request.post('/survey_result?q=action&campaign_id=1')
         .type('form').send(payload)
         .expect(new RegExp(campaign.sms_number));
+    });
+    it ("should send the sms to the callee's number", () => {
+      return request.post(`/survey_result?q=action&campaign_id=1&call_id=${call.id}`)
+        .type('form').send(payload)
+        .expect(new RegExp(callee.phone_number.replace(/[^0-9]/g, '')));
     });
   });
 });
