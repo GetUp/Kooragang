@@ -2,7 +2,7 @@ const expect = require('expect.js');
 const nock = require('nock');
 const proxyquire = require('proxyquire');
 const moment = require('moment');
-const app = proxyquire('../ivr', {
+const app = proxyquire('../app', {
   './dialer': {
     dial: async (appUrl) => {},
     isComplete: async (appUrl) => false,
@@ -10,15 +10,13 @@ const app = proxyquire('../ivr', {
 });
 const request = require('supertest-as-promised')(app);
 
-const {
-  Call,
-  Callee,
-  Caller,
-  Campaign,
-  Event,
-  Log,
-  SurveyResult
-} = require('../models');
+const Call = require('../models/Call');
+const Callee = require('../models/Callee');
+const Caller = require('../models/Caller');
+const Campaign = require('../models/Campaign');
+const Event = require('../models/Event');
+const Log = require('../models/Log');
+const SurveyResult = require('../models/SurveyResult');
 
 const questions = require('../seeds/questions.example.json');
 const more_info = require('../seeds/more_info.example.json');
@@ -635,10 +633,9 @@ describe('/survey_result', () => {
   context('with a callee that wants more info', () => {
     const payload = { Digits: '2', To: '614000100'};
     it ('should recieve an sms', () => {
-      return request.post('/survey_result?q=drop_info&campaign_id=1')
+      return request.post('/survey_result?q=action&campaign_id=1')
         .type('form').send(payload)
-        .expect(/takeaway/i)
-        .expect(/getup.org.au/i);
+        .expect(/phone/i);
     });
   });
 });

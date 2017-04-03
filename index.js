@@ -1,4 +1,7 @@
-const server = require('./ivr');
-const port = process.env.PORT || 8080;
-
-server.listen(port, () => console.log('App running on port', port));
+const app = require('./app');
+/**
+ * Start Express server.
+ */
+app.listen(app.get('port'), () => {
+  console.log('App is running at http://localhost:%d in %s mode', app.get('port'), app.get('env')); 
+});

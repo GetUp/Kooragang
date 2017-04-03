@@ -5,7 +5,11 @@ const moment = require('moment');
 const _ = require('lodash');
 const sinon = require('sinon');
 
-const { Callee, Caller, Call, Campaign, Event } = require('../models');
+const Call = require('../models/Call');
+const Callee = require('../models/Callee');
+const Caller = require('../models/Caller');
+const Campaign = require('../models/Campaign');
+const Event = require('../models/Event');
 
 const defaultCampaign = {
   name: 'test',

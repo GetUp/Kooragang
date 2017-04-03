@@ -1,13 +1,10 @@
-const express = require('express');
-const moment = require('moment');
 const plivo = require('plivo');
-const bodyParser = require('body-parser');
 const async = require('async');
 const _ = require('lodash');
-const app = express();
 const promisify = require('es6-promisify');
 const api = plivo.RestAPI({ authId: process.env.API_ID || 'test', authToken: process.env.API_TOKEN || 'test'});
-const dialer = require('./dialer');
+const dialer = require('../dialer');
+const host= process.env.BASE_URL;
 const {
   sleep,
   extractCallerNumber,
@@ -15,55 +12,23 @@ const {
   authenticationNeeded,
   introductionNeeded,
   validPasscode
-} = require('./utils');
-const {
-  Call,
-  Callee,
-  Caller,
-  Campaign,
-  Log,
-  SurveyResult,
-  Event,
-  transaction
-} = require('./models');
-
-app.use(bodyParser.urlencoded({extended: true}));
-app.use(express.static('public'))
-app.set('view engine', 'ejs');
+} = require('../utils');
+const Call = require('../models/Call');
+const Callee = require('../models/Callee');
+const Caller = require('../models/Caller');
+const Campaign = require('../models/Campaign');
+const SurveyResult = require('../models/SurveyResult');
+const Event = require('../models/Event');
+const { transaction } = require('../models/Model');
 
 const response = Object.getPrototypeOf(plivo.Response());
 response.addSpeakAU = function(text) {
   this.addSpeak(text, {language: 'en-GB', voice: 'MAN'});
 };
 
-let host= process.env.BASE_URL;
-
-app.use((req, res, next) => {
-  if (!host) host = `${req.protocol}://${req.hostname}`;
-  res.set('Content-Type', 'text/xml');
-  next();
-});
-
-const log = ({method, url, body, query, params, headers}, cb) => {
-  if (method === 'GET') return cb();
-  const UUID = body.CallUUID;
-  if (process.env.NODE_ENV === 'development') console.error('REQUEST', {UUID, url, body})
-  Log.query().insert({UUID, url, body, query, params, headers}).nodeify(cb);
-};
-
-app.use((req, res, next) => {
-  if (req.method === 'GET') return next();
-  log(req, (err, result) => {
-    res.locals.log_id = result.id;
-    next();
-  });
-});
-
 const appUrl = endpoint => endpoint ? `${host}/${endpoint}` : host;
 
-app.get('/', (req, res) => res.send('<_-.-_>I\'m awake.</_-.-_>'));
-
-app.post('/answer', async ({body, query}, res, next) => {
+exports.postAnswer = async ({query, body}, res, next) => {
   const r = plivo.Response();
   const name = query.name;
   let errorFindingCaller, caller, seconds_waiting;
@@ -125,9 +90,9 @@ app.post('/answer', async ({body, query}, res, next) => {
     r.addHangup({reason: 'drop'});
   }
   res.send(r.toXML());
-});
+};
 
-app.post('/hangup', async ({body, query}, res, next) => {
+exports.postHangup = async ({query, body}, res, next) => {
   let call = await Call.query().where({callee_call_uuid: body.CallUUID}).first();
   const status = body.Machine === 'true' ? 'machine_detected' : body.CallStatus;
   if (call){
@@ -145,9 +110,9 @@ app.post('/hangup', async ({body, query}, res, next) => {
     await Event.query().insert({name: 'filter', campaign_id: campaign.id, call_id: call.id, value: {status, calls_in_progress, updated_calls_in_progress: campaign.calls_in_progress}})
   }
   res.sendStatus(200);
-});
+};
 
-app.post('/connect', async ({body, query}, res, next) => {
+exports.postConnect = async ({query, body}, res, next) => {
   if (body.CallStatus === 'completed') return res.sendStatus(200);
   const r = plivo.Response();
   const campaign = await Campaign.query().where({id: query.campaign_id}).first();
@@ -258,9 +223,9 @@ app.post('/connect', async ({body, query}, res, next) => {
   briefing.addWait({length: 8});
   briefing.addSpeakAU('This message will automatically replay until you select a number on your phone\'s key pad.');
   res.send(r.toXML());
-});
+};
 
-app.post('/ready', async ({body, query}, res, next) => {
+exports.postReady = async ({query, body}, res, next) => {
   const r = plivo.Response();
   const authenticated = query.authenticated ? query.authenticated === "1" : false;
   const campaign = await Campaign.query().where({id: query.campaign_id}).first();
@@ -328,9 +293,9 @@ app.post('/ready', async ({body, query}, res, next) => {
   if (process.env.ENABLE_ANSWER_MACHINE_SHORTCUT) params.digitsMatch = ['2']
   r.addConference(`conference-${caller_id}`, params);
   res.send(r.toXML());
-});
+};
 
-app.post('/call_ended', async ({body, query}, res) => {
+exports.postCallEnded = async ({query, body}, res) => {
   const campaign = await Campaign.query().where({id: query.campaign_id}).first();
   const caller = await Caller.query().where({call_uuid: body.CallUUID}).first();
   if (!caller) {
@@ -359,16 +324,16 @@ app.post('/call_ended', async ({body, query}, res) => {
     }
   }
   return res.sendStatus(200);
-});
+};
 
-app.post('/hold_music', (req, res) => {
+exports.postHoldMusic = async ({query, body}, res) => {
   const r = plivo.Response();
   _(1).range(7)
     .each(i => r.addPlay(`http://holdmusic.io/public/welcome-pack/welcome-pack-${i}.mp3`) )
   res.send(r.toXML());
-});
+};
 
-app.post('/conference_event/callee', async ({query, body}, res, next) => {
+exports.postConferenceEventCallee = async ({query, body}, res, next) => {
   if (body.ConferenceAction === 'enter'){
     await Call.query().where({callee_call_uuid: body.CallUUID}).patch({
       conference_uuid: body.ConferenceUUID,
@@ -376,9 +341,9 @@ app.post('/conference_event/callee', async ({query, body}, res, next) => {
     });
   }
   res.sendStatus(200);
-});
+};
 
-app.post('/conference_event/caller', async ({query, body}, res, next) => {
+exports.postConferenceEventCaller = async ({query, body}, res, next) => {
   const conference_member_id = body.ConferenceMemberID;
   if (body.ConferenceAction === 'enter') {
     const caller = await Caller.query().where({id: query.caller_id})
@@ -406,9 +371,9 @@ app.post('/conference_event/caller', async ({query, body}, res, next) => {
     }
   }
   res.sendStatus(200);
-});
+};
 
-app.post('/call_again', async ({query, body}, res) => {
+exports.postCallAgain = async ({query, body}, res) => {
   const r = plivo.Response();
   const campaign = await Campaign.query().where({id: query.campaign_id}).first();
   if (campaign.calls_in_progress === 0) {
@@ -432,9 +397,9 @@ app.post('/call_again', async ({query, body}, res) => {
   callAgain.addSpeakAU('Press 1 to continue calling. To finish your calling session, press star.');
   r.addRedirect(appUrl('disconnect'));
   res.send(r.toXML());
-});
+};
 
-app.post('/survey', async ({query, body}, res) => {
+exports.postSurvey = async ({query, body}, res) => {
   let call;
   const r = plivo.Response();
   const campaign = await Campaign.query().where({id: query.campaign_id}).first();
@@ -464,9 +429,9 @@ app.post('/survey', async ({query, body}, res) => {
   }
   surveyResponse.addSpeakAU(`${questionData.name}`);
   res.send(r.toXML());
-});
+};
 
-app.post('/survey_result', async ({query, body}, res) => {
+exports.postSurveyResult = async ({query, body}, res) => {
   const r = plivo.Response();
   const campaign = await Campaign.query().where({id: query.campaign_id}).first();
   const questions = campaign.questions;
@@ -503,9 +468,9 @@ app.post('/survey_result', async ({query, body}, res) => {
     r.addRedirect(appUrl(`call_again?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`));
   }
   res.send(r.toXML());
-});
+};
 
-app.post('/disconnect', (req, res) => {
+exports.postDisconnect = async ({query, body}, res, next) => {
   const r = plivo.Response();
 
   r.addSpeakAU('Thank you very much for volunteering on this campaign.');
@@ -518,9 +483,9 @@ app.post('/disconnect', (req, res) => {
   feedback.addSpeakAU('To give feedback about your calling session, press 1. Otherwise, you can hang up - thanks again for calling. We hope to see you again soon!');
 
   res.send(r.toXML());
-});
+};
 
-app.post('/feedback', (req, res) => {
+exports.postFeedback = async ({query, body}, res, next) => {
   const r = plivo.Response();
   r.addSpeakAU('Please leave a short 30 second message after the beep. If you\'d like a response, be sure to leave your name and number.');
   r.addRecord({
@@ -530,25 +495,25 @@ app.post('/feedback', (req, res) => {
   });
   r.addSpeakAU('Thanks again for calling. We hope to see you again soon!');
   res.send(r.toXML());
-});
-// already logged in middleware
-app.post('/log', (req, res) => res.sendStatus(200));
+};
 
-app.post('/fallback', async ({body, query}, res) => {
+exports.postLog = async ({query, body}, res) => res.sendStatus(200);
+
+exports.postFallback = async ({query, body}, res) => {
   await Event.query().insert({campaign_id: query.campaign_id, name: 'caller fallback', value: body})
   const r = plivo.Response()
   r.addSpeakAU('Dreadfully sorry; an error has occurred. Please call back to continue.')
   res.send(r.toXML())
-});
+};
 
-app.post('/callee_fallback', async ({body, query}, res) => {
+exports.postCalleeFallback = async ({query, body}, res) => {
   await Event.query().insert({campaign_id: query.campaign_id, name: 'callee fallback', value: {body, query}})
   const r = plivo.Response()
   r.addHangup()
   res.send(r.toXML())
-});
+};
 
-app.post('/passcode', async ({query, body}, res) => {
+exports.postPasscode = async ({query, body}, res) => {
   const r = plivo.Response();
   const campaign = await Campaign.query().where({id: query.campaign_id}).first();
   const authenticatedCaller = validPasscode(campaign.passcode, body.Digits);
@@ -566,53 +531,4 @@ app.post('/passcode', async ({query, body}, res) => {
   r.addWait({length: 1});
   r.addHangup();
   res.send(r.toXML());
-});
-
-app.get('/stats/:id', async ({body, params}, res) => {
-  res.set('Content-Type', 'text/html');
-  const campaign = await Campaign.query().where({id: params.id}).first();
-  if (!campaign) res.sendStatus(404);
-  const generateReport = async () => {
-    const callerCounts = await Caller.knexQuery().select('status')
-      .count('callers.id as count')
-      .whereRaw("created_at >= NOW() - INTERVAL '60 minutes'")
-      .where({campaign_id: campaign.id})
-      .groupBy('status');
-    const statusCounts = await Call.knexQuery().select('dropped')
-      .innerJoin('callees', 'calls.callee_id', 'callees.id')
-      .count('calls.id as count')
-      .whereRaw("ended_at >= NOW() - INTERVAL '10 minutes'")
-      .where({campaign_id: campaign.id})
-      .groupBy('dropped');
-    const waitEvents = await Event.query()
-      .whereIn('name', ['caller_complete', 'answered'])
-      .where({campaign_id: campaign.id})
-      .whereRaw("created_at >= NOW() - INTERVAL '10 minutes'");
-    const wait = waitEvents.length ? Math.round(_.sumBy(waitEvents, event => JSON.parse(event.value).seconds_waiting) / waitEvents.length) : 0;
-    const total = _.sumBy(statusCounts, ({count}) => parseInt(count, 10));
-    const dropStatus = _.find(statusCounts, ({dropped}) => dropped);
-    const drops = dropStatus ? parseInt(dropStatus.count, 10) : 0;
-    const dropRate = total ? Math.round(drops*100/total) : 0;
-    const getCountForStatus = (status) => {
-      const record = _.find(callerCounts, (record) => record.status === status);
-      return record ? parseInt(record.count, 10) : 0;
-    }
-    const data = {
-      timestamp: moment().format('HH:mm:ss'),
-      wait,
-      total,
-      drops,
-      dropRate,
-      available: getCountForStatus('available'),
-      "in-call": getCountForStatus('in-call'),
-      completed: getCountForStatus('complete')
-    }
-    const currentCallers = data.available + data['in-call'];
-    data.rate = currentCallers ? Math.round(total*6 / currentCallers) : 0;
-    return data;
-  };
-  const report = await generateReport();
-  return res.render('stats.ejs', {campaign, report})
-});
-
-module.exports = app;
+};
