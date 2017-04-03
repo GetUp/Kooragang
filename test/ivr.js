@@ -27,7 +27,8 @@ const defaultCampaign = {
   name: 'test',
   questions: questions,
   more_info: more_info,
-  phone_number: '1111'
+  phone_number: '1111',
+  sms_number: '22222222'
 }
 const activeCampaign = Object.assign({status: 'active'}, defaultCampaign, {})
 const pausedCampaign = Object.assign({status: 'paused'}, defaultCampaign, {})
@@ -635,10 +636,14 @@ describe('/survey_result', () => {
   context('with a callee that wants more info', () => {
     const payload = { Digits: '2', To: '614000100'};
     it ('should recieve an sms', () => {
-      return request.post('/survey_result?q=drop_info&campaign_id=1')
+      return request.post('/survey_result?q=action&campaign_id=1')
         .type('form').send(payload)
-        .expect(/takeaway/i)
-        .expect(/getup.org.au/i);
+        .expect(/call/i);
+    });
+    it ('should recieve an sms from the number set on the campaign', () => {
+      return request.post('/survey_result?q=action&campaign_id=1')
+        .type('form').send(payload)
+        .expect(new RegExp(campaign.sms_number));
     });
   });
 });

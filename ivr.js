@@ -482,7 +482,7 @@ app.post('/survey_result', async ({query, body}, res) => {
   r.addSpeakAU(disposition);
   const sendDropInfoSMS = (content, calleeNumber) => {
     r.addMessage(`${content}`, {
-      src: process.env.NUMBER || '1111111111',
+      src: campaign.sms_number || process.env.NUMBER || '1111111111',
       dst: calleeNumber
     });
   }
