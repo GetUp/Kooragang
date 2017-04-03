@@ -11,7 +11,7 @@ const expressValidator = require('express-validator');
 const expressStatusMonitor = require('express-status-monitor');
 const sass = require('node-sass-middleware');
 
-const { Log } = require('./models');
+const Log = require('./models/Log');
 
 /**
  * Controllers (route handlers).
@@ -46,9 +46,8 @@ app.use(sass({
   dest: path.join(__dirname, 'public')
 }));
 app.use(expressValidator());
-let host= process.env.BASE_URL;
+
 app.use((req, res, next) => {
-  if (!host) host = `${req.protocol}://${req.hostname}`;
   res.set('Content-Type', 'text/xml');
   next();
 });
@@ -166,6 +165,13 @@ app.get('/account/unlink/:provider', passportConfig.isAuthenticated, userControl
 app.get('/auth/google', passport.authenticate('google', { scope: 'profile email' }));
 app.get('/auth/google/callback', passport.authenticate('google', { failureRedirect: '/login' }), (req, res) => {
   res.redirect(req.session.returnTo || '/');
+});
+
+/**
+ * Start Express server.
+ */
+app.listen(app.get('port'), () => {
+  console.log('App is running at http://localhost:%d in %s mode', app.get('port'), app.get('env')); 
 });
 
 module.exports = app;

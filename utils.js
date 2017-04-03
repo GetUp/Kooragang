@@ -33,3 +33,8 @@ module.exports.introductionNeeded = (entry) => {
 module.exports.validPasscode = (campaign_passcode, digits) => {
   return campaign_passcode === digits;
 };
+
+module.exports.appUrl = (protocol, hostname, endpoint) => {
+  const host = process.env.BASE_URL || `${protocol}://${hostname}`;
+  return endpoint ? `${host}/${endpoint}` : host;
+}

@@ -4,14 +4,14 @@ const _ = require('lodash');
 const promisify = require('es6-promisify');
 const api = plivo.RestAPI({ authId: process.env.API_ID || 'test', authToken: process.env.API_TOKEN || 'test'});
 const dialer = require('../dialer');
-const host= process.env.BASE_URL;
 const {
   sleep,
   extractCallerNumber,
   extractCalleeNumber,
   authenticationNeeded,
   introductionNeeded,
-  validPasscode
+  validPasscode,
+  appUrl
 } = require('../utils');
 const Call = require('../models/Call');
 const Callee = require('../models/Callee');
@@ -26,9 +26,7 @@ response.addSpeakAU = function(text) {
   this.addSpeak(text, {language: 'en-GB', voice: 'MAN'});
 };
 
-const appUrl = endpoint => endpoint ? `${host}/${endpoint}` : host;
-
-exports.postAnswer = async ({query, body}, res, next) => {
+exports.postAnswer = async ({query, body, protocol, hostname}, res, next) => {
   const r = plivo.Response();
   const name = query.name;
   let errorFindingCaller, caller, seconds_waiting;
@@ -75,7 +73,7 @@ exports.postAnswer = async ({query, body}, res, next) => {
     r.addConference(`conference-${caller.id}`, {
       startConferenceOnEnter: false,
       stayAlone: false,
-      callbackUrl: appUrl(`conference_event/callee?caller_id=${caller.id}&campaign_id=${query.campaign_id}`)
+      callbackUrl: appUrl(protocol, hostname, `conference_event/callee?caller_id=${caller.id}&campaign_id=${query.campaign_id}`)
     });
   } else {
     const call = await Call.query().insert({
@@ -92,7 +90,7 @@ exports.postAnswer = async ({query, body}, res, next) => {
   res.send(r.toXML());
 };
 
-exports.postHangup = async ({query, body}, res, next) => {
+exports.postHangup = async ({query, body, protocol, hostname}, res, next) => {
   let call = await Call.query().where({callee_call_uuid: body.CallUUID}).first();
   const status = body.Machine === 'true' ? 'machine_detected' : body.CallStatus;
   if (call){
@@ -112,14 +110,14 @@ exports.postHangup = async ({query, body}, res, next) => {
   res.sendStatus(200);
 };
 
-exports.postConnect = async ({query, body}, res, next) => {
+exports.postConnect = async ({query, body, protocol, hostname}, res, next) => {
   if (body.CallStatus === 'completed') return res.sendStatus(200);
   const r = plivo.Response();
   const campaign = await Campaign.query().where({id: query.campaign_id}).first();
 
   if (process.env.RECORD_CALLS === 'true') {
     r.addRecord({
-      action: appUrl('log'),
+      action: appUrl(protocol, hostname, 'log'),
       maxLength: 60*60,
       recordSession: true,
       redirect: false
@@ -167,12 +165,12 @@ exports.postConnect = async ({query, body}, res, next) => {
     r.addWait({length: 2});
     r.addSpeakAU('Please enter the campaign passcode on your keypad now.')
     const passcodeAction = r.addGetDigits({
-      action: appUrl(`passcode?campaign_id=${query.campaign_id}`),
+      action: appUrl(protocol, hostname, `passcode?campaign_id=${query.campaign_id}`),
       timeout: 10,
       retries: 10,
       numDigits: campaign.passcode.length
     });
-    r.addRedirect(appUrl('passcode'));
+    r.addRedirect(appUrl(protocol, hostname, 'passcode'));
     return res.send(r.toXML());
   }
 
@@ -183,7 +181,7 @@ exports.postConnect = async ({query, body}, res, next) => {
   }
 
   const briefing = r.addGetDigits({
-    action: appUrl(`ready?campaign_id=${campaign.id}&caller_number=${callerNumber}&start=1&authenticated=${query.authenticated ? '1' : '0'}`),
+    action: appUrl(protocol, hostname, `ready?campaign_id=${campaign.id}&caller_number=${callerNumber}&start=1&authenticated=${query.authenticated ? '1' : '0'}`),
     method: 'POST',
     timeout: 5,
     numDigits: 1,
@@ -225,7 +223,7 @@ exports.postConnect = async ({query, body}, res, next) => {
   res.send(r.toXML());
 };
 
-exports.postReady = async ({query, body}, res, next) => {
+exports.postReady = async ({query, body, protocol, hostname}, res, next) => {
   const r = plivo.Response();
   const authenticated = query.authenticated ? query.authenticated === "1" : false;
   const campaign = await Campaign.query().where({id: query.campaign_id}).first();
@@ -246,12 +244,12 @@ exports.postReady = async ({query, body}, res, next) => {
   const campaignComplete = await dialer.isComplete(campaign);
   if (campaignComplete) {
     r.addSpeakAU('The campaign has been completed!');
-    r.addRedirect(appUrl('disconnect?completed=1'));
+    r.addRedirect(appUrl(protocol, hostname, 'disconnect?completed=1'));
     return res.send(r.toXML());
   }
 
   if (body.Digits === '*') {
-    r.addRedirect(appUrl('disconnect'));
+    r.addRedirect(appUrl(protocol, hostname, 'disconnect'));
     return res.send(r.toXML());
   }
 
@@ -263,13 +261,13 @@ exports.postReady = async ({query, body}, res, next) => {
 
   if (body.Digits === '4') {
     r.addSpeakAU("Welcome to the Get Up dialer tool! This system works by dialing a number of people and patching them through to you when they pick up. Until they pick up, you'll hear music playing. When the music stops, that's your queue to start talking. Then you can attempt to have a conversation with them. At the end of the conversation, you'll be prompted to enter numbers into your phone to indicate the outcome of the call. It's important to remember that you never have to hang up your phone to end a call. If you need to end a call, just press star.");
-    r.addRedirect(appUrl(`connect?campaign_id=${campaign.id}&entry=more_info&entry_key=4&authenticated=${query.authenticated}`));
+    r.addRedirect(appUrl(protocol, hostname, `connect?campaign_id=${campaign.id}&entry=more_info&entry_key=4&authenticated=${query.authenticated}`));
     return res.send(r.toXML());
   }
 
   if(Object.keys(campaign.more_info).length > 0 && Object.keys(campaign.more_info).includes(body.Digits)) {
     r.addSpeakAU(campaign.more_info[body.Digits].content);
-    r.addRedirect(appUrl(`connect?campaign_id=${campaign.id}&entry=more_info&entry_key=${body.Digits}&authenticated=${query.authenticated}`));
+    r.addRedirect(appUrl(protocol, hostname, `connect?campaign_id=${campaign.id}&entry=more_info&entry_key=${body.Digits}&authenticated=${query.authenticated}`));
     return res.send(r.toXML());
   }
 
@@ -283,19 +281,19 @@ exports.postReady = async ({query, body}, res, next) => {
   }
 
   let params = {
-    waitSound: appUrl('hold_music'),
+    waitSound: appUrl(protocol, hostname, 'hold_music'),
     maxMembers: 2,
     timeLimit: 60 * 120,
-    callbackUrl: appUrl(callbackUrl),
+    callbackUrl: appUrl(protocol, hostname, callbackUrl),
     hangupOnStar: 'true',
-    action: appUrl(`survey?q=disposition&caller_id=${caller_id}&campaign_id=${query.campaign_id}`)
+    action: appUrl(protocol, hostname, `survey?q=disposition&caller_id=${caller_id}&campaign_id=${query.campaign_id}`)
   }
   if (process.env.ENABLE_ANSWER_MACHINE_SHORTCUT) params.digitsMatch = ['2']
   r.addConference(`conference-${caller_id}`, params);
   res.send(r.toXML());
 };
 
-exports.postCallEnded = async ({query, body}, res) => {
+exports.postCallEnded = async ({query, body, protocol, hostname}, res) => {
   const campaign = await Campaign.query().where({id: query.campaign_id}).first();
   const caller = await Caller.query().where({call_uuid: body.CallUUID}).first();
   if (!caller) {
@@ -312,8 +310,8 @@ exports.postCallEnded = async ({query, body}, res) => {
     const params = {
       from: campaign.phone_number || '1111111111',
       to: caller.phone_number,
-      answer_url: appUrl(`connect?campaign_id=${campaign.id}&callback=1&number=${caller.phone_number}`),
-      hangup_url: appUrl(`call_ended?campaign_id=${campaign.id}&callback=1&number=${caller.phone_number}`),
+      answer_url: appUrl(protocol, hostname, `connect?campaign_id=${campaign.id}&callback=1&number=${caller.phone_number}`),
+      hangup_url: appUrl(protocol, hostname, `call_ended?campaign_id=${campaign.id}&callback=1&number=${caller.phone_number}`),
       ring_timeout: 120
     };
     try{
@@ -326,14 +324,14 @@ exports.postCallEnded = async ({query, body}, res) => {
   return res.sendStatus(200);
 };
 
-exports.postHoldMusic = async ({query, body}, res) => {
+exports.postHoldMusic = async ({query, body, protocol, hostname}, res) => {
   const r = plivo.Response();
   _(1).range(7)
     .each(i => r.addPlay(`http://holdmusic.io/public/welcome-pack/welcome-pack-${i}.mp3`) )
   res.send(r.toXML());
 };
 
-exports.postConferenceEventCallee = async ({query, body}, res, next) => {
+exports.postConferenceEventCallee = async ({query, body, protocol, hostname}, res, next) => {
   if (body.ConferenceAction === 'enter'){
     await Call.query().where({callee_call_uuid: body.CallUUID}).patch({
       conference_uuid: body.ConferenceUUID,
@@ -343,7 +341,7 @@ exports.postConferenceEventCallee = async ({query, body}, res, next) => {
   res.sendStatus(200);
 };
 
-exports.postConferenceEventCaller = async ({query, body}, res, next) => {
+exports.postConferenceEventCaller = async ({query, body, protocol, hostname}, res, next) => {
   const conference_member_id = body.ConferenceMemberID;
   if (body.ConferenceAction === 'enter') {
     const caller = await Caller.query().where({id: query.caller_id})
@@ -361,7 +359,7 @@ exports.postConferenceEventCaller = async ({query, body}, res, next) => {
     if (call) {
       const params = {
         call_uuid: body.CallUUID,
-        aleg_url: appUrl(`survey_result?q=disposition&caller_id=${query.caller_id}&call_id=${call.id}&campaign_id=${query.campaign_id}&digit=2`),
+        aleg_url: appUrl(protocol, hostname, `survey_result?q=disposition&caller_id=${query.caller_id}&call_id=${call.id}&campaign_id=${query.campaign_id}&digit=2`),
       }
       try {
         await promisify(api.transfer_call.bind(api))(params);
@@ -373,7 +371,7 @@ exports.postConferenceEventCaller = async ({query, body}, res, next) => {
   res.sendStatus(200);
 };
 
-exports.postCallAgain = async ({query, body}, res) => {
+exports.postCallAgain = async ({query, body, protocol, hostname}, res) => {
   const r = plivo.Response();
   const campaign = await Campaign.query().where({id: query.campaign_id}).first();
   if (campaign.calls_in_progress === 0) {
@@ -388,18 +386,18 @@ exports.postCallAgain = async ({query, body}, res) => {
     }
   }
   const callAgain = r.addGetDigits({
-    action: appUrl(`ready?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`),
+    action: appUrl(protocol, hostname, `ready?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`),
     timeout: 10,
     retries: 10,
     numDigits: 1,
     validDigits: ['1', '*']
   });
   callAgain.addSpeakAU('Press 1 to continue calling. To finish your calling session, press star.');
-  r.addRedirect(appUrl('disconnect'));
+  r.addRedirect(appUrl(protocol, hostname, 'disconnect'));
   res.send(r.toXML());
 };
 
-exports.postSurvey = async ({query, body}, res) => {
+exports.postSurvey = async ({query, body, protocol, hostname}, res) => {
   let call;
   const r = plivo.Response();
   const campaign = await Campaign.query().where({id: query.campaign_id}).first();
@@ -417,7 +415,7 @@ exports.postSurvey = async ({query, body}, res) => {
     return res.send(r.toXML());
   }
   const surveyResponse = r.addGetDigits({
-    action: appUrl(`survey_result?q=${question}&caller_id=${query.caller_id}&call_id=${call.id}&campaign_id=${query.campaign_id}`),
+    action: appUrl(protocol, hostname, `survey_result?q=${question}&caller_id=${query.caller_id}&call_id=${call.id}&campaign_id=${query.campaign_id}`),
     redirect: true,
     retries: 10,
     numDigits: 1,
@@ -431,7 +429,7 @@ exports.postSurvey = async ({query, body}, res) => {
   res.send(r.toXML());
 };
 
-exports.postSurveyResult = async ({query, body}, res) => {
+exports.postSurveyResult = async ({query, body, protocol, hostname}, res) => {
   const r = plivo.Response();
   const campaign = await Campaign.query().where({id: query.campaign_id}).first();
   const questions = campaign.questions;
@@ -463,20 +461,20 @@ exports.postSurveyResult = async ({query, body}, res) => {
   await SurveyResult.query().insert(data);
 
   if (next) {
-    r.addRedirect(appUrl(`survey?q=${next}&call_id=${query.call_id}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`));
+    r.addRedirect(appUrl(protocol, hostname, `survey?q=${next}&call_id=${query.call_id}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`));
   } else {
-    r.addRedirect(appUrl(`call_again?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`));
+    r.addRedirect(appUrl(protocol, hostname, `call_again?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`));
   }
   res.send(r.toXML());
 };
 
-exports.postDisconnect = async ({query, body}, res, next) => {
+exports.postDisconnect = async ({query, body, protocol, hostname}, res, next) => {
   const r = plivo.Response();
 
   r.addSpeakAU('Thank you very much for volunteering on this campaign.');
 
   const feedback = r.addGetDigits({
-    action: appUrl('feedback'),
+    action: appUrl(protocol, hostname, 'feedback'),
     timeout: 5,
     retries: 2
   });
@@ -485,11 +483,11 @@ exports.postDisconnect = async ({query, body}, res, next) => {
   res.send(r.toXML());
 };
 
-exports.postFeedback = async ({query, body}, res, next) => {
+exports.postFeedback = async ({query, body, protocol, hostname}, res, next) => {
   const r = plivo.Response();
   r.addSpeakAU('Please leave a short 30 second message after the beep. If you\'d like a response, be sure to leave your name and number.');
   r.addRecord({
-    action: appUrl('log'),
+    action: appUrl(protocol, hostname, 'log'),
     maxLength: 60,
     redirect: false
   });
@@ -497,23 +495,23 @@ exports.postFeedback = async ({query, body}, res, next) => {
   res.send(r.toXML());
 };
 
-exports.postLog = async ({query, body}, res) => res.sendStatus(200);
+exports.postLog = async ({query, body, protocol, hostname}, res) => res.sendStatus(200);
 
-exports.postFallback = async ({query, body}, res) => {
+exports.postFallback = async ({query, body, protocol, hostname}, res) => {
   await Event.query().insert({campaign_id: query.campaign_id, name: 'caller fallback', value: body})
   const r = plivo.Response()
   r.addSpeakAU('Dreadfully sorry; an error has occurred. Please call back to continue.')
   res.send(r.toXML())
 };
 
-exports.postCalleeFallback = async ({query, body}, res) => {
+exports.postCalleeFallback = async ({query, body, protocol, hostname}, res) => {
   await Event.query().insert({campaign_id: query.campaign_id, name: 'callee fallback', value: {body, query}})
   const r = plivo.Response()
   r.addHangup()
   res.send(r.toXML())
 };
 
-exports.postPasscode = async ({query, body}, res) => {
+exports.postPasscode = async ({query, body, protocol, hostname}, res) => {
   const r = plivo.Response();
   const campaign = await Campaign.query().where({id: query.campaign_id}).first();
   const authenticatedCaller = validPasscode(campaign.passcode, body.Digits);
@@ -522,7 +520,7 @@ exports.postPasscode = async ({query, body}, res) => {
     r.addWait({length: 1});
     r.addSpeakAU('Thanks for that.')
     r.addWait({length: 1});
-    r.addRedirect(appUrl(`connect?campaign_id=${campaign.id}&authenticated=1`));
+    r.addRedirect(appUrl(protocol, hostname, `connect?campaign_id=${campaign.id}&authenticated=1`));
     return res.send(r.toXML());
   }
 

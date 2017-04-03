@@ -75,6 +75,9 @@ describe('/connect', () => {
 
   context('with a sip number', () => {
     it('should strip out sip details for caller number', async () => {
+      console.log('=============')
+      console.log(campaign.status)
+      console.log('=============')
       await request.post(`/connect?campaign_id=${campaign.id}`)
         .type('form')
         .send({From: 'sip:alice123@phone.plivo.com'})
