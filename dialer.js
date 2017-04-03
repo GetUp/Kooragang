@@ -142,10 +142,8 @@ const decrementCallsInProgress = async campaign => {
 }
 module.exports.decrementCallsInProgress = decrementCallsInProgress;
 
-// TODO need a way to test if all calls have been processed and not just dialed.
-// Potentially join against calls that are ended to make sure every callee has an ended call
 module.exports.isComplete = async (campaign) => {
-  //if (campaign.calls_in_progress > 0) return false;
+  if (campaign.calls_in_progress > 0) return false;
   const {count} = await Callee.query().count('id as count')
     .where({campaign_id: campaign.id})
     .whereNull('last_called_at').first();
