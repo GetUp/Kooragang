@@ -28,6 +28,18 @@ class Campaign extends Model {
 
 class Call extends Model {
   static get tableName() { return 'calls' }
+  static get relationMappings() {
+    return {
+      callee: {
+        relation: Model.OneToOneRelation,
+        modelClass: Callee,
+        join: {
+          from: 'calls.callee_id',
+          to: 'callees.id'
+        }
+      }
+    }
+  }
 }
 
 class Callee extends Model {

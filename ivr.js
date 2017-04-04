@@ -488,7 +488,6 @@ app.post('/survey_result', async ({query, body}, res) => {
   }
   if (type === 'SMS' && deliver) {
     const call = await Call.query().where({id: query.call_id}).eager('callee').first();
-    console.error({call})
     sendDropInfoSMS(content, call.callee.phone_number);
   }
   const data = {

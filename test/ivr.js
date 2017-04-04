@@ -44,7 +44,7 @@ let caller = {
 };
 const associatedCallee = {
   first_name: 'chris',
-  phone_number: '+612-7777 7777',
+  phone_number: '61277777777',
   location: 'rozelle',
   caller: '61288888888',
   campaign_id: 1
@@ -641,12 +641,12 @@ describe('/survey_result', () => {
       call = await Call.query().insert({callee_id: callee.id});
     });
     it ('should receive an sms', () => {
-      return request.post('/survey_result?q=action&campaign_id=1')
+      return request.post(`/survey_result?q=action&campaign_id=1&call_id=${call.id}`)
         .type('form').send(payload)
         .expect(/call/i);
     });
     it ('should receive an sms from the number set on the campaign', () => {
-      return request.post('/survey_result?q=action&campaign_id=1')
+      return request.post(`/survey_result?q=action&campaign_id=1&call_id=${call.id}`)
         .type('form').send(payload)
         .expect(new RegExp(campaign.sms_number));
     });
