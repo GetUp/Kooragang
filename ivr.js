@@ -285,7 +285,7 @@ app.post('/ready', async ({body, query}, res, next) => {
     return res.send(r.toXML());
   }
 
-  if (body.Digits === '*') {
+  if (body.Digits === '0') {
     r.addRedirect(appUrl('disconnect'));
     return res.send(r.toXML());
   }
@@ -427,9 +427,9 @@ app.post('/call_again', async ({query, body}, res) => {
     timeout: 10,
     retries: 10,
     numDigits: 1,
-    validDigits: ['1', '*']
+    validDigits: ['1', '0']
   });
-  callAgain.addSpeakAU('Press 1 to continue calling. To finish your calling session, press star.');
+  callAgain.addSpeakAU('Press 1 to continue calling. To finish your calling session, press the zero key.');
   r.addRedirect(appUrl('disconnect'));
   res.send(r.toXML());
 });

@@ -193,10 +193,10 @@ describe('/ready', () => {
   it('should use the caller number as the conference name',
     () => request.post(`/ready?caller_id=${caller.id}&campaign_id=${campaign.id}`).expect(new RegExp(caller.id)));
 
-  context('with * pressed', () => {
+  context('with 0 pressed', () => {
     it('should redirect them to disconnect', () => {
       return request.post(`/ready?caller_id=${caller.id}&start=1&campaign_id=${campaign.id}`)
-        .type('form').send({Digits: '*'})
+        .type('form').send({Digits: '0'})
         .expect(/disconnect/i)
     });
   });
