@@ -11,7 +11,6 @@ const dialer = require('./dialer');
 const {
   sleep,
   extractCallerNumber,
-  extractCalleeNumber,
   authenticationNeeded,
   introductionNeeded,
   validPasscode
@@ -63,7 +62,7 @@ const appUrl = endpoint => endpoint ? `${host}/${endpoint}` : host;
 
 app.get('/', (req, res) => res.send('<_-.-_>I\'m awake.</_-.-_>'));
 
-app.post('/answer', async ({body, query}, res, next) => {
+app.post('/answer', async ({body, query}, res) => {
   const r = plivo.Response();
   const name = query.name;
   let errorFindingCaller, caller, seconds_waiting;
@@ -127,7 +126,7 @@ app.post('/answer', async ({body, query}, res, next) => {
   res.send(r.toXML());
 });
 
-app.post('/hangup', async ({body, query}, res, next) => {
+app.post('/hangup', async ({body, query}, res) => {
   let call = await Call.query().where({callee_call_uuid: body.CallUUID}).first();
   const status = body.Machine === 'true' ? 'machine_detected' : body.CallStatus;
   if (call){
@@ -147,7 +146,7 @@ app.post('/hangup', async ({body, query}, res, next) => {
   res.sendStatus(200);
 });
 
-app.post('/connect', async ({body, query}, res, next) => {
+app.post('/connect', async ({body, query}, res) => {
   if (body.CallStatus === 'completed') return res.sendStatus(200);
   const r = plivo.Response();
   const campaign = await Campaign.query().where({id: query.campaign_id}).first();
@@ -260,7 +259,7 @@ app.post('/connect', async ({body, query}, res, next) => {
   res.send(r.toXML());
 });
 
-app.post('/ready', async ({body, query}, res, next) => {
+app.post('/ready', async ({body, query}, res) => {
   const r = plivo.Response();
   const authenticated = query.authenticated ? query.authenticated === "1" : false;
   const campaign = await Campaign.query().where({id: query.campaign_id}).first();
@@ -368,7 +367,7 @@ app.post('/hold_music', (req, res) => {
   res.send(r.toXML());
 });
 
-app.post('/conference_event/callee', async ({query, body}, res, next) => {
+app.post('/conference_event/callee', async ({query, body}, res) => {
   if (body.ConferenceAction === 'enter'){
     await Call.query().where({callee_call_uuid: body.CallUUID}).patch({
       conference_uuid: body.ConferenceUUID,
@@ -378,7 +377,7 @@ app.post('/conference_event/callee', async ({query, body}, res, next) => {
   res.sendStatus(200);
 });
 
-app.post('/conference_event/caller', async ({query, body}, res, next) => {
+app.post('/conference_event/caller', async ({query, body}, res) => {
   const conference_member_id = body.ConferenceMemberID;
   if (body.ConferenceAction === 'enter') {
     const caller = await Caller.query().where({id: query.caller_id})
@@ -474,22 +473,19 @@ app.post('/survey_result', async ({query, body}, res) => {
   const disposition = question.answers[body.Digits || query.digit].value;
   const next = question.answers[body.Digits || query.digit].next;
 
+  r.addSpeakAU(disposition);
+
   const type = question.type;
   const deliver = question.answers[body.Digits || query.digit].deliver;
-  const content = question.answers[body.Digits || query.digit].content;
-  const calleeNumber = extractCalleeNumber(query, body);
-
-  r.addSpeakAU(disposition);
-  const sendDropInfoSMS = (content, calleeNumber) => {
+  if (type === 'SMS' && deliver) {
+    const content = question.answers[body.Digits || query.digit].content;
+    const call = await Call.query().where({id: query.call_id}).eager('callee').first();
     r.addMessage(`${content}`, {
       src: campaign.sms_number || process.env.NUMBER || '1111111111',
-      dst: calleeNumber
+      dst: call.callee.phone_number
     });
   }
-  if (type === 'SMS' && deliver) {
-    const call = await Call.query().where({id: query.call_id}).eager('callee').first();
-    sendDropInfoSMS(content, call.callee.phone_number);
-  }
+
   const data = {
     log_id: res.locals.log_id,
     call_id: query.call_id,

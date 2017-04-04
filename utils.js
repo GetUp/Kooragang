@@ -12,24 +12,10 @@ module.exports.extractCallerNumber = (query, body) => {
   }
 };
 
-module.exports.extractCalleeNumber = (query, body) => {
-  const sip = body.To.match(/sip:(\w+)@/);
-  return sip ? sip[1] : body.To.replace(/\s/g, '').replace(/^0/, '61');
-};
-
 module.exports.authenticationNeeded = (callback, entry, campaign_passcode, authenticated) => {
-  if (callback) { return false };
-  if (entry === "more_info") { return false }
-  if (!campaign_passcode) { return false };
-  if (authenticated) { return false };
-  return true;
+  return !(callback || entry === "more_info" || !campaign_passcode || authenticated);
 };
 
-module.exports.introductionNeeded = (entry) => {
-  if (entry === "more_info") { return false };
-  return true;
-};
+module.exports.introductionNeeded = entry => entry !== "more_info";
 
-module.exports.validPasscode = (campaign_passcode, digits) => {
-  return campaign_passcode === digits;
-};
+module.exports.validPasscode = (campaign_passcode, digits) => campaign_passcode === digits;
