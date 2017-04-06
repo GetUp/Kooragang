@@ -624,7 +624,7 @@ describe('/survey_result', () => {
   });
 
   context('with a meaningful disposition', () => {
-    const payload = { Digits: '7', To: '614000100'};
+    const payload = { Digits: '4', To: '614000100'};
     it ('should announce the result & redirect to the next question', () => {
       return request.post('/survey_result?q=disposition&campaign_id=1')
         .type('form').send(payload)
