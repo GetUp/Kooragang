@@ -6,23 +6,23 @@
         "value": "answering machine"
       },
       "3": {
-        "value": "no answer"
-      },
-      "4": {
         "value": "not interested"
       },
-      "5": {
-        "value": "do not call"
-      },
-      "6": {
-        "value": "wrong number"
-      },
-      "7": {
+      "4": {
         "value": "meaningful conversation",
         "next": "loan_support"
       },
+      "5": {
+        "value": "can't talk now, call back later"
+      },
+      "6": {
+        "value": "do not call"
+      },
+      "7": {
+        "value": "no answer"
+      },
       "8": {
-        "value": "call back later"
+        "value": "wrong number"
       }
     }
   },
@@ -34,10 +34,39 @@
       },
       "3": {
         "value": "does not support the loan",
-        "next": "coalition_support"
+        "next": "prefered_spending_priority"
       },
       "4": {
         "value": "unsure about support for the loan",
+        "next": "prefered_spending_priority"
+      }
+    }
+  },
+  "prefered_spending_priority": {
+    "name": "What's their prefered spending priority?",
+    "answers": {
+      "2": {
+        "value": "healthcare",
+        "next": "coalition_support"
+      },
+      "3": {
+        "value": "education",
+        "next": "coalition_support"
+      },
+      "4": {
+        "value": "job creation",
+        "next": "coalition_support"
+      },
+      "5": {
+        "value": "local infrastructure",
+        "next": "coalition_support"
+      },
+      "6": {
+        "value": "disaster relief to rebuild infrastructure in queensland",
+        "next": "coalition_support"
+      },
+      "7": {
+        "value": "other",
         "next": "coalition_support"
       }
     }
@@ -99,22 +128,22 @@
       "2": {
         "value": "will call member of parliament",
         "deliver": true,
-        "content": "Thank you for agreeing to call your member of parliment on 07 3456 7890"
+        "content": "Hi, thanks for taking action on this important issue! David Coleman's number is 9771 3400. Ideally, call during office hours, so that your message can't be ignored. Tell the person that you speak to that you live in the Forde electorate, your views on  the $1 billion government funding for the Adani coal mine, and that you would like to know what David Coleman's position is on this issue."
       },
       "3": {
         "value": "may call member of parliament",
         "deliver": true,
-        "content": "Thank you for thinking about calling your member of parliment on 07 3456 7890"
+        "content": "Hi, thanks for talking to me tonight! Remember David Coleman is your representative and should be working for you. If you're able to give his office a quick call on 9771 3400, that would be great! Just tell the person that you speak to that you live in the Forde electorate, you are opposed to the $1 billion government funding for the Adani coal mine, and you would like to know what David Coleman's position is on this issue."
       },
       "4": {
         "value": "will email member of parliament",
         "deliver": true,
-        "content": "Thank you for agreeing to email your member of parliment at peterdutton@isaclown.com"
+        "content": "Hi, thanks for taking action on this important issue! David Coleman's email is david.coleman.mp@aph.gov.au. Here's a sample message: (Dear Mr Coleman, I live in the Forde electorate and I am opposed to the $1 billion NAIF funding for the Adani coal mine. Could you please tell me what your position on this issue is?)"
       },
       "5": {
         "value": "may email member of parliament",
         "deliver": true,
-        "content": "Thank you for thinking about emailing your member of parliment at peterdutton@isaclown.com"
+        "content": "Hi, thanks for talking to me tonight! Remember David Coleman is your representative and should be working for you. If you could send a quick email him, that would be great! His email is david.coleman.mp@aph.gov.au. Here's a sample message: (Dear Mr Coleman, I live in the Forde electorate and I am opposed to the $1 billion NAIF funding for the Adani coal mine. Could you please tell me what your position on this issue is?)"
       },
       "6": {
         "value": "will not take action",

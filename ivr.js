@@ -32,7 +32,7 @@ app.set('view engine', 'ejs');
 
 const response = Object.getPrototypeOf(plivo.Response());
 response.addSpeakAU = function(text) {
-  this.addSpeak(text, {language: 'en-GB', voice: 'MAN'});
+  this.addSpeak(_.escape(text), {language: 'en-GB', voice: 'MAN'});
 };
 
 let host= process.env.BASE_URL;
