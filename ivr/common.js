@@ -1,0 +1,22 @@
+const app = require('express')();
+const plivo = require('plivo');
+const bodyParser = require('body-parser');
+const _ = require('lodash');
+
+app.use(bodyParser.urlencoded({extended: true}));
+
+const response = Object.getPrototypeOf(plivo.Response());
+response.addSpeakAU = function(text) {
+  this.addSpeak(_.escape(text), {language: 'en-GB', voice: 'MAN'});
+};
+
+app.use((req, res, next) => {
+  const host= process.env.BASE_URL || `${req.protocol}://${req.hostname}`;
+  res.locals.appUrl = endpoint => endpoint ? `${host}/${endpoint}` : host;
+  res.set('Content-Type', 'text/xml');
+  next();
+});
+
+app.get('/', (req, res) => res.send('<_-.-_>I\'m awake.</_-.-_>'));
+
+module.exports = app;

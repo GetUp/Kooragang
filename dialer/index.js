@@ -1,6 +1,5 @@
 const plivo = require('plivo');
-const promisfy = require('es6-promisify');
-const api = plivo.RestAPI({ authId: process.env.API_ID || 'test', authToken: process.env.API_TOKEN || 'test'});
+const api = require('../api')
 const moment = require('moment');
 const _ = require('lodash');
 
@@ -11,7 +10,7 @@ const {
   Campaign,
   Event,
   transaction
-} = require('./models');
+} = require('../models');
 
 module.exports.dial = async (...args) => {
   const campaign = args[1];
@@ -124,7 +123,7 @@ const updateAndCall = async (campaign, callee, appUrl) => {
   }
   if (process.env.NODE_ENV === 'development') console.error('CALLING', params)
   try{
-    await promisfy(api.make_call.bind(api))(params);
+    await api('make_call', params);
   }catch(e){
     await decrementCallsInProgress(campaign);
     await Event.query().insert({campaign_id: campaign.id, name: 'api_error', value: {calls_in_progress: campaign.calls_in_progress, callee_id: callee.id, error: e}});
@@ -158,7 +157,7 @@ module.exports.notifyAgents = async (campaign) => {
   const availableCallers = await Caller.query().where({status: 'available', campaign_id: campaign.id});
   availableCallers.forEach(async caller => {
     try{
-      await promisfy(api.speak_conference_member.bind(api))({
+      await api('speak_conference_member', {
         conference_id: `conference-${caller.id}`,
         member_id: caller.conference_member_id,
         text: 'Campaign ended. Press star to exit',
