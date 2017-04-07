@@ -7,6 +7,7 @@ app.use(bodyParser.urlencoded({extended: true}));
 
 const response = Object.getPrototypeOf(plivo.Response());
 response.addSpeakAU = function(text) {
+  text = text.replace(/[^\x00-\x7F]/g, "");//stripping non UTF8 chars
   this.addSpeak(_.escape(text), {language: 'en-GB', voice: 'MAN'});
 };
 
