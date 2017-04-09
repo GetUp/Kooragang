@@ -10,7 +10,7 @@
     <meta name="author" content="GetUp">
     <link rel="icon" href="/favicon.ico">
 
-    <title><%=campaign.name%> Stats</title>
+    <title>Campaign Dashboard | Kooragang Dailer</title>
 
     <!-- Bootstrap core CSS -->
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
@@ -43,11 +43,11 @@ h2 {
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
           </button>
-          <a class="navbar-brand" href="#">Phone Bank Tool</a>
+          <a class="navbar-brand" href="#">Kooragang Dailer</a>
         </div>
         <div id="navbar" class="collapse navbar-collapse">
           <ul class="nav navbar-nav">
-            <li class="active"><a href="/dashboard">Home</a></li>
+            <li class="active"><a href="#">Home</a></li>
           </ul>
         </div><!--/.nav-collapse -->
       </div>
@@ -55,24 +55,19 @@ h2 {
 
     <div class="container">
     <div class="jumbotron">
-      <h1><%=campaign.name%> Campaign</h1>
+      <h1>Campaigns</h1>
     </div>
       <div class="row">
-        <div id="script" class="col-md-12">
-          <h2>Timestamp: <strong><%=report.timestamp%></strong></h2>
-          <h2>Campaign status: <strong><%=campaign.status%></strong></h2>
-          <h2>Callers available: <strong><%=report.available%></strong></h2>
-          <h2>Callers in-call: <strong><%=report['in-call']%></strong></h2>
-          <h2>Callers completed (last hour): <strong><%=report.completed%></strong></h2>
-          <h2>Approximate rate (last 10 minutes): <strong><%=report.rate%> calls per agent hour</strong></h2>
-          <h2>Average wait time (last 10 minutes): <strong><%=report.wait%></strong>s</h2>
-          <h2>Total calls (last 10 minutes): <strong><%=report.total%></strong></h2>
-          <h2>Drops (last 10 minutes): <strong><%=report.drops%></strong></h2>
-          <h2>Drops rate (last 10 minutes): <strong><%=report.dropRate%>%</strong> with target drop rate of <strong><%=campaign.acceptable_drop_rate * 100%>%</strong></h2>
-          <h2>Predictive ratio: <strong><%=campaign.ratio%></strong> (with max <%=campaign.max_ratio%>)</h2>
+      <% for(var i=0; i < campaignsArray.length; i++) { %>
+        <div id="script" class="col-md-4">
+        <h3><a href="/stats/<%= campaignsArray[i].id %>"><%= campaignsArray[i].name %></a></h3>
+          <h4><u>Status:</u> <%= campaignsArray[i].status %></h4>
+          <h4><u>Phone Number:</u> <%= campaignsArray[i].phone_number %></h4>
+         </div>
+      <% } %>
         </div>
       </div>
-    </div><!-- /.container -->
+    </div>
 
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
