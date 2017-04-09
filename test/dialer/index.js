@@ -1,11 +1,11 @@
 const expect = require('expect.js');
 const nock = require('nock');
-const dialer = require('../dialer');
+const dialer = require('../../dialer');
 const moment = require('moment');
 const _ = require('lodash');
 const sinon = require('sinon');
 
-const { Callee, Caller, Call, Campaign, Event } = require('../models');
+const { Callee, Caller, Call, Campaign, Event } = require('../../models');
 
 const defaultCampaign = {
   name: 'test',
