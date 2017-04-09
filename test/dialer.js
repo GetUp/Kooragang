@@ -34,50 +34,42 @@ describe('.dial', () => {
     callee = await Callee.query().insert({phone_number: '123456789', campaign_id: campaign.id});
   });
 
-  context('with available callees', () => {
-    it('should call the first one with a valid number', async () => {
-      mockedApiCall = nock('https://api.plivo.com')
-        .post(/Call/, body => body.to === callee.phone_number)
-        .query(true)
-        .reply(200);
-      await dialer.dial(testUrl, campaign);
-      mockedApiCall.done();
-    });
-  });
-
-  context('with error with an api call', () => {
-    beforeEach(() => {
-      return Campaign.query().patchAndFetchById(campaign.id, {calls_in_progress: 1});
-    });
-    it ('should remove decrement the calls_in_progress', async () => {
-      const mockedApiCall = nock('https://api.plivo.com')
-        .post(/Call/, body => true)
-        .query(true)
-        .reply(404);
-      await dialer.dial(testUrl, campaign)
-      const updatedCampaign = await Campaign.query().where({id: campaign.id}).first();
-      expect(updatedCampaign.calls_in_progress).to.be(0);
-      mockedApiCall.done()
-    })
-  });
-
-  context('with answering machine detection enabled on campaign', () => {
+  context('with available callers and callees', () => {
     beforeEach(async () => {
-      campaign = await Campaign.query().patchAndFetchById(campaign.id, {
-        detect_answering_machine: true
-      });
+      await Caller.query().insert({phone_number: '1', status: 'available', campaign_id: campaign.id});
+      await Callee.query().insert({phone_number: '61411111111', campaign_id: campaign.id})
     });
-    it('should add the extra dialing params', async () => {
-      const mockedApiCall = nock('https://api.plivo.com')
-        .post(/Call/, body => {
-          return body.machine_detection === 'hangup';
-        })
-        .query(true)
-        .reply(200);
-      await dialer.dial(testUrl, campaign);
-      mockedApiCall.done();
-    })
-  });
+    context('with answering machine detection enabled on campaign', () => {
+      beforeEach(async () => {
+        campaign = await Campaign.query().patchAndFetchById(campaign.id, {
+          detect_answering_machine: true
+        });
+      });
+      it('should add the extra dialing params', async () => {
+        const mockedApiCall = nock('https://api.plivo.com')
+          .post(/Call/, body => {
+            return body.machine_detection === 'hangup';
+          })
+          .query(true)
+          .reply(200);
+        await dialer.dial(testUrl, campaign);
+        mockedApiCall.done();
+      })
+    });
+
+    context('with error with an api call', () => {
+      it ('should remove decrement the calls_in_progress', async () => {
+        const mockedApiCall = nock('https://api.plivo.com')
+          .post(/Call/, body => true)
+          .query(true)
+          .reply(404);
+        await dialer.dial(testUrl, campaign)
+        const updatedCampaign = await Campaign.query().where({id: campaign.id}).first();
+        expect(updatedCampaign.calls_in_progress).to.be(0);
+        mockedApiCall.done()
+      })
+    });
+  })
 
   context('with a predictive ratio dialer campaign', () => {
     let mockedApiCall;
@@ -103,7 +95,7 @@ describe('.dial', () => {
       });
 
       context('and the ratio was already 1.0', () => {
-        beforeEach(async () => campaign = await campaign.$query().patch({ratio: 1.0}));
+        beforeEach(async () => campaign = await campaign.$query().patchAndFetchById(campaign.id, {ratio: 1.0}));
 
         it('should not create an event', async () => {
           await dialer.dial(testUrl, campaign)
