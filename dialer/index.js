@@ -12,12 +12,7 @@ const {
   transaction
 } = require('../models');
 
-module.exports.dial = async (...args) => {
-  const campaign = args[1];
-  return campaign.dialer === 'ratio' ? ratioDial(...args) : powerDial(...args);
-};
-
-const ratioDial = async (appUrl, campaign) => {
+module.exports.dial = async (appUrl, campaign) => {
   const timer = new Date();
   campaign = await recalculateRatio(campaign);
   const callers = await Caller.query().where({status: 'available'});
@@ -87,25 +82,6 @@ const recalculateRatio = async(campaign) => {
   await Event.query().insert({campaign_id: campaign.id, name: 'ratio', value: {ratio: newRatio.toPrecision(2), old_ratio: campaign.ratio}});
   return Campaign.query().patchAndFetchById(campaign.id, {ratio: newRatio, last_checked_ratio_at: new Date()});
 }
-
-const powerDial = async (appUrl, campaign) => {
-  const cleanedNumber = '\'61\' || right(regexp_replace(phone_number, \'[^\\\d]\', \'\', \'g\'),9)';
-  const calleeTransaction = await transaction.start(Callee.knex());
-  const callee = await Callee.bindTransaction(calleeTransaction).query()
-    .whereRaw(`length(${cleanedNumber}) = 11`)
-    .whereNull('last_called_at')
-    .where({campaign_id: campaign.id})
-    .orderBy('id')
-    .first();
-  if (!callee) {
-    if (process.env.NODE_ENV === 'development') console.error('NO MORE NUMBERS')
-  }else{
-    await Callee.query()
-      .patchAndFetchById(callee.id, {last_called_at: new Date})
-    await updateAndCall(campaign, callee, appUrl);
-  }
-  return calleeTransaction.commit();
-};
 
 const updateAndCall = async (campaign, callee, appUrl) => {
   const params = {

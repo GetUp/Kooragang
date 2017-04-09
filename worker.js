@@ -1,9 +1,4 @@
-const {
-  dial,
-  isComplete,
-  isPausing,
-  notifyAgents
-} = require('./dialer');
+const {dial, isComplete, isPausing, notifyAgents} = require('./dialer');
 const {sleep} = require('./ivr/utils');
 const {Campaign, Caller} = require('./models');
 const host = process.env.BASE_URL;
