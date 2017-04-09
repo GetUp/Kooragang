@@ -58,11 +58,11 @@ h2 {
       <h1>Campaigns</h1>
     </div>
       <div class="row">
-      <% for(var i=0; i < campaignsArray.length; i++) { %>
+      <% for(var i=0; i < campaigns.length; i++) { %>
         <div id="script" class="col-md-4">
-        <h3><a href="/stats/<%= campaignsArray[i].id %>"><%= campaignsArray[i].name %></a></h3>
-          <h4><u>Status:</u> <%= campaignsArray[i].status %></h4>
-          <h4><u>Phone Number:</u> <%= campaignsArray[i].phone_number %></h4>
+        <h3><a href="/stats/<%= campaigns[i].id %>"><%= campaigns[i].name %></a></h3>
+          <h4><u>Status:</u> <%= campaigns[i].status %></h4>
+          <h4><u>Phone Number:</u> <%= campaigns[i].phone_number %></h4>
          </div>
       <% } %>
         </div>

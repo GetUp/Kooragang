@@ -9,20 +9,7 @@ app.get('/dashboard', async ({body, params}, res) => {
   const campaigns = await Campaign.query();
   let campaignsArray = [];
   if (!campaigns) res.sendStatus(404);
-  const generateReport = async () => {
-    for(var i = 0; i < campaigns.length; i++) {
-        let campaign = campaigns[i];
-        const data = {
-            id: campaign.id,
-            name: campaign.name,
-            phone_number: campaign.phone_number,
-            status: campaign.status
-        }
-        campaignsArray.push(data);
-    }
-  };
-  await generateReport();
-  return res.render('dashboard.ejs', {campaignsArray})
+  return res.render('dashboard.ejs', {campaigns})
 });
 
 
