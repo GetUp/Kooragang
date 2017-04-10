@@ -8,7 +8,7 @@
   "description": "",
   "scripts": {
     "start": "heroku local",
-    "nodemon": "nodemon --exec npm run web",
+    "nodemon": "nodemon --exec npm run app",
     "web": "node ./app.js",
     "worker": "node ./worker.js",
     "debug": "node debug ./app.js",
