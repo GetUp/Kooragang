@@ -7,8 +7,8 @@ const period = process.env.DIALER_PERIOD || 1000;
 
 const work = async () => {
   while (true) {
-    const runningCampaigns = await Campaign.query().whereIn('status', ['active', 'pausing'])
-    runningCampaigns.forEach(async campaign => {
+    const runningCampaigns = await Campaign.query().whereIn('status', ['active', 'pausing']);
+    for (let campaign of runningCampaigns) {
       if (await isComplete(campaign) || await isPausing(campaign)) {
         await notifyAgents(campaign);
         // TODO: callees being actively called at the time of pausing
@@ -18,7 +18,7 @@ const work = async () => {
       } else {
         await dial(host, campaign);
       }
-    });
+    };
     await sleep(period);
   }
 }
