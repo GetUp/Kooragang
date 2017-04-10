@@ -240,6 +240,13 @@ describe('/ready', () => {
         .expect(regexp)
     });
   });
+  context('with invalid xml characters', () => {
+    it('should be spripped out to valid xml', async () => {
+      let text = 'test–—‘’‚“”„†‡‰‹›€';
+      text = text.replace(/[^\x00-\x7F]/g, "");
+      expect(text).to.be('test')
+    });
+  });
 });
 
 describe('/call_ended', () => {
