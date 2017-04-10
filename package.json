@@ -8,8 +8,9 @@
   "description": "",
   "scripts": {
     "start": "heroku local",
-    "nodemon": "nodemon --exec npm run web",
-    "web": "node ./app.js",
+    "nodemon": "nodemon --exec npm run app",
+    "app": "node ./app.js",
+    "web": "node ./web.js",
     "worker": "node ./worker.js",
     "debug": "node debug ./app.js",
     "test": "NODE_ENV=test ./node_modules/.bin/mocha --full-trace  test/**"
