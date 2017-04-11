@@ -1,4 +1,4 @@
-const {dial, isComplete, isPausing, notifyAgents} = require('./dialer');
+const {dial, calledEveryone, isPausing, notifyAgents} = require('./dialer');
 const {sleep} = require('./ivr/utils');
 const {Campaign, Caller} = require('./models');
 const host = process.env.BASE_URL;
@@ -9,7 +9,7 @@ const work = async () => {
   while (true) {
     const runningCampaigns = await Campaign.query().whereIn('status', ['active', 'pausing']);
     for (let campaign of runningCampaigns) {
-      if (await isComplete(campaign) || await isPausing(campaign)) {
+      if (await calledEveryone(campaign) || await isPausing(campaign)) {
         await notifyAgents(campaign);
         // TODO: callees being actively called at the time of pausing
         // this does not handle callees being actively called at the time of pausing

@@ -5,7 +5,7 @@ const moment = require('moment');
 const ivrCallee = proxyquire('../../ivr/callee', {
   '../dialer': {
     dial: async (appUrl) => {},
-    isComplete: async (appUrl) => false,
+    calledEveryone: async (appUrl) => false,
   }
 });
 const app = require('../../ivr/common');
