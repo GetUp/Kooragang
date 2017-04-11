@@ -245,8 +245,8 @@ app.post('/survey', async ({query, body}, res) => {
     call = await Call.query().where({conference_uuid: body.ConferenceUUID}).first();
   }
   if (!call) {
-    r.addSpeakAU('The call has ended.');
-    r.addSpeakAU('No survey required.');
+    r.addSpeakAU('You have left the call queue.')
+    r.addRedirect(res.locals.appUrl(`call_again?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`));
     return res.send(r.toXML());
   }
   const surveyResponse = r.addGetDigits({

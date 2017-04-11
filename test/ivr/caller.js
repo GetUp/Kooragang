@@ -375,12 +375,23 @@ describe('/survey', () => {
   beforeEach(async () => call = await Call.query().insert({callee_call_uuid: CallUUID, conference_uuid, status: 'answered'}));
   beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign));
 
-  it ('should return the question specified by the q param', () => {
-    const question = 'action';
-    return request.post(`/survey?q=${question}&call_id=${call.id}&campaign_id=${campaign.id}`)
-      .expect(new RegExp(`q=${question}`))
-      .expect(new RegExp(`${question}`, 'i'));
+  context('after the first question', () => {
+    it ('should return the question specified by the q param', () => {
+      const question = 'action';
+      return request.post(`/survey?q=${question}&call_id=${call.id}&campaign_id=${campaign.id}`)
+        .expect(new RegExp(`q=${question}`))
+        .expect(new RegExp(`${question}`, 'i'));
+    });
   });
+
+  context('without a call record (* pressed while in the queue)', () => {
+    beforeEach(async () => await Call.query().delete())
+    it('re-enters the queue', () => {
+      return request.post(`/survey?q=disposition&caller_id=1&campaign_id=${campaign.id}`)
+        .expect(/have left the call queue/)
+        .expect(/call_again\?caller_id=1/)
+    })
+  })
 });
 
 describe('/survey_result', () => {
