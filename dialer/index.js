@@ -117,7 +117,7 @@ const decrementCallsInProgress = async campaign => {
 }
 module.exports.decrementCallsInProgress = decrementCallsInProgress;
 
-module.exports.isComplete = async (campaign) => {
+module.exports.calledEveryone = async (campaign) => {
   if (campaign.calls_in_progress > 0) return false;
   const {count} = await Callee.query().count('id as count')
     .where({campaign_id: campaign.id})
@@ -131,7 +131,7 @@ module.exports.isPausing = async (campaign) => {
 
 module.exports.notifyAgents = async (campaign) => {
   const availableCallers = await Caller.query().where({status: 'available', campaign_id: campaign.id});
-  availableCallers.forEach(async caller => {
+  for (let caller of availableCallers) {
     try{
       await api('speak_conference_member', {
         conference_id: `conference-${caller.id}`,
@@ -140,5 +140,5 @@ module.exports.notifyAgents = async (campaign) => {
         language: 'en-GB', voice: 'MAN'
       });
     }catch(e){};
-  });
+  }
 }

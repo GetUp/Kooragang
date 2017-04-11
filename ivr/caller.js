@@ -54,7 +54,7 @@ app.post('/connect', async ({body, query}, res) => {
     return res.send(r.toXML());
   }
 
-  const campaignComplete = await dialer.isComplete(campaign);
+  const campaignComplete = await dialer.calledEveryone(campaign);
   if (campaignComplete || campaign.status == "inactive") {
     r.addWait({length: 2});
     r.addSpeakAU(`Hi! Welcome to the GetUp Dialer tool.`);
@@ -143,7 +143,7 @@ app.post('/ready', async ({body, query}, res) => {
   } else {
     caller_id = query.caller_id;
   }
-  const campaignComplete = await dialer.isComplete(campaign);
+  const campaignComplete = await dialer.calledEveryone(campaign);
   if (campaignComplete) {
     r.addSpeakAU('The campaign has been completed!');
     r.addRedirect(res.locals.appUrl('disconnect?completed=1'));
@@ -245,8 +245,8 @@ app.post('/survey', async ({query, body}, res) => {
     call = await Call.query().where({conference_uuid: body.ConferenceUUID}).first();
   }
   if (!call) {
-    r.addSpeakAU('The call has ended.');
-    r.addSpeakAU('No survey required.');
+    r.addSpeakAU('You have left the call queue.')
+    r.addRedirect(res.locals.appUrl(`call_again?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`));
     return res.send(r.toXML());
   }
   const surveyResponse = r.addGetDigits({

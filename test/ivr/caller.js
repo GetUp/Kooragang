@@ -5,7 +5,7 @@ const moment = require('moment');
 const ivrCaller = proxyquire('../../ivr/caller', {
   '../dialer': {
     dial: async (appUrl) => {},
-    isComplete: async (appUrl) => false,
+    calledEveryone: async (appUrl) => false,
   }
 });
 const app = require('../../ivr/common');
@@ -386,7 +386,7 @@ describe('/survey', () => {
   });
   beforeEach(async () => call = await Call.query().insert({callee_call_uuid: CallUUID, conference_uuid, status: 'answered'}));
 
-  context('with valid xml characters', () => {
+  context('after the first question', () => {
     beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign));
     it ('should return the question specified by the q param', () => {
       const question = 'action';
@@ -404,6 +404,16 @@ describe('/survey', () => {
         .expect(new RegExp('testing', 'i'));
     });
   });
+
+  context('without a call record (* pressed while in the queue)', () => {
+    beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign));
+    beforeEach(async () => await Call.query().delete())
+    it('re-enters the queue', () => {
+      return request.post(`/survey?q=disposition&caller_id=1&campaign_id=${campaign.id}`)
+        .expect(/have left the call queue/)
+        .expect(/call_again\?caller_id=1/)
+    })
+  })
 });
 
 describe('/survey_result', () => {
