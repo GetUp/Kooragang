@@ -11,7 +11,7 @@ module.exports = async() => {
          group by 1 having count(*) < ${campaign.max_call_attempts}
        ) as calls_made
        where callee_id = callees.id
-       and last_called_at < now() - '4 hours'::interval
+       and last_called_at < now() - '${campaign.no_call_window} minutes'::interval
        and campaign_id = ${campaign.id}`
     );
   }
