@@ -22,6 +22,16 @@ const {
 } = require('../../models');
 
 const questions = require('../../seeds/questions.example.json');
+const malformedQuestion = {
+  "disposition": {
+    "name": "test–—‘’‚“”„†‡‰‹›€ing",
+    "answers": {
+      "2": {
+        "value": "answering¡¢£©®¶ machine"
+      }
+    }
+  }
+};
 const more_info = require('../../seeds/more_info.example.json');
 const defaultCampaign = {
   id: 1,
@@ -31,10 +41,19 @@ const defaultCampaign = {
   phone_number: '1111',
   sms_number: '22222222'
 }
+const malformedCampaign = {
+  id: 1,
+  name: 'test',
+  questions: malformedQuestion,
+  more_info: more_info,
+  phone_number: '1111',
+  sms_number: '22222222'
+}
 const activeCampaign = Object.assign({status: 'active'}, defaultCampaign, {})
 const pausedCampaign = Object.assign({status: 'paused'}, defaultCampaign, {})
 const inactiveCampaign = Object.assign({status: 'inactive'}, defaultCampaign, {})
 const statuslessCampaign = Object.assign({status: null}, defaultCampaign, {})
+
 const CallUUID = '111';
 let campaign
 let caller = {
@@ -240,13 +259,6 @@ describe('/ready', () => {
         .expect(regexp)
     });
   });
-  context('with invalid xml characters', () => {
-    it('should be spripped out to valid xml', async () => {
-      let text = 'test–—‘’‚“”„†‡‰‹›€';
-      text = text.replace(/[^\x00-\x7F]/g, "");
-      expect(text).to.be('test')
-    });
-  });
 });
 
 describe('/call_ended', () => {
@@ -373,13 +385,24 @@ describe('/survey', () => {
     await SurveyResult.query().delete();
   });
   beforeEach(async () => call = await Call.query().insert({callee_call_uuid: CallUUID, conference_uuid, status: 'answered'}));
-  beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign));
 
-  it ('should return the question specified by the q param', () => {
-    const question = 'action';
-    return request.post(`/survey?q=${question}&call_id=${call.id}&campaign_id=${campaign.id}`)
-      .expect(new RegExp(`q=${question}`))
-      .expect(new RegExp(`${question}`, 'i'));
+  context('with valid xml characters', () => {
+    beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign));
+    it ('should return the question specified by the q param', () => {
+      const question = 'action';
+      return request.post(`/survey?q=${question}&call_id=${call.id}&campaign_id=${campaign.id}`)
+        .expect(new RegExp(`q=${question}`))
+        .expect(new RegExp(`${question}`, 'i'));
+    });
+  });
+
+  context('with invalid xml characters', () => {
+    beforeEach(async () => campaign = await Campaign.query().insert(malformedCampaign));
+    it('should be spripped out to valid xml', async () => {
+      const question = 'disposition';
+      return request.post(`/survey?q=${question}&call_id=${call.id}&campaign_id=${campaign.id}`)
+        .expect(new RegExp('testing', 'i'));
+    });
   });
 });
 
@@ -414,6 +437,20 @@ describe('/survey_result', () => {
         .type('form').send(payload)
         .expect(/meaningful/)
         .expect(/survey\?q=/);
+    });
+  });
+
+  context('with invalid xml characters', () => {
+    beforeEach(async () => {
+      await Campaign.query().delete();
+      campaign = await Campaign.query().insert(malformedCampaign)
+    });
+    const payload = { Digits: '2', To: '614000100'};
+    it('should be spripped out to valid xml', async () => {
+      const question = 'disposition';
+      return request.post(`/survey_result?q=disposition&campaign_id=${campaign.id}`)
+        .type('form').send(payload)
+        .expect(/answering machine/);
     });
   });
 
