@@ -125,6 +125,30 @@ module.exports.calledEveryone = async (campaign) => {
   return parseInt(count, 10) === 0;
 }
 
+module.exports.withinDailyTimeOfOperation = async (campaign) => {
+  const todayDateString = moment().format('Y-MM-DD');
+  const todayStartOperation = moment(todayDateString+' '+campaign.daily_start_operation);
+  const todayStopOperation = moment(todayDateString+' '+campaign.daily_stop_operation);
+  if (!moment.isMoment(todayStartOperation) || !moment.isMoment(todayStopOperation)){ return true };
+  return moment().isBetween(todayStartOperation, todayStopOperation);
+}
+
+module.exports.dailyTimeOfOperationInWords = async (campaign) => {
+  const todayDateString = moment().format('Y-MM-DD');
+  const todayStartOperation = moment(todayDateString+' '+campaign.daily_start_operation);
+  const todayStartOperationFormatString = todayStartOperation.format("mm") === "00" ? "h a" : "h mm a";
+  const todayStopOperation = moment(todayDateString+' '+campaign.daily_stop_operation);
+  const todayStopOperationFormatString = todayStopOperation.format("mm") === "00" ? "h a" : "h mm a";
+
+  if (!moment.isMoment(todayStartOperation) || !moment.isMoment(todayStopOperation)){ return null };
+  operatingHoursPhrasing = 'Please call back within the hours of';
+  operatingHoursPhrasing += todayStartOperation.format(todayStartOperationFormatString);
+  operatingHoursPhrasing += ', and ';
+  operatingHoursPhrasing += todayStopOperation.format(todayStopOperationFormatString);
+  operatingHoursPhrasing += '.';
+  return operatingHoursPhrasing;
+}
+
 module.exports.isPausing = async (campaign) => {
   return campaign.status === "pausing";
 }
