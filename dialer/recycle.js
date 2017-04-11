@@ -1,7 +1,7 @@
 const {Campaign, Callee} = require('../models');
 
 module.exports = async() => {
-  const campaignsWithRecycling = await Campaign.query().where({recycle: true});
+  const campaignsWithRecycling = await Campaign.query().where('max_call_attempts', '>', 1);
   for (let campaign of campaignsWithRecycling) {
     await Callee.raw(
       `update callees
