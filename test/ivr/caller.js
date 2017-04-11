@@ -27,7 +27,7 @@ const malformedQuestion = {
     "name": "test–—‘’‚“”„†‡‰‹›€ing",
     "answers": {
       "2": {
-        "value": "answering¡¢£©®¶ machine"
+        "value": "answering¡¢£©®¶ & machine"
       }
     }
   }
@@ -460,7 +460,7 @@ describe('/survey_result', () => {
       const question = 'disposition';
       return request.post(`/survey_result?q=disposition&campaign_id=${campaign.id}`)
         .type('form').send(payload)
-        .expect(/answering machine/);
+        .expect(new RegExp('answering &amp; machine', 'i'));
     });
   });
 
