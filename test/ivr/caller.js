@@ -53,6 +53,7 @@ const activeCampaign = Object.assign({status: 'active'}, defaultCampaign, {})
 const pausedCampaign = Object.assign({status: 'paused'}, defaultCampaign, {})
 const inactiveCampaign = Object.assign({status: 'inactive'}, defaultCampaign, {})
 const statuslessCampaign = Object.assign({status: null}, defaultCampaign, {})
+const operationalWindowCampaign = Object.assign({daily_start_operation: '00:00:00', daily_stop_operation: '00:00:00'}, activeCampaign, {})
 
 const CallUUID = '111';
 let campaign
@@ -150,15 +151,27 @@ describe('/connect', () => {
     });
   });
 
-  context('with a statusless campaign', () => {
+  context('with a inactive campaign', () => {
     beforeEach(async () => { await Campaign.query().delete() });
     beforeEach(async () => campaign = await Campaign.query().insert(inactiveCampaign));
     const payload = { From: caller.phone_number };
-    it('plays the paused briefing message ', () => {
+    it('plays the outisde operational window briefing message ', () => {
       return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
         .type('form')
         .send(payload)
         .expect(/has been completed/);
+    });
+  });
+
+  context('with an operational window campaign', () => {
+    beforeEach(async () => { await Campaign.query().delete() });
+    beforeEach(async () => campaign = await Campaign.query().insert(operationalWindowCampaign));
+    const payload = { From: caller.phone_number };
+    it('plays the operational window briefing message ', () => {
+      return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
+        .type('form')
+        .send(payload)
+        .expect(/times of operation/);
     });
   });
 });

@@ -141,7 +141,7 @@ module.exports.dailyTimeOfOperationInWords = async (campaign) => {
   const todayStopOperationFormatString = todayStopOperation.format("mm") === "00" ? "h a" : "h mm a";
 
   if (!moment.isMoment(todayStartOperation) || !moment.isMoment(todayStopOperation)){ return null };
-  operatingHoursPhrasing = 'Please call back within the hours of';
+  operatingHoursPhrasing = 'Please call back within the hours of ';
   operatingHoursPhrasing += todayStartOperation.format(todayStartOperationFormatString);
   operatingHoursPhrasing += ', and ';
   operatingHoursPhrasing += todayStopOperation.format(todayStopOperationFormatString);
