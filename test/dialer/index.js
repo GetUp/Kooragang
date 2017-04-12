@@ -193,6 +193,22 @@ describe('.dial', () => {
       });
     });
 
+    context('with available callees prioritised by their id', () => {
+      let higherPriorityCallee, lowerPriorityCallee
+      beforeEach(async () => {
+        await Callee.query().delete();
+        await Caller.query().insert({phone_number: '1', status: 'available', campaign_id: campaign.id})
+        lowerPriorityCallee = await Callee.query().insert({id: 2, campaign_id: campaign.id, phone_number: 1}).returning('*')
+        higherPriorityCallee = await Callee.query().insert({id: 1, campaign_id: campaign.id, phone_number: 1}).returning('*')
+      })
+
+      it('should call the highest priority callee', async () => {
+        await dialer.dial(testUrl, campaign)
+        expect((await lowerPriorityCallee.$query()).last_called_at).to.be(null)
+        expect((await higherPriorityCallee.$query()).last_called_at).to.not.be(null)
+      })
+    })
+
     context('with 2 available agents and ratio of 2', () => {
       beforeEach(async () => {
         campaign = await Campaign.query().patchAndFetchById(campaign.id, {
