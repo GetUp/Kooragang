@@ -12,7 +12,8 @@
     "web": "node ./app.js",
     "worker": "node ./worker.js",
     "debug": "node debug ./app.js",
-    "test": "NODE_ENV=test ./node_modules/.bin/mocha --full-trace  test/**"
+    "test": "NODE_ENV=test ./node_modules/.bin/mocha --full-trace  test/**",
+    "deploy": "git push kooragang HEAD:master && heroku run knex migrate:latest --app kooragang && git push kooragang-www HEAD:master"
   },
   "author": "",
   "license": "ISC",
