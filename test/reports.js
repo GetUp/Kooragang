@@ -21,7 +21,7 @@ const defaultCampaign = {
   phone_number: '1111',
   sms_number: '22222222'
 }
-const activeCampaign = Object.assign({status: 'active'}, defaultCampaign, {})
+const activeCampaign = Object.assign({status: 'active'}, defaultCampaign)
 
 describe('/stats/:id', () => {
   beforeEach(async () => {

@@ -131,7 +131,7 @@ module.exports.withinDailyTimeOfOperation = async (campaign) => {
   const todayStartOperation = moment(todayDateString+' '+campaign.daily_start_operation);
   const todayStopOperation = moment(todayDateString+' '+campaign.daily_stop_operation);
   if (!moment.isMoment(todayStartOperation) || !moment.isMoment(todayStopOperation)){ return true };
-  return moment().isBetween(todayStartOperation, todayStopOperation);
+  return moment().isBetween(todayStartOperation, todayStopOperation, null, '[]');
 }
 
 module.exports.dailyTimeOfOperationInWords = async (campaign) => {

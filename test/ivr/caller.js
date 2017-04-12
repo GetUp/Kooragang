@@ -49,11 +49,11 @@ const malformedCampaign = {
   phone_number: '1111',
   sms_number: '22222222'
 }
-const activeCampaign = Object.assign({status: 'active'}, defaultCampaign, {})
-const pausedCampaign = Object.assign({status: 'paused'}, defaultCampaign, {})
-const inactiveCampaign = Object.assign({status: 'inactive'}, defaultCampaign, {})
-const statuslessCampaign = Object.assign({status: null}, defaultCampaign, {})
-const operationalWindowCampaign = Object.assign({daily_start_operation: '00:00:00', daily_stop_operation: '00:00:00'}, activeCampaign, {})
+const activeCampaign = Object.assign({status: 'active'}, defaultCampaign)
+const pausedCampaign = Object.assign({status: 'paused'}, defaultCampaign)
+const inactiveCampaign = Object.assign({status: 'inactive'}, defaultCampaign)
+const statuslessCampaign = Object.assign({status: null}, defaultCampaign)
+const operationalWindowCampaign = Object.assign({daily_start_operation: '00:00:00', daily_stop_operation: '00:00:00'}, activeCampaign)
 
 const CallUUID = '111';
 let campaign
