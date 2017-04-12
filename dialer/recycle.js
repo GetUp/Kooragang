@@ -15,4 +15,11 @@ module.exports = async() => {
        and campaign_id = ${campaign.id}`
     );
   }
+  await Callee.raw(`
+    update callees
+    set call_attempts = (
+      select count(calls.*) from calls
+      where callees.id = calls.callee_id
+    )
+  `)
 };

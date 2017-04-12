@@ -6,6 +6,7 @@ exports.up = function(knex, Promise) {
     })
     .table('callees', t => {
       t.timestamp('last_recycled_at');
+      t.integer('call_attempts').default(0);
     });
 };
 
@@ -17,5 +18,6 @@ exports.down = function(knex, Promise) {
     })
     .table('callees', t => {
       t.dropColumn('last_recycled_at')
+      t.dropColumn('call_attempts')
     });
 };

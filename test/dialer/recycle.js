@@ -64,6 +64,12 @@ describe('dialer/recycle', () => {
           const updatedCallee = await Callee.query().first();
           expect(updatedCallee.last_called_at).to.not.be(null);
         });
+
+        it('sets the number of calls attempts made', async() => {
+          await recycle();
+          const updatedCallee = await Callee.query().first();
+          expect(updatedCallee.call_attempts).to.be(2);
+        })
       });
     });
   });
