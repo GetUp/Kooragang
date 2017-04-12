@@ -31,10 +31,10 @@ const defaultCampaign = {
   phone_number: '1111',
   sms_number: '22222222'
 }
-const activeCampaign = Object.assign({status: 'active'}, defaultCampaign, {})
-const pausedCampaign = Object.assign({status: 'paused'}, defaultCampaign, {})
-const inactiveCampaign = Object.assign({status: 'inactive'}, defaultCampaign, {})
-const statuslessCampaign = Object.assign({status: null}, defaultCampaign, {})
+const activeCampaign = Object.assign({status: 'active'}, defaultCampaign)
+const pausedCampaign = Object.assign({status: 'paused'}, defaultCampaign)
+const inactiveCampaign = Object.assign({status: 'inactive'}, defaultCampaign)
+const statuslessCampaign = Object.assign({status: null}, defaultCampaign)
 const CallUUID = '111';
 let campaign
 let caller = {
