@@ -18,6 +18,7 @@ module.exports.dial = async (appUrl, campaign) => {
   const callers = await Caller.query().where({status: 'available'});
   const callsToMake = Math.floor(callers.length * campaign.ratio);
   const callsToMakeExcludingCurrentCalls = callsToMake - campaign.calls_in_progress;
+  const sortOrder = campaign.exhaust_callees_before_recycling ? 'call_attempts, id' : 'id';
   let callees = [];
   if (callsToMakeExcludingCurrentCalls > 0) {
     try{
@@ -26,7 +27,7 @@ module.exports.dial = async (appUrl, campaign) => {
         .forUpdate()
         .where({campaign_id: campaign.id})
         .whereNull('last_called_at')
-        .orderBy('id')
+        .orderByRaw(sortOrder)
         .limit(callsToMakeExcludingCurrentCalls);
       if (callees.length) {
         await Callee.bindTransaction(trans).query().patch({last_called_at: new Date()}).whereIn('id', _.map(callees, (callee) => callee.id));

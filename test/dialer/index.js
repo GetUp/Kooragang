@@ -193,19 +193,37 @@ describe('.dial', () => {
       });
     });
 
-    context('with available callees prioritised by their id', () => {
-      let higherPriorityCallee, lowerPriorityCallee
+    context('with a called callee', () => {
+      let calledCallee, uncalledCallee
       beforeEach(async () => {
-        await Callee.query().delete();
         await Caller.query().insert({phone_number: '1', status: 'available', campaign_id: campaign.id})
-        lowerPriorityCallee = await Callee.query().insert({id: 2, campaign_id: campaign.id, phone_number: 1}).returning('*')
-        higherPriorityCallee = await Callee.query().insert({id: 1, campaign_id: campaign.id, phone_number: 1}).returning('*')
+        await Callee.query().delete()
+        calledCallee   = await Callee.query().insert({id: 1, call_attempts: 1, campaign_id: campaign.id, phone_number: 1}).returning('*')
+        uncalledCallee = await Callee.query().insert({id: 2, call_attempts: 0, campaign_id: campaign.id, phone_number: 1}).returning('*')
       })
 
-      it('should call the highest priority callee', async () => {
-        await dialer.dial(testUrl, campaign)
-        expect((await lowerPriorityCallee.$query()).last_called_at).to.be(null)
-        expect((await higherPriorityCallee.$query()).last_called_at).to.not.be(null)
+      context('with exhaust_callees_before_recycling == false', () => {
+        beforeEach(async () => {
+          campaign = await campaign.$query().patchAndFetchById(campaign.id, {exhaust_callees_before_recycling: false})
+        })
+
+        it('should call callees prioritised by their id', async () => {
+          await dialer.dial(testUrl, campaign)
+          expect((await calledCallee.$query()).last_called_at).to.not.be(null)
+          expect((await uncalledCallee.$query()).last_called_at).to.be(null)
+        })
+      })
+
+      context('with exhaust_callees_before_recycling == true', () => {
+        beforeEach(async () => {
+          campaign = await campaign.$query().patchAndFetchById(campaign.id, {exhaust_callees_before_recycling: true})
+        })
+
+        it('should call callees prioritised by lowest call count', async () => {
+          await dialer.dial(testUrl, campaign)
+          expect((await calledCallee.$query()).last_called_at).to.be(null)
+          expect((await uncalledCallee.$query()).last_called_at).to.not.be(null)
+        })
       })
     })
 
