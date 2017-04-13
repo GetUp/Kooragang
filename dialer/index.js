@@ -150,10 +150,6 @@ module.exports.dailyTimeOfOperationInWords = async (campaign) => {
   return operatingHoursPhrasing;
 }
 
-module.exports.isPausing = async (campaign) => {
-  return campaign.status === "pausing";
-}
-
 module.exports.notifyAgents = async (campaign) => {
   const availableCallers = await Caller.query().where({status: 'available', campaign_id: campaign.id});
   for (let caller of availableCallers) {
