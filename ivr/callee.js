@@ -63,7 +63,7 @@ app.post('/answer', async ({body, query}, res) => {
       callee_call_uuid: body.CallUUID
     });
     const status = errorFindingCaller ? 'drop from error' : 'drop';
-    await Event.query().insert({call_id: call.id, name: status, value: {calls_in_progress, updated_calls_in_progress: campaign.calls_in_progress, errorFindingCaller} })
+    await Event.query().insert({campaign_id: campaign.id, call_id: call.id, name: status, value: {calls_in_progress, updated_calls_in_progress: campaign.calls_in_progress, errorFindingCaller} })
     r.addHangup({reason: 'drop'});
   }
   res.send(r.toXML());
