@@ -1,6 +1,6 @@
 const app = require('express')();
 const plivo = require('plivo');
-const {validPasscode} = require('./utils');
+const {validPasscode} = require('../utils');
 
 app.post('/passcode', async ({query, body}, res) => {
   const r = plivo.Response();

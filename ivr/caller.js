@@ -9,7 +9,7 @@ const {
   extractCallerNumber,
   authenticationNeeded,
   introductionNeeded
-} = require('./utils');
+} = require('../utils');
 const {Call, Callee, Caller, Campaign, SurveyResult, Event} = require('../models');
 
 app.post('/connect', async ({body, query}, res) => {
