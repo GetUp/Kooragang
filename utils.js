@@ -15,7 +15,3 @@ module.exports.extractCallerNumber = (query, body) => {
 module.exports.authenticationNeeded = (callback, entry, campaign_passcode, authenticated) => {
   return !(callback || entry === "more_info" || !campaign_passcode || authenticated);
 };
-
-module.exports.introductionNeeded = entry => entry !== "more_info";
-
-module.exports.validPasscode = (campaign_passcode, digits) => campaign_passcode === digits;

@@ -8,7 +8,6 @@ const {
   sleep,
   extractCallerNumber,
   authenticationNeeded,
-  introductionNeeded
 } = require('../utils');
 const {Call, Callee, Caller, Campaign, SurveyResult, Event} = require('../models');
 
@@ -37,7 +36,7 @@ app.post('/connect', async ({body, query}, res) => {
   const callback = query.callback ? query.callback === "1" : false;
   const authenticated = query.authenticated ? query.authenticated === "1" : false;
   const promptAuth = authenticationNeeded(callback, query.entry, campaign.passcode, authenticated);
-  const promptIntro = introductionNeeded(query.entry);
+  const promptIntro = query.entry !== "more_info";
 
   if (campaign.status === "paused" || campaign.status === null){
     r.addWait({length: 2});
