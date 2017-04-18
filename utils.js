@@ -19,25 +19,13 @@ module.exports.authenticationNeeded = (callback, entry, campaign_passcode, authe
 };
 
 module.exports.withinDailyTimeOfOperation = campaign => {
-  const todayDateString = moment().format('Y-MM-DD');
-  const todayStartOperation = moment(todayDateString+' '+campaign.daily_start_operation);
-  const todayStopOperation = moment(todayDateString+' '+campaign.daily_stop_operation);
-  if (!moment.isMoment(todayStartOperation) || !moment.isMoment(todayStopOperation)){ return true };
-  return moment().isBetween(todayStartOperation, todayStopOperation, null, '[]');
+  const start = moment(campaign.daily_start_operation, 'HHmm')
+  const stop = moment(campaign.daily_stop_operation, 'HHmm')
+  return moment().isBetween(start, stop, null, '[]')
 }
 
 module.exports.dailyTimeOfOperationInWords = campaign => {
-  const todayDateString = moment().format('Y-MM-DD');
-  const todayStartOperation = moment(todayDateString+' '+campaign.daily_start_operation);
-  const todayStartOperationFormatString = todayStartOperation.format("mm") === "00" ? "h a" : "h mm a";
-  const todayStopOperation = moment(todayDateString+' '+campaign.daily_stop_operation);
-  const todayStopOperationFormatString = todayStopOperation.format("mm") === "00" ? "h a" : "h mm a";
-
-  if (!moment.isMoment(todayStartOperation) || !moment.isMoment(todayStopOperation)){ return null };
-  operatingHoursPhrasing = 'Please call back within the hours of ';
-  operatingHoursPhrasing += todayStartOperation.format(todayStartOperationFormatString);
-  operatingHoursPhrasing += ', and ';
-  operatingHoursPhrasing += todayStopOperation.format(todayStopOperationFormatString);
-  operatingHoursPhrasing += '.';
-  return operatingHoursPhrasing;
+  const start = moment(campaign.daily_start_operation, 'HHmm').format('h mm a').replace(/00\s/,'')
+  const stop = moment(campaign.daily_stop_operation, 'HHmm').format('h mm a').replace(/00\s/,'')
+  return `Please call back within the hours of ${start}, and ${stop}.`
 }
