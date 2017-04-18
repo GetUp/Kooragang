@@ -10,6 +10,7 @@
     "web": "node ./app.js",
     "worker": "node ./worker.js",
     "debug": "node debug ./app.js",
+    "lint": "find . -name '*.js' -not -path './node_modules/*' | xargs ./node_modules/.bin/eslint || true",
     "test": "find . -name '*.js' -not -path './node_modules/*' | NODE_ENV=test entr -c mocha --full-trace test/**",
     "deploy-production": "git push kooragang HEAD:master && heroku run knex migrate:latest --app kooragang && git push kooragang-www HEAD:master",
     "deploy-stage": "git push kooragang-stage HEAD:master && heroku run knex migrate:latest --app kooragang-stage && git push kooragang-www-stage HEAD:master"
