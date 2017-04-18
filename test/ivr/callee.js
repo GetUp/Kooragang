@@ -10,7 +10,7 @@ const ivrCallee = proxyquire('../../ivr/callee', {
 });
 const app = require('../../ivr/common');
 app.use(ivrCallee);
-const request = require('supertest-as-promised')(app);
+const request = require('supertest')(app);
 
 const {
   Call,
