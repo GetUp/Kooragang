@@ -3,6 +3,7 @@ const moment = require('moment');
 const plivo = require('plivo');
 const _ = require('lodash');
 const api = require('../api');
+const {withinDailyTimeOfOperation, dailyTimeOfOperationInWords} = require('../utils');
 const dialer = require('../dialer');
 const {
   sleep,
@@ -46,13 +47,13 @@ app.post('/connect', async ({body, query}, res) => {
     return res.send(r.toXML());
   }
 
-  const campaignWithinDailyTimeOfOperation = await dialer.withinDailyTimeOfOperation(campaign);
+  const campaignWithinDailyTimeOfOperation = await withinDailyTimeOfOperation(campaign);
   if (!campaignWithinDailyTimeOfOperation) {
-    const dailyTimeOfOperationInWords = await dialer.dailyTimeOfOperationInWords(campaign);
+    const campaignDailyTimeOfOperationInWords = await dailyTimeOfOperationInWords(campaign);
     r.addWait({length: 2});
     r.addSpeakAU(`Hi! Welcome to the GetUp Dialer tool.`);
     r.addWait({length: 1});
-    r.addSpeakAU(`The campaign is currently outside of it\'s daily times of operation! ${dailyTimeOfOperationInWords} Thank you and have a great day!`);
+    r.addSpeakAU(`The campaign is currently outside of it\'s daily times of operation! ${campaignDailyTimeOfOperationInWords} Thank you and have a great day!`);
     return res.send(r.toXML());
   }
 
