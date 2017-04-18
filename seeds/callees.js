@@ -1,6 +1,5 @@
-const seq = require('promise-sequential');
-var questions_json = require('./questions.example.json');
-var more_info_json = require('./more_info.example.json');
+const questions_json = require('./questions.example.json');
+const more_info_json = require('./more_info.example.json');
 exports.seed = function(knex, Promise) {
   return Promise.join(
       knex('calls').del(),
