@@ -15,7 +15,7 @@ class Campaign extends Model {
   static get relationMappings() {
     return {
       callees: {
-        relation: Model.OneToManyRelation,
+        relation: Model.HasManyRelation,
         modelClass: Callee,
         join: {
           from: 'campaigns.id',
@@ -31,7 +31,7 @@ class Call extends Model {
   static get relationMappings() {
     return {
       callee: {
-        relation: Model.OneToOneRelation,
+        relation: Model.BelongsToOneRelation,
         modelClass: Callee,
         join: {
           from: 'calls.callee_id',
@@ -48,7 +48,7 @@ class Callee extends Model {
   static get relationMappings() {
     return {
       calls: {
-        relation: Model.OneToManyRelation,
+        relation: Model.HasManyRelation,
         modelClass: Call,
         join: {
           from: 'callees.id',
@@ -56,7 +56,7 @@ class Callee extends Model {
         }
       },
       campaign: {
-        relation: Model.OneToOneRelation,
+        relation: Model.BelongsToOneRelation,
         modelClass: Campaign,
         join: {
           from: 'callees.campaign_id',
@@ -73,7 +73,7 @@ class Caller extends Model {
   static get relationMappings() {
     return {
       calls: {
-        relation: Model.OneToManyRelation,
+        relation: Model.HasManyRelation,
         modelClass: Call,
         join: {
           from: 'callers.id',

@@ -37,7 +37,7 @@ const inactiveCampaign = Object.assign({status: 'inactive'}, defaultCampaign)
 const statuslessCampaign = Object.assign({status: null}, defaultCampaign)
 const CallUUID = '111';
 let campaign
-let caller = {
+const callerTemplate = {
   first_name: 'bob',
   phone_number: '61288888888',
   location: 'balmain',
@@ -71,7 +71,7 @@ describe('/answer', () => {
     const CallStatus = 'in-progress';
     const conference_member_id = '1111';
     const call_uuid = '2222';
-    let callee;
+    let callee, caller;
     let mockedApiCall;
     beforeEach(async () => Event.query().delete());
     beforeEach(async () => Call.query().delete());
@@ -79,7 +79,7 @@ describe('/answer', () => {
     beforeEach(async () => Callee.query().insert(associatedCallee));
     beforeEach(async () => {
       callee = await Callee.query().where({phone_number: associatedCallee.phone_number}).first();
-      caller = await Caller.query().insert(caller);
+      caller = await Caller.query().insert(callerTemplate);
       campaign = await campaign.$query().patch({calls_in_progress: 1}).returning('*').first()
     });
 
@@ -118,7 +118,7 @@ describe('/answer', () => {
       });
 
       context('but the caller is from another campaign', () => {
-        beforeEach(async() => {
+        beforeEach(async () => {
           const anotherCampaign = await Campaign.query().insert({name: 'another'});
           return caller.$query().patch({campaign_id: anotherCampaign.id});
         });
@@ -196,10 +196,10 @@ describe('/conference_event/callee', () => {
   beforeEach(async () => Event.query().delete());
   beforeEach(async () => Call.query().delete());
   beforeEach(async () => Callee.query().delete());
-  beforeEach(async () => await Callee.query().insert(callee));
+  beforeEach(async () => Callee.query().insert(callee));
   beforeEach(async () => Caller.query().delete());
-  beforeEach(async () => await Caller.query().insert(caller));
-  beforeEach(async () => await Call.query().insert({callee_call_uuid}));
+  beforeEach(async () => Caller.query().insert(callerTemplate));
+  beforeEach(async () => Call.query().insert({callee_call_uuid}));
 
   context('with enter event', () => {
     it('should create a Call entry', async () => {

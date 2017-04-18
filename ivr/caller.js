@@ -15,7 +15,7 @@ const {Call, Callee, Caller, Campaign, SurveyResult, Event} = require('../models
 app.post('/connect', async ({body, query}, res) => {
   if (body.CallStatus === 'completed') return res.sendStatus(200);
   const r = plivo.Response();
-  const campaign = await Campaign.query().where({id: query.campaign_id}).first();
+  const campaign = await Campaign.query().where({id: (query.campaign_id || null)}).first();
 
   if (process.env.RECORD_CALLS === 'true') {
     r.addRecord({
@@ -250,7 +250,7 @@ app.post('/survey', async ({query, body}, res) => {
   if (query.call_id) {
     call = await Call.query().where({id: query.call_id}).first();
   } else {
-    call = await Call.query().where({conference_uuid: body.ConferenceUUID}).first();
+    call = await Call.query().where({conference_uuid: (body.ConferenceUUID || null)}).first();
   }
   if (!call) {
     r.addSpeakAU('You have left the call queue.')
