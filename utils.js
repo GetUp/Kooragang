@@ -18,7 +18,7 @@ module.exports.authenticationNeeded = (callback, entry, campaign_passcode, authe
   return !(callback || entry === "more_info" || !campaign_passcode || authenticated);
 };
 
-module.exports.withinDailyTimeOfOperation = async (campaign) => {
+module.exports.withinDailyTimeOfOperation = campaign => {
   const todayDateString = moment().format('Y-MM-DD');
   const todayStartOperation = moment(todayDateString+' '+campaign.daily_start_operation);
   const todayStopOperation = moment(todayDateString+' '+campaign.daily_stop_operation);
@@ -26,7 +26,7 @@ module.exports.withinDailyTimeOfOperation = async (campaign) => {
   return moment().isBetween(todayStartOperation, todayStopOperation, null, '[]');
 }
 
-module.exports.dailyTimeOfOperationInWords = async (campaign) => {
+module.exports.dailyTimeOfOperationInWords = campaign => {
   const todayDateString = moment().format('Y-MM-DD');
   const todayStartOperation = moment(todayDateString+' '+campaign.daily_start_operation);
   const todayStartOperationFormatString = todayStartOperation.format("mm") === "00" ? "h a" : "h mm a";
