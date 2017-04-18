@@ -1,14 +1,16 @@
-const env = process.env.NODE_ENV || 'development';
+/* eslint comma-dangle: 0, no-use-before-define: 0 */
+const env = process.env.NODE_ENV || 'development'
 
-const pg = require('pg');
+const pg = require('pg')
+const config = require('../knexfile')
+const knex = require('knex')(config[env])
+const objection = require('objection')
+
+const Model = objection.Model
+const transaction = objection.transaction
+
 pg.types.setTypeParser(1700, 'text', parseFloat)
-const config = require('../knexfile');
-const knex = require('knex')(config[env]);
-const objection = require('objection');
-const Model = objection.Model;
-const transaction = objection.transaction;
-
-Model.knex(knex);
+Model.knex(knex)
 
 class Campaign extends Model {
   static get tableName() { return 'campaigns' }
@@ -104,5 +106,5 @@ module.exports = {
   Campaign,
   SurveyResult,
   Event,
-  transaction
-};
+  transaction,
+}
