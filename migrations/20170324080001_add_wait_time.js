@@ -1,14 +1,11 @@
-
-exports.up = function(knex, Promise) {
-  return knex.schema
+exports.up = knex =>
+  knex.schema
     .table('callers', table => {
-      table.integer('seconds_waiting').notNull().defaultTo(0);
-    });
-};
+      table.integer('seconds_waiting').notNull().defaultTo(0)
+    })
 
-exports.down = function(knex, Promise) {
-  return knex.schema
+exports.down = knex =>
+  knex.schema
     .table('callers', table => {
-      table.dropColumn('seconds_waiting');
-    });
-};
+      table.dropColumn('seconds_waiting')
+    })

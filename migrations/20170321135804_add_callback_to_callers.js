@@ -1,11 +1,9 @@
-exports.up = function(knex, Promise) {
-  return knex.schema
+exports.up = knex =>
+  knex.schema
     .table('callers', t => {
-      t.boolean('callback').defaultTo(false);
-    });
-};
+      t.boolean('callback').defaultTo(false)
+    })
 
-exports.down = function(knex, Promise) {
-  return knex.schema
-    .table('callers', table => table.dropColumn('callback'));
-};
+exports.down = knex =>
+  knex.schema
+    .table('callers', table => table.dropColumn('callback'))
