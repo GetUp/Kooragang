@@ -5,7 +5,7 @@ const host = process.env.BASE_URL;
 if (!host) throw `BASE_URL must be set`;
 const period = process.env.DIALER_PERIOD || 1000;
 
-const isPausing = async campaign => campaign.status === "pausing"
+const isPausing = campaign => campaign.status === "pausing"
 
 const work = async () => {
   while (true) {
