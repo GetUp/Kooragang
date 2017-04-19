@@ -1,1 +1,14 @@
-{ "extends": "airbnb" }
+{
+  "extends": "airbnb",
+  "rules": {
+    "semi": ["error", "never"],
+    "global-require": "off",
+    "no-console": "off",
+    "arrow-parens": ["warn", "as-needed"],
+    "max-len": "off",
+    "no-use-before-define": "off",
+    "camelcase": "off",
+    "comma-dangle": "warn",
+    "object-curly-spacing": "off"
+  }
+}

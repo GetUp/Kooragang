@@ -1,7 +1,7 @@
 const expect = require('expect.js')
 const moment = require('moment')
 const { Campaign } = require('../models')
-const {withinDailyTimeOfOperation, dailyTimeOfOperationInWords} = require('../utils');
+const { withinDailyTimeOfOperation, dailyTimeOfOperationInWords } = require('../utils')
 
 describe('withinDailyTimeOfOperation', () => {
   let campaign
@@ -18,7 +18,6 @@ describe('withinDailyTimeOfOperation', () => {
     })
   })
   context('with a campaign not active now', () => {
-    let campaign
     beforeEach(async () => {
       campaign = await Campaign.query().insert({
         name: 'future campaign',
