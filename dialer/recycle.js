@@ -7,8 +7,8 @@ module.exports = async() => {
       `update callees
        set last_called_at = null, last_recycled_at = now()
        from (select callee_id from calls
-         where status in ('busy', 'no-answer')
-         group by 1 having count(*) < ${campaign.max_call_attempts}
+         group by 1 having sum(case when status in ('busy', 'no-answer') then 1 else 0 end) < ${campaign.max_call_attempts}
+         and sum(case when status not in ('busy', 'no-answer') then 1 else 0 end) = 0
        ) as calls_made
        where callee_id = callees.id
        and last_called_at < now() - '${campaign.no_call_window} minutes'::interval

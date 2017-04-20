@@ -54,6 +54,15 @@ describe('dialer/recycle', () => {
           const updatedCallee = await Callee.query().first();
           expect(updatedCallee.last_called_at).to.not.be(null);
         });
+
+        context('with a prexisting call', () => {
+          beforeEach(() => Call.query().insert({callee_id: callee.id, status: 'busy'}));
+          it ('should NOT reset the last_called_at', async() => {
+            await recycle();
+            const updatedCallee = await Callee.query().first();
+            expect(updatedCallee.last_called_at).to.not.be(null);
+          });
+        });
       });
 
       context('with max_call_attempts already made with status', () => {
