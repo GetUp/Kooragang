@@ -3,19 +3,19 @@ const moment = require('moment');
 const plivo = require('plivo');
 const _ = require('lodash');
 const api = require('../api');
+const {withinDailyTimeOfOperation, dailyTimeOfOperationInWords} = require('../utils');
 const dialer = require('../dialer');
 const {
   sleep,
   extractCallerNumber,
   authenticationNeeded,
-  introductionNeeded
-} = require('./utils');
+} = require('../utils');
 const {Call, Callee, Caller, Campaign, SurveyResult, Event} = require('../models');
 
 app.post('/connect', async ({body, query}, res) => {
   if (body.CallStatus === 'completed') return res.sendStatus(200);
   const r = plivo.Response();
-  const campaign = await Campaign.query().where({id: query.campaign_id}).first();
+  const campaign = await Campaign.query().where({id: (query.campaign_id || null)}).first();
 
   if (process.env.RECORD_CALLS === 'true') {
     r.addRecord({
@@ -37,7 +37,7 @@ app.post('/connect', async ({body, query}, res) => {
   const callback = query.callback ? query.callback === "1" : false;
   const authenticated = query.authenticated ? query.authenticated === "1" : false;
   const promptAuth = authenticationNeeded(callback, query.entry, campaign.passcode, authenticated);
-  const promptIntro = introductionNeeded(query.entry);
+  const promptIntro = query.entry !== "more_info";
 
   if (campaign.status === "paused" || campaign.status === null){
     r.addWait({length: 2});
@@ -47,13 +47,11 @@ app.post('/connect', async ({body, query}, res) => {
     return res.send(r.toXML());
   }
 
-  const campaignWithinDailyTimeOfOperation = await dialer.withinDailyTimeOfOperation(campaign);
-  if (!campaignWithinDailyTimeOfOperation) {
-    const dailyTimeOfOperationInWords = await dialer.dailyTimeOfOperationInWords(campaign);
+  if (!withinDailyTimeOfOperation(campaign)) {
     r.addWait({length: 2});
     r.addSpeakAU(`Hi! Welcome to the GetUp Dialer tool.`);
     r.addWait({length: 1});
-    r.addSpeakAU(`The campaign is currently outside of it\'s daily times of operation! ${dailyTimeOfOperationInWords} Thank you and have a great day!`);
+    r.addSpeakAU(`The campaign is currently outside of it\'s daily times of operation! ${dailyTimeOfOperationInWords(campaign)} Thank you and have a great day!`);
     return res.send(r.toXML());
   }
 
@@ -252,7 +250,7 @@ app.post('/survey', async ({query, body}, res) => {
   if (query.call_id) {
     call = await Call.query().where({id: query.call_id}).first();
   } else {
-    call = await Call.query().where({conference_uuid: body.ConferenceUUID}).first();
+    call = await Call.query().where({conference_uuid: (body.ConferenceUUID || null)}).first();
   }
   if (!call) {
     r.addSpeakAU('You have left the call queue.')

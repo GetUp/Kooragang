@@ -10,7 +10,7 @@ const ivrCaller = proxyquire('../../ivr/caller', {
 });
 const app = require('../../ivr/common');
 app.use(ivrCaller);
-const request = require('supertest-as-promised')(app);
+const request = require('supertest')(app);
 
 const {
   Call,
@@ -155,7 +155,7 @@ describe('/connect', () => {
     beforeEach(async () => { await Campaign.query().delete() });
     beforeEach(async () => campaign = await Campaign.query().insert(inactiveCampaign));
     const payload = { From: caller.phone_number };
-    it('plays the outisde operational window briefing message ', () => {
+    it('plays the outside operational window briefing message', () => {
       return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
         .type('form')
         .send(payload)
@@ -167,7 +167,7 @@ describe('/connect', () => {
     beforeEach(async () => { await Campaign.query().delete() });
     beforeEach(async () => campaign = await Campaign.query().insert(operationalWindowCampaign));
     const payload = { From: caller.phone_number };
-    it('plays the operational window briefing message ', () => {
+    it('plays the operational window briefing message', () => {
       return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
         .type('form')
         .send(payload)

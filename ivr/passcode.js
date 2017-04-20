@@ -1,11 +1,10 @@
 const app = require('express')();
 const plivo = require('plivo');
-const {validPasscode} = require('./utils');
 
 app.post('/passcode', async ({query, body}, res) => {
   const r = plivo.Response();
   const campaign = await Campaign.query().where({id: query.campaign_id}).first();
-  const authenticatedCaller = validPasscode(campaign.passcode, body.Digits);
+  const authenticatedCaller = campaign.passcode === body.Digits;
 
   if (authenticatedCaller) {
     r.addWait({length: 1});

@@ -2,7 +2,7 @@ const expect = require('expect.js');
 const nock = require('nock');
 const moment = require('moment');
 const app = require('../reports');
-const request = require('supertest-as-promised')(app);
+const request = require('supertest')(app);
 const {
   Call,
   Callee,
