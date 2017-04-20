@@ -259,6 +259,11 @@ app.post('/survey', async ({query, body}, res) => {
     r.addRedirect(res.locals.appUrl(`call_again?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`));
     return res.send(r.toXML());
   }
+  if (call.status === 'machine_detected') {
+    r.addSpeakAU('Answering machine detected.')
+    r.addRedirect(res.locals.appUrl(`ready?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`));
+    return res.send(r.toXML());
+  }
   const surveyResponse = r.addGetDigits({
     action: res.locals.appUrl(`survey_result?q=${question}&caller_id=${query.caller_id}&call_id=${call.id}&campaign_id=${query.campaign_id}`),
     redirect: true,
@@ -400,6 +405,23 @@ app.post('/call_ended', async ({body, query}, res) => {
     }
   }
   return res.sendStatus(200);
+});
+
+app.post('/machine_detection', async ({body, query}, res) => {
+  /*
+  Message Drop implementation could go here and could potentially involve transferring the callee to a specified conference with a recording.
+  */
+  const aleg_url = res.locals.appUrl(`hangup?callee_id=${body.callee_id}&campaign_id=${query.campaign_id}`);
+  const params = {
+    call_uuid: body.CallUUID,
+    legs: 'aleg',
+    aleg_url : aleg_url
+  };
+  try{
+    await api('transfer_call', params);
+  }catch(e){
+  }
+  res.sendStatus(200);
 });
 
 module.exports = app;
