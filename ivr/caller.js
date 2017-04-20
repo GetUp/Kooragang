@@ -420,6 +420,7 @@ app.post('/machine_detection', async ({body, query}, res) => {
   try{
     await api('transfer_call', params);
   }catch(e){
+      await Event.query().insert({name: 'failed_post_machine_callee_transfer', campaign_id: query.campaign_id, value: {error: e}})
   }
   res.sendStatus(200);
 });
