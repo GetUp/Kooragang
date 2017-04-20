@@ -107,4 +107,24 @@ app.post('/callee_fallback', async ({body, query}, res) => {
   res.send(r.toXML())
 });
 
+app.post('/machine_detection', async ({body, query}, res) => {
+  /*
+  Message Drop implementation could go here and could potentially involve transferring the callee to a specified conference with a recording.
+  */
+  const caller = await Caller.query().orderBy('created_at', 'desc').where({call_uuid: body.CallUUID}).limit(1).first();
+  const aleg_url = res.locals.appUrl(`ready?caller_id=${caller.id}&campaign_id=${query.campaign_id}`);
+  const bleg_url = res.locals.appUrl(`hangup?callee_id=${body.callee_id}&campaign_id=${query.campaign_id}`);
+  const params = {
+    call_uuid: body.CallUUID,
+    legs: 'both',
+    aleg_url : aleg_url,
+    bleg_url : bleg_url
+  };
+  try{
+    await api('transfer_call', params);
+  }catch(e){
+  }
+  res.sendStatus(200);
+});
+
 module.exports = app;
