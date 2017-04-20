@@ -104,5 +104,6 @@ module.exports = {
   Campaign,
   SurveyResult,
   Event,
-  transaction
+  transaction,
+  knex
 };
