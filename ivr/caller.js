@@ -183,7 +183,11 @@ app.post('/ready', async ({body, query}, res) => {
     return res.send(r.toXML());
   }
 
-  r.addSpeakAU('You are now in the call queue.')
+  if (query.start || body.Digits === '1') {
+    r.addSpeakAU('You are now in the call queue.')
+  } else {
+    r.addSpeakAU('You have been place back in the call queue.')
+  }
   let callbackUrl = `conference_event/caller?caller_id=${caller_id}&campaign_id=${query.campaign_id}`;
   if (query.start) {
     r.addSpeakAU('We will connect you to a call shortly.')
@@ -254,12 +258,13 @@ app.post('/survey', async ({query, body}, res) => {
   } else {
     call = await Call.query().where({conference_uuid: body.ConferenceUUID}).first();
   }
+  console.log(call);
   if (!call) {
     r.addSpeakAU('You have left the call queue.')
     r.addRedirect(res.locals.appUrl(`call_again?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`));
     return res.send(r.toXML());
   }
-  if (call.status === 'machine_detected') {
+  if (call.status === 'machine_detection') {
     r.addSpeakAU('Answering machine detected.')
     r.addRedirect(res.locals.appUrl(`ready?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`));
     return res.send(r.toXML());
@@ -411,19 +416,12 @@ app.post('/machine_detection', async ({body, query}, res) => {
   /*
   Message Drop implementation could go here and could potentially involve transferring the callee to a specified conference with a recording.
   */
-  /*
-  const aleg_url = res.locals.appUrl(`hangup?callee_id=${body.callee_id}&campaign_id=${query.campaign_id}`);
-  const params = {
-    call_uuid: body.CallUUID,
-    legs: 'aleg',
-    aleg_url : aleg_url
-  };
+  await Call.query().where({ callee_call_uuid: body.CallUUID }).patch({ status: 'machine_detection' });
   try{
-    await api('transfer_call', params);
+    await api('hangup_call', { call_uuid: body.CallUUID });
   }catch(e){
       await Event.query().insert({name: 'failed_post_machine_callee_transfer', campaign_id: query.campaign_id, value: {error: e}})
   }
-  */
   res.sendStatus(200);
 });
 

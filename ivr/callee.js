@@ -71,7 +71,7 @@ app.post('/answer', async ({body, query}, res) => {
 
 app.post('/hangup', async ({body, query}, res) => {
   let call = await Call.query().where({callee_call_uuid: body.CallUUID}).first();
-  const status = body.Machine === 'true' ? 'machine_detected' : body.CallStatus;
+  const status = body.Machine === 'true' ? 'machine_detection' : body.CallStatus;
   if (call){
     await Call.query().where({callee_call_uuid: body.CallUUID})
       .patch({ended_at: new Date(), status, duration: body.Duration});
@@ -97,8 +97,8 @@ app.post('/conference_event/callee', async ({query, body}, res) => {
       conference_uuid: body.ConferenceUUID,
       connected_at: new Date()
     }
-    if (call.status !== 'machine_detected') { data.status = 'connected' }
-    call.$query().patch(data);
+    if (call.status !== 'machine_detection') { data.status = 'connected' }
+    await call.$query().patch(data);
   }
   res.sendStatus(200);
 });
