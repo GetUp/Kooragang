@@ -246,7 +246,7 @@ describe('/hangup', () => {
           .type('form').send({CallStatus, CallUUID, Duration: '10', Machine: 'true'})
           .then(async () => {
             const call = await Call.query()
-              .where({status: 'machine_detected', callee_call_uuid: CallUUID, duration: 10})
+              .where({status: 'machine_detection', callee_call_uuid: CallUUID, duration: 10})
               .first();
             expect(call).to.be.an(Call);
           });
