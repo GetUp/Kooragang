@@ -411,6 +411,7 @@ app.post('/machine_detection', async ({body, query}, res) => {
   /*
   Message Drop implementation could go here and could potentially involve transferring the callee to a specified conference with a recording.
   */
+  /*
   const aleg_url = res.locals.appUrl(`hangup?callee_id=${body.callee_id}&campaign_id=${query.campaign_id}`);
   const params = {
     call_uuid: body.CallUUID,
@@ -422,6 +423,7 @@ app.post('/machine_detection', async ({body, query}, res) => {
   }catch(e){
       await Event.query().insert({name: 'failed_post_machine_callee_transfer', campaign_id: query.campaign_id, value: {error: e}})
   }
+  */
   res.sendStatus(200);
 });
 
