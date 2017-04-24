@@ -48,7 +48,7 @@ describe('.dial', () => {
       it('should add the extra dialing params', async () => {
         const mockedApiCall = nock('https://api.plivo.com')
           .post(/Call/, body => {
-            return body.machine_detection === 'hangup';
+            return body.machine_detection === 'true';
           })
           .query(true)
           .reply(200);

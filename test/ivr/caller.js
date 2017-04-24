@@ -53,6 +53,7 @@ const activeCampaign = Object.assign({status: 'active'}, defaultCampaign)
 const pausedCampaign = Object.assign({status: 'paused'}, defaultCampaign)
 const inactiveCampaign = Object.assign({status: 'inactive'}, defaultCampaign)
 const statuslessCampaign = Object.assign({status: null}, defaultCampaign)
+const amdCampaign = Object.assign({status: 'active', detect_answering_machine: true}, defaultCampaign)
 const operationalWindowCampaign = Object.assign({daily_start_operation: '00:00:00', daily_stop_operation: '00:00:00'}, activeCampaign)
 
 const CallUUID = '111';
@@ -540,6 +541,33 @@ describe('/call_again', () => {
       return request.post(`/call_again?campaign_id=${campaign.id}`)
         .type('form').send()
         .expect(/has been completed/);
+    });
+  });
+});
+
+describe('/machine_detection', () => {
+  const callee_call_uuid = '111';
+  const conference_uuid = '222';
+  const payload = { CallUUID: callee_call_uuid };
+
+  beforeEach(async () => {
+    await Campaign.query().delete() 
+    await Call.query().delete()
+    await Caller.query().delete()
+    //const campaign = await Campaign.query().insert(amdCampaign)
+    //const call = await Call.query().insert({ callee_call_uuid, conference_uuid })
+    //const amdCaller = Object.assign({campaign_id: campaign.id}, caller)
+    //await Caller.query().insert(amdCaller)
+  });
+
+  context('with an existing call', () => {
+    it('patches call status to machine_detection', async () => {
+      const mockedApiCall = nock('https://api.plivo.com')
+        .delete(/\/Call\/111\//)
+        .reply(200);
+      return request.post(`/machine_detection?campaign_id=${campaign.id}`)
+        .type('form').send(payload)
+        .then(() => mockedApiCall.done());
     });
   });
 });

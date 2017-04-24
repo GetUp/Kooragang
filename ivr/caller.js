@@ -258,7 +258,6 @@ app.post('/survey', async ({query, body}, res) => {
   } else {
     call = await Call.query().where({conference_uuid: body.ConferenceUUID}).first();
   }
-  console.log(call);
   if (!call) {
     r.addSpeakAU('You have left the call queue.')
     r.addRedirect(res.locals.appUrl(`call_again?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`));
@@ -413,14 +412,11 @@ app.post('/call_ended', async ({body, query}, res) => {
 });
 
 app.post('/machine_detection', async ({body, query}, res) => {
-  /*
-  Message Drop implementation could go here and could potentially involve transferring the callee to a specified conference with a recording.
-  */
-  await Call.query().where({ callee_call_uuid: body.CallUUID }).patch({ status: 'machine_detection' });
   try{
+    await Call.query().where({ callee_call_uuid: body.CallUUID }).patch({ status: 'machine_detection' });
     await api('hangup_call', { call_uuid: body.CallUUID });
-  }catch(e){
-      await Event.query().insert({name: 'failed_post_machine_callee_transfer', campaign_id: query.campaign_id, value: {error: e}})
+  } catch(e){
+    await Event.query().insert({name: 'failed_post_machine_callee_transfer', campaign_id: query.campaign_id, value: {error: e}})
   }
   res.sendStatus(200);
 });
