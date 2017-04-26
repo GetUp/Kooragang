@@ -254,6 +254,7 @@ app.post('/survey', async ({query, body}, res) => {
   }
   if (!call) {
     r.addSpeakAU('You have left the call queue.')
+    await Event.query().insert({campaign_id: query.campaign_id, name: 'left queue without call', value: body})
     r.addRedirect(res.locals.appUrl(`call_again?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`));
     return res.send(r.toXML());
   }

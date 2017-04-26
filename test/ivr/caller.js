@@ -425,6 +425,15 @@ describe('/survey', () => {
       return request.post(`/survey?q=disposition&caller_id=1&campaign_id=${campaign.id}`)
         .expect(/have left the call queue/)
         .expect(/call_again\?caller_id=1/)
+    });
+
+    it('records an event', async() => {
+      await request.post(`/survey?q=disposition&caller_id=1&campaign_id=${campaign.id}`)
+        .type('form')
+        .send({CallUUID})
+        .expect(200);
+      const event = await Event.query().where({campaign_id: campaign.id, name: 'left queue without call'}).first()
+      expect(event.value).to.be(`{"CallUUID":"${CallUUID}"}`)
     })
   })
 });
