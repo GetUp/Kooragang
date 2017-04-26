@@ -184,8 +184,9 @@ app.post('/ready', async ({body, query}, res) => {
   if (query.start || body.Digits === '1') {
     r.addSpeakAU('You are now in the call queue.')
   } else {
-    r.addSpeakAU('You have been place back in the call queue.')
+    r.addSpeakAU('You have been placed back in the call queue.')
   }
+
   let callbackUrl = `conference_event/caller?caller_id=${caller_id}&campaign_id=${query.campaign_id}`;
   if (query.start) {
     r.addSpeakAU('We will connect you to a call shortly.')

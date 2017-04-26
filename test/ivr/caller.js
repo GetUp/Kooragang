@@ -422,7 +422,7 @@ describe('/survey', () => {
   context('without a call record (* pressed while in the queue)', () => {
     beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign));
     beforeEach(async () => await Call.query().delete())
-    it('re-enters the queue', () => {
+    it('prompts to re-enter the queue', () => {
       return request.post(`/survey?q=disposition&caller_id=1&campaign_id=${campaign.id}`)
         .expect(/have left the call queue/)
         .expect(/call_again\?caller_id=1/)
@@ -436,6 +436,26 @@ describe('/survey', () => {
       const event = await Event.query().where({campaign_id: campaign.id, name: 'left queue without call'}).first()
       expect(event.value).to.be(`{"CallUUID":"${CallUUID}"}`)
       expect(event.caller_id).to.be(1)
+    })
+  })
+
+  context('without a call record (* pressed while in the queue)', () => {
+    beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign));
+    beforeEach(async () => await Call.query().delete())
+    it('prompts to re-enter the queue', () => {
+      return request.post(`/survey?q=disposition&caller_id=1&campaign_id=${campaign.id}`)
+        .expect(/have left the call queue/)
+        .expect(/call_again\?caller_id=1/)
+    })
+  })
+
+  context('with a call that has status of machine_detection', () => {
+    beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign));
+    beforeEach(async () => call = await Call.query().patchAndFetchById(call.id, {status: 'machine_detection'}))
+    it('re-enters the queue', () => {
+      return request.post(`/survey?q=disposition&call_id=${call.id}&caller_id=1&campaign_id=${campaign.id}`)
+        .expect(/Answering machine detected/)
+        .expect(/ready\?caller_id=1/)
     })
   })
 });

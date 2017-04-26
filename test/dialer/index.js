@@ -47,7 +47,9 @@ describe('.dial', () => {
       it('should add the extra dialing params', async () => {
         const mockedApiCall = nock('https://api.plivo.com')
           .post(/Call/, body => {
-            return body.machine_detection === 'true';
+            return body.machine_detection === 'true'
+            && Number.isInteger(parseInt(body.machine_detection_time))
+            && body.machine_detection_url.match(/machine_detection/g);
           })
           .query(true)
           .reply(200);

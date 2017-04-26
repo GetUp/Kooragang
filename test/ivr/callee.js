@@ -206,14 +206,39 @@ describe('/conference_event/callee', () => {
       await request.post('/conference_event/callee')
         .type('form')
         .send({
-          ConferenceAction: 'enter', To: callee.phone_number,
-          CallUUID: callee_call_uuid, ConferenceUUID: conference_uuid
+          ConferenceAction: 'enter',
+          To: callee.phone_number,
+          CallUUID: callee_call_uuid,
+          ConferenceUUID: conference_uuid
         });
       const call = await Call.query().where({
         status,
-        callee_call_uuid, conference_uuid
+        callee_call_uuid,
+        conference_uuid
       }).first();
       expect(call).to.be.an(Call);
+    })
+
+    it('should not overwrite a Call machine_detection status', async () => {
+      const blerg = await Call.query().where({callee_call_uuid}).first();
+      blerg.$query().patch({status: "machine_detection"});
+      const yada = await Call.query().where({callee_call_uuid}).first();
+
+      console.log(yada)
+      await request.post('/conference_event/callee')
+        .type('form')
+        .send({
+          ConferenceAction: 'enter',
+          To: callee.phone_number,
+          CallUUID: callee_call_uuid,
+          ConferenceUUID: conference_uuid
+        });
+      const call = await Call.query().where({
+        status,
+        callee_call_uuid,
+        conference_uuid
+      }).first();
+      expect(call.status).to.be('machine_detection');
     })
   });
 });
