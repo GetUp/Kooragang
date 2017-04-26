@@ -220,11 +220,8 @@ describe('/conference_event/callee', () => {
     })
 
     it('should not overwrite a Call machine_detection status', async () => {
-      const blerg = await Call.query().where({callee_call_uuid}).first();
-      blerg.$query().patch({status: "machine_detection"});
-      const yada = await Call.query().where({callee_call_uuid}).first();
-
-      console.log(yada)
+      beforeEach(async () => Call.query().delete());
+      const call = await Call.query().insert({callee_call_uuid, status: "machine_detection"})
       await request.post('/conference_event/callee')
         .type('form')
         .send({
@@ -233,11 +230,6 @@ describe('/conference_event/callee', () => {
           CallUUID: callee_call_uuid,
           ConferenceUUID: conference_uuid
         });
-      const call = await Call.query().where({
-        status,
-        callee_call_uuid,
-        conference_uuid
-      }).first();
       expect(call.status).to.be('machine_detection');
     })
   });
