@@ -434,6 +434,7 @@ describe('/survey', () => {
         .expect(200);
       const event = await Event.query().where({campaign_id: campaign.id, name: 'left queue without call'}).first()
       expect(event.value).to.be(`{"CallUUID":"${CallUUID}"}`)
+      expect(event.caller_id).to.be(1)
     })
   })
 });
