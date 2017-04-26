@@ -74,7 +74,7 @@ h2 {
       </div>
 
       <div>
-        <canvas id="visualisation" width="10000px" height="500px"></canvas>
+        <canvas id="visualisation" width="10000px" height="800px"></canvas>
       </div>
     </div><!-- /.container -->
 
@@ -109,7 +109,7 @@ new Chart($("#visualisation"), {
         pointBorderColor: "rgba(63, 63, 191, 1)"
       },
       {
-        label: "Calls",
+        label: "Calls per second",
         type: 'line',
         data: <%- JSON.stringify(report.callsData) %>,
         fill: false,
