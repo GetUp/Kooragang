@@ -72,9 +72,86 @@ h2 {
           <h2>Predictive ratio: <strong><%=campaign.ratio%></strong> (with max <%=campaign.max_ratio%>)</h2>
         </div>
       </div>
+
+      <div>
+        <canvas id="visualisation" width="10000px" height="500px"></canvas>
+      </div>
     </div><!-- /.container -->
 
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.bundle.js"></script>
+    <script>
+new Chart($("#visualisation"), {
+  type: 'bar',
+  data: {
+    datasets: [
+      {
+        label: "Calls in Progress",
+        type: 'line',
+        data: <%- JSON.stringify(report.calls_in_progress) %>,
+        fill: false,
+        spanGaps: false
+      },
+      {
+        label: "Ratio",
+        type: 'line',
+        data: <%- JSON.stringify(report.ratioData) %>,
+        fill: false,
+        pointBorderColor: "rgba(63, 191, 191, 1)"
+      },
+      {
+        label: "Callers",
+        type: 'line',
+        data: <%- JSON.stringify(report.callersData) %>,
+        fill: false,
+        pointBorderColor: "rgba(63, 63, 191, 1)"
+      },
+      {
+        label: "Calls",
+        type: 'line',
+        data: <%- JSON.stringify(report.callsData) %>,
+        fill: false,
+        borderColor: "rgba(238, 238, 16, 0.8)"
+      },
+      {
+        label: "Completion",
+        type: 'line',
+        data: <%- JSON.stringify(report.completedData) %>,
+        fill: false,
+        pointStyle: 'star',
+        pointRadius: 5,
+          showLine: false,
+          pointBorderColor: "rgba(238, 16, 238,1)"
+      },
+      {
+        label: "Drops",
+        type: 'line',
+        data: <%- JSON.stringify(report.dropData) %>,
+        fill: false,
+        pointStyle: 'cross',
+        pointRadius: 5,
+          showLine: false,
+          pointBorderColor: "rgba(255,0,0,1)"
+      }
+    ]
+  },
+  options: {
+    responsive: false,
+    scales: {
+      xAxes: [{
+        type: 'time',
+      }],
+      yAxes: [{
+        ticks: {
+          beginAtZero:true,
+          suggestedMax: 20
+        }
+      }]
+    }
+  }
+});
+    </script>
   </body>
 </html>
