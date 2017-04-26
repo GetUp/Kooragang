@@ -246,6 +246,7 @@ app.post('/survey', async ({query, body}, res) => {
   const campaign = await Campaign.query().where({id: query.campaign_id}).first();
   const questions = campaign.questions;
   const question = query.q;
+  const caller_id = query.caller_id;
   const questionData = questions[question];
   if (query.call_id) {
     call = await Call.query().where({id: query.call_id}).first();
@@ -254,12 +255,12 @@ app.post('/survey', async ({query, body}, res) => {
   }
   if (!call) {
     r.addSpeakAU('You have left the call queue.')
-    await Event.query().insert({campaign_id: query.campaign_id, name: 'left queue without call', value: body})
-    r.addRedirect(res.locals.appUrl(`call_again?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`));
+    await Event.query().insert({campaign_id: query.campaign_id, name: 'left queue without call', value: body, caller_id})
+    r.addRedirect(res.locals.appUrl(`call_again?caller_id=${caller_id}&campaign_id=${query.campaign_id}`));
     return res.send(r.toXML());
   }
   const surveyResponse = r.addGetDigits({
-    action: res.locals.appUrl(`survey_result?q=${question}&caller_id=${query.caller_id}&call_id=${call.id}&campaign_id=${query.campaign_id}`),
+    action: res.locals.appUrl(`survey_result?q=${question}&caller_id=${caller_id}&call_id=${call.id}&campaign_id=${query.campaign_id}`),
     redirect: true,
     retries: 10,
     numDigits: 1,
