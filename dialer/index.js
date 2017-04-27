@@ -15,9 +15,10 @@ const {
 module.exports.dial = async (appUrl, campaign) => {
   const timer = new Date();
   campaign = await recalculateRatio(campaign);
-  const callers = await Caller.query().where({status: 'available'});
+  const callers = await Caller.query().where({status: 'available', campaign_id: campaign.id});
   const callsToMake = Math.floor(callers.length * campaign.ratio);
   const callsToMakeExcludingCurrentCalls = callsToMake - campaign.calls_in_progress;
+  const sortOrder = campaign.exhaust_callees_before_recycling ? 'call_attempts, id' : 'id';
   let callees = [];
   if (callsToMakeExcludingCurrentCalls > 0) {
     try{
@@ -26,7 +27,7 @@ module.exports.dial = async (appUrl, campaign) => {
         .forUpdate()
         .where({campaign_id: campaign.id})
         .whereNull('last_called_at')
-        .orderBy('id', 'desc')
+        .orderByRaw(sortOrder)
         .limit(callsToMakeExcludingCurrentCalls);
       if (callees.length) {
         await Callee.bindTransaction(trans).query().patch({last_called_at: new Date()}).whereIn('id', _.map(callees, (callee) => callee.id));
@@ -125,34 +126,6 @@ module.exports.calledEveryone = async (campaign) => {
     .where({campaign_id: campaign.id})
     .whereNull('last_called_at').first();
   return parseInt(count, 10) === 0;
-}
-
-module.exports.withinDailyTimeOfOperation = async (campaign) => {
-  const todayDateString = moment().format('Y-MM-DD');
-  const todayStartOperation = moment(todayDateString+' '+campaign.daily_start_operation);
-  const todayStopOperation = moment(todayDateString+' '+campaign.daily_stop_operation);
-  if (!moment.isMoment(todayStartOperation) || !moment.isMoment(todayStopOperation)){ return true };
-  return moment().isBetween(todayStartOperation, todayStopOperation, null, '[]');
-}
-
-module.exports.dailyTimeOfOperationInWords = async (campaign) => {
-  const todayDateString = moment().format('Y-MM-DD');
-  const todayStartOperation = moment(todayDateString+' '+campaign.daily_start_operation);
-  const todayStartOperationFormatString = todayStartOperation.format("mm") === "00" ? "h a" : "h mm a";
-  const todayStopOperation = moment(todayDateString+' '+campaign.daily_stop_operation);
-  const todayStopOperationFormatString = todayStopOperation.format("mm") === "00" ? "h a" : "h mm a";
-
-  if (!moment.isMoment(todayStartOperation) || !moment.isMoment(todayStopOperation)){ return null };
-  operatingHoursPhrasing = 'Please call back within the hours of ';
-  operatingHoursPhrasing += todayStartOperation.format(todayStartOperationFormatString);
-  operatingHoursPhrasing += ', and ';
-  operatingHoursPhrasing += todayStopOperation.format(todayStopOperationFormatString);
-  operatingHoursPhrasing += '.';
-  return operatingHoursPhrasing;
-}
-
-module.exports.isPausing = async (campaign) => {
-  return campaign.status === "pausing";
 }
 
 module.exports.notifyAgents = async (campaign) => {

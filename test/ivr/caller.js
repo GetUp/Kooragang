@@ -10,7 +10,7 @@ const ivrCaller = proxyquire('../../ivr/caller', {
 });
 const app = require('../../ivr/common');
 app.use(ivrCaller);
-const request = require('supertest-as-promised')(app);
+const request = require('supertest')(app);
 
 const {
   Call,
@@ -156,7 +156,7 @@ describe('/connect', () => {
     beforeEach(async () => { await Campaign.query().delete() });
     beforeEach(async () => campaign = await Campaign.query().insert(inactiveCampaign));
     const payload = { From: caller.phone_number };
-    it('plays the outisde operational window briefing message ', () => {
+    it('plays the outside operational window briefing message', () => {
       return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
         .type('form')
         .send(payload)
@@ -168,7 +168,7 @@ describe('/connect', () => {
     beforeEach(async () => { await Campaign.query().delete() });
     beforeEach(async () => campaign = await Campaign.query().insert(operationalWindowCampaign));
     const payload = { From: caller.phone_number };
-    it('plays the operational window briefing message ', () => {
+    it('plays the operational window briefing message', () => {
       return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
         .type('form')
         .send(payload)
@@ -436,6 +436,16 @@ describe('/survey', () => {
       return request.post(`/survey?q=disposition&caller_id=1&campaign_id=${campaign.id}`)
         .expect(/have left the call queue/)
         .expect(/call_again\?caller_id=1/)
+    });
+
+    it('records an event', async() => {
+      await request.post(`/survey?q=disposition&caller_id=1&campaign_id=${campaign.id}`)
+        .type('form')
+        .send({CallUUID})
+        .expect(200);
+      const event = await Event.query().where({campaign_id: campaign.id, name: 'left queue without call'}).first()
+      expect(event.value).to.be(`{"CallUUID":"${CallUUID}"}`)
+      expect(event.caller_id).to.be(1)
     })
   })
 

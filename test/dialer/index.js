@@ -1,11 +1,11 @@
 const expect = require('expect.js');
 const nock = require('nock');
-const dialer = require('../dialer');
+const dialer = require('../../dialer');
 const moment = require('moment');
 const _ = require('lodash');
 const sinon = require('sinon');
 
-const { Callee, Caller, Call, Campaign, Event } = require('../models');
+const { Callee, Caller, Call, Campaign, Event } = require('../../models');
 
 const defaultCampaign = {
   name: 'test',
@@ -25,12 +25,11 @@ const dropAll = async () => {
 }
 
 describe('.dial', () => {
-  let callee, invalidCallee, campaign;
+  let callee, campaign;
   const testUrl = 'http://test'
   beforeEach(dropAll);
   beforeEach(async () => {
     campaign = await Campaign.query().insert(defaultCampaign);
-    invalidCallee = await Callee.query().insert({phone_number: '9', campaign_id: campaign.id});
     callee = await Callee.query().insert({phone_number: '123456789', campaign_id: campaign.id});
   });
 
@@ -74,9 +73,12 @@ describe('.dial', () => {
   })
 
   context('with a predictive ratio dialer campaign', () => {
+    const campaign2 = Object.assign({ name: 'test campaign 2' }, defaultCampaign);
     let mockedApiCall;
     beforeEach(async () => {
       campaign = await Campaign.query().patchAndFetchById(campaign.id, {dialer: 'ratio', ratio: 1});
+      await Campaign.query().insert(campaign2);
+      await Caller.query().insert({ phone_number: '2', status: 'available', campaign_id: campaign2.id });
     });
     beforeEach(() => {
       mockedApiCall = nock('https://api.plivo.com')
@@ -194,6 +196,40 @@ describe('.dial', () => {
         expect(updatedCampaign.ratio).to.be(campaign.max_ratio - 1);
       });
     });
+
+    context('with a called callee', () => {
+      let calledCallee, uncalledCallee
+      beforeEach(async () => {
+        await Caller.query().insert({phone_number: '1', status: 'available', campaign_id: campaign.id})
+        await Callee.query().delete()
+        calledCallee   = await Callee.query().insert({id: 1, call_attempts: 1, campaign_id: campaign.id, phone_number: 1}).returning('*')
+        uncalledCallee = await Callee.query().insert({id: 2, call_attempts: 0, campaign_id: campaign.id, phone_number: 1}).returning('*')
+      })
+
+      context('with exhaust_callees_before_recycling == false', () => {
+        beforeEach(async () => {
+          campaign = await campaign.$query().patchAndFetchById(campaign.id, {exhaust_callees_before_recycling: false})
+        })
+
+        it('should call callees prioritised by their id', async () => {
+          await dialer.dial(testUrl, campaign)
+          expect((await calledCallee.$query()).last_called_at).to.not.be(null)
+          expect((await uncalledCallee.$query()).last_called_at).to.be(null)
+        })
+      })
+
+      context('with exhaust_callees_before_recycling == true', () => {
+        beforeEach(async () => {
+          campaign = await campaign.$query().patchAndFetchById(campaign.id, {exhaust_callees_before_recycling: true})
+        })
+
+        it('should call callees prioritised by lowest call count', async () => {
+          await dialer.dial(testUrl, campaign)
+          expect((await calledCallee.$query()).last_called_at).to.be(null)
+          expect((await uncalledCallee.$query()).last_called_at).to.not.be(null)
+        })
+      })
+    })
 
     context('with 2 available agents and ratio of 2', () => {
       beforeEach(async () => {

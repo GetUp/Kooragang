@@ -1,45 +1,38 @@
 {
   "name": "Kooragang",
   "private": true,
-  "version": "1.0.0",
   "engines": {
     "node": "7.6"
   },
-  "description": "",
   "scripts": {
     "start": "heroku local",
     "nodemon": "nodemon --exec npm run app",
     "web": "node ./app.js",
     "worker": "node ./worker.js",
+    "nightly": "node ./nightly.js",
     "debug": "node debug ./app.js",
-    "test": "NODE_ENV=test ./node_modules/.bin/mocha --full-trace  test/**",
+    "test": "find . -name '*.js' -not -path './node_modules/*' | NODE_ENV=test entr -c mocha --full-trace test/**",
     "deploy-production": "git push kooragang HEAD:master && heroku run knex migrate:latest --app kooragang && git push kooragang-www HEAD:master",
     "deploy-stage": "git push kooragang-stage HEAD:master && heroku run knex migrate:latest --app kooragang-stage && git push kooragang-www-stage HEAD:master"
   },
-  "author": "",
-  "license": "ISC",
   "dependencies": {
-    "body-parser": "^1.14.2",
+    "body-parser": "^1.17.1",
     "ejs": "^2.5.6",
     "es6-promisify": "^5.0.0",
-    "express": "^4.13.4",
-    "knex": "^0.9.0",
+    "express": "^4.15.2",
+    "knex": "^0.12.9",
     "lodash": "^4.17.4",
-    "moment": "^2.11.2",
-    "objection": "^0.4.0",
-    "pg": "^4.4.4",
-    "plivo": "GetUp/plivo-node#0ffa30fc1ea05aae7bb2753aa3e6055cc0e62e18",
-    "promise-sequential": "^1.1.1",
-    "request": "^2.69.0"
+    "moment": "^2.18.1",
+    "objection": "^0.7.12",
+    "pg": "^6.1.5",
+    "plivo": "GetUp/plivo-node#node-style-callbacks"
   },
   "devDependencies": {
     "expect.js": "^0.3.1",
-    "mocha": "^2.4.5",
-    "nock": "^9.0.7",
+    "mocha": "^3.2.0",
+    "nock": "^9.0.13",
     "proxyquire": "^1.7.11",
-    "sinon": "^2.0.0",
-    "supertest": "^1.1.0",
-    "supertest-as-promised": "^4.0.2",
-    "timekeeper": "0.0.5"
+    "sinon": "^2.1.0",
+    "supertest": "^3.0.0"
   }
 }
