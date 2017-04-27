@@ -15,7 +15,7 @@ const {
 module.exports.dial = async (appUrl, campaign) => {
   const timer = new Date();
   campaign = await recalculateRatio(campaign);
-  const callers = await Caller.query().where({status: 'available'});
+  const callers = await Caller.query().where({status: 'available', campaign_id: campaign.id});
   const callsToMake = Math.floor(callers.length * campaign.ratio);
   const callsToMakeExcludingCurrentCalls = callsToMake - campaign.calls_in_progress;
   const sortOrder = campaign.exhaust_callees_before_recycling ? 'call_attempts, id' : 'id';

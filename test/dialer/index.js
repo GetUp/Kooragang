@@ -71,9 +71,12 @@ describe('.dial', () => {
   })
 
   context('with a predictive ratio dialer campaign', () => {
+    const campaign2 = Object.assign({ name: 'test campaign 2' }, defaultCampaign);
     let mockedApiCall;
     beforeEach(async () => {
       campaign = await Campaign.query().patchAndFetchById(campaign.id, {dialer: 'ratio', ratio: 1});
+      await Campaign.query().insert(campaign2);
+      await Caller.query().insert({ phone_number: '2', status: 'available', campaign_id: campaign2.id });
     });
     beforeEach(() => {
       mockedApiCall = nock('https://api.plivo.com')
