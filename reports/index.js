@@ -84,11 +84,11 @@ app.get('/stats/:id', async ({body, params, query}, res) => {
           order by 1
           `)
       const completedData = await Event.raw(`
-          select created_at, 1 as value from events
-          where campaign_id = ${campaign.id}
-          and name = 'caller_complete'
-          and created_at > now() - '${time_period_in_hours} hours'::interval
-          and ((value::json)->>'cumulative_seconds_waiting')::integer > 0
+          select events.created_at, 1 as value from events
+          inner join callers on events.caller_id = callers.id and not callback
+          where events.campaign_id = ${campaign.id}
+          and events.name = 'caller_complete'
+          and events.created_at > now() - '${time_period_in_hours} hours'::interval
           order by 1
           `)
       Object.assign(data, {
