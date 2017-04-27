@@ -25,12 +25,11 @@ const dropAll = async () => {
 }
 
 describe('.dial', () => {
-  let callee, invalidCallee, campaign;
+  let callee, campaign;
   const testUrl = 'http://test'
   beforeEach(dropAll);
   beforeEach(async () => {
     campaign = await Campaign.query().insert(defaultCampaign);
-    invalidCallee = await Callee.query().insert({phone_number: '9', campaign_id: campaign.id});
     callee = await Callee.query().insert({phone_number: '123456789', campaign_id: campaign.id});
   });
 
