@@ -574,20 +574,29 @@ describe('/machine_detection', () => {
     await Campaign.query().delete() 
     await Call.query().delete()
     await Caller.query().delete()
-    //const campaign = await Campaign.query().insert(amdCampaign)
-    //const call = await Call.query().insert({ callee_call_uuid, conference_uuid })
-    //const amdCaller = Object.assign({campaign_id: campaign.id}, caller)
-    //await Caller.query().insert(amdCaller)
+    const campaign = await Campaign.query().insert(amdCampaign)
+    const call = await Call.query().insert({callee_call_uuid, conference_uuid})
   });
 
   context('with an existing call', () => {
     it('patches call status to machine_detection', async () => {
+      const call = await Call.query().insert({conference_uuid});
       const mockedApiCall = nock('https://api.plivo.com')
         .delete(/\/Call\/111\//)
         .reply(200);
-      return request.post(`/machine_detection?campaign_id=${campaign.id}`)
+      await request.post(`/machine_detection?campaign_id=${campaign.id}`)
         .type('form').send(payload)
-        .then(() => mockedApiCall.done());
+        .expect(200);
+      mockedApiCall.done();
+    });
+  });
+
+  context('without an existing call', () => {
+    it('create error event', async () => {
+      await request.post(`/machine_detection?campaign_id=${campaign.id}`)
+        .type('form').send();
+      const event = await Event.query().where({name: 'failed_post_machine_callee_transfer', campaign_id: campaign.id}).first();
+      return expect(event).to.be.an(Event);
     });
   });
 });
