@@ -449,6 +449,16 @@ describe('/survey', () => {
     })
   })
 
+  context('without a call record (* pressed while in the queue)', () => {
+    beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign));
+    beforeEach(async () => await Call.query().delete())
+    it('prompts to re-enter the queue', () => {
+      return request.post(`/survey?q=disposition&caller_id=1&campaign_id=${campaign.id}`)
+        .expect(/have left the call queue/)
+        .expect(/call_again\?caller_id=1/)
+    })
+  })
+
   context('with a call that has status of machine_detection', () => {
     beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign));
     beforeEach(async () => call = await Call.query().patchAndFetchById(call.id, {status: 'machine_detection'}))
@@ -579,18 +589,18 @@ describe('/machine_detection', () => {
   const callee_call_uuid = '111';
   const conference_uuid = '222';
   const payload = { CallUUID: callee_call_uuid };
+  let call, campaign;
 
   beforeEach(async () => {
-    await Campaign.query().delete() 
+    await Campaign.query().delete()
     await Call.query().delete()
     await Caller.query().delete()
-    const campaign = await Campaign.query().insert(amdCampaign)
-    const call = await Call.query().insert({callee_call_uuid, conference_uuid})
+    campaign = await Campaign.query().insert(amdCampaign)
+    call = await Call.query().insert({callee_call_uuid, conference_uuid})
   });
 
   context('with an existing call', () => {
-    it('patches call status to machine_detection', async () => {
-      const call = await Call.query().insert({conference_uuid});
+    it('hangs up on the callee', async () => {
       const mockedApiCall = nock('https://api.plivo.com')
         .delete(/\/Call\/111\//)
         .reply(200);
@@ -599,6 +609,17 @@ describe('/machine_detection', () => {
         .expect(200);
       mockedApiCall.done();
     });
+
+    it('patches call status to machine_detection', async () => {
+      const mockedApiCall = nock('https://api.plivo.com')
+        .delete(/\/Call\/111\//)
+        .reply(200);
+      await request.post(`/machine_detection?campaign_id=${campaign.id}`)
+        .type('form').send(payload)
+        .expect(200);
+      const updatedCall = await Call.query().where({id: call.id}).first();
+      expect(updatedCall.status).to.be('machine_detection');
+    });
   });
 
   context('without an existing call', () => {
@@ -606,7 +627,7 @@ describe('/machine_detection', () => {
       await request.post(`/machine_detection?campaign_id=${campaign.id}`)
         .type('form').send();
       const event = await Event.query().where({name: 'failed_post_machine_callee_transfer', campaign_id: campaign.id}).first();
-      return expect(event).to.be.an(Event);
+      expect(event).to.be.an(Event);
     });
   });
 });
