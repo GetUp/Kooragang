@@ -10,7 +10,7 @@ const {
   extractCallerNumber,
   authenticationNeeded,
 } = require('../utils');
-const {Call, Callee, Caller, Campaign, SurveyResult, Event} = require('../models');
+const {Call, Callee, Caller, Campaign, SurveyResult, Event, User, Team} = require('../models');
 
 app.post('/connect', async ({body, query}, res) => {
   if (body.CallStatus === 'completed') return res.sendStatus(200);
@@ -84,10 +84,36 @@ app.post('/connect', async ({body, query}, res) => {
     return res.send(r.toXML());
   }
 
-  let valid_digits = ['1', '2', '3', '4'];
+  if (campaign.teams && !query.team) {
+    let valid_team_digits = ['2', '*']
+    r.addWait({length: 2})
+    const user = await User.query().where({phone_number: body.From}).first()
+    if (user && user.team_id) {
+      valid_team_digits.push('1')
+      const team = await Team.query().where({id: user.team_id}).first()
+      r.addSpeakAU(`Press the one key on your keypad to resume your membership to the ${team.name} calling team`)
+      r.addWait({length: 1})
+      r.addSpeakAU('Press the two key if you\'re joining a new team.')
+    } else {
+      r.addSpeakAU('Press the two key on your keypad if you\'re a member of a calling team.')
+    }
+    r.addSpeakAU('Or press the star key to run this campaign solo.')
+
+    const teamAction = r.addGetDigits({
+      action: res.locals.appUrl(`team?campaign_id=${query.campaign_id}`),
+      timeout: 10,
+      retries: 10,
+      numDigits: 1,
+      validDigits: valid_team_digits
+    })
+    r.addRedirect(res.locals.appUrl('team'))
+    return res.send(r.toXML())
+  }
+
+  let valid_briefing_digits = ['1', '2', '3', '4'];
   if(Object.keys(campaign.more_info).length > 0) {
     let more_info_digits = Object.keys(campaign.more_info);
-    valid_digits = valid_digits.concat(more_info_digits);
+    valid_briefing_digits = valid_briefing_digits.concat(more_info_digits);
   }
 
   const briefing = r.addGetDigits({
@@ -96,7 +122,7 @@ app.post('/connect', async ({body, query}, res) => {
     timeout: 5,
     numDigits: 1,
     retries: 10,
-    validDigits: valid_digits
+    validDigits: valid_briefing_digits
   });
 
   briefing.addWait({length: 2});

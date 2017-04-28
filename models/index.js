@@ -79,6 +79,14 @@ class Caller extends Model {
           from: 'callers.id',
           to: 'calls.caller_id'
         }
+      },
+      team: {
+        relation: Model.BelongsToOneRelation,
+        modelClass: Team,
+        join: {
+          from: 'callers.team_id',
+          to: 'teams.id'
+        }
       }
     }
   }
@@ -96,6 +104,27 @@ class Event extends Model {
   static get tableName() { return 'events' }
 }
 
+class Team extends Model {
+  static get tableName() { return 'teams' }
+
+  static get relationMappings() {
+    return {
+      users: {
+        relation: Model.HasManyRelation,
+        modelClass: User,
+        join: {
+          from: 'teams.id',
+          to: 'users.team_id'
+        }
+      }
+    }
+  }
+}
+
+class User extends Model {
+  static get tableName() { return 'users' }
+}
+
 module.exports = {
   Call,
   Callee,
@@ -104,6 +133,8 @@ module.exports = {
   Campaign,
   SurveyResult,
   Event,
+  Team,
+  User,
   transaction,
   knex
 };

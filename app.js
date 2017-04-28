@@ -3,6 +3,7 @@ const app = require('express')();
 if (process.env.NODE_ENV === 'development' || process.env.IVR) {
   app.use(require('./ivr/common'));
   app.use(require('./ivr/passcode'));
+  app.use(require('./ivr/team'));
   app.use(require('./ivr/log'));
   app.use(require('./ivr/caller'));
   app.use(require('./ivr/callee'));
