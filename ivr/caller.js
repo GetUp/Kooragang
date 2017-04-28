@@ -414,16 +414,16 @@ app.post('/call_ended', async ({body, query}, res) => {
 
 app.post('/machine_detection', async ({body, query}, res) => {
   try{
-    if ( body.CallUUID === undefined ) { throw 'no CallUUID present machine_detection' };
+    if ( !body.CallUUID ) { throw 'no CallUUID present machine_detection' };
     await Call.query().where({ callee_call_uuid: body.CallUUID }).patch({ status: 'machine_detection' });
     await api('hangup_call', { call_uuid: body.CallUUID });
   } catch(e){
-    const call = await Call.query().where({callee_call_uuid: body.CallUUID}).first();
+    const call = body.CallUUID && await Call.query().where({callee_call_uuid: body.CallUUID}).first();
     await Event.query().insert({
       name: 'failed_post_machine_callee_transfer',
       campaign_id: query.campaign_id,
-      caller_id: call ? call.caller_id : null,
-      call_id: call ? call.id : null,
+      caller_id: call && call.caller_id,
+      call_id: call && call.id,
       value: { error: e }
     })
   }
