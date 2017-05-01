@@ -2,7 +2,7 @@ const expect = require('expect.js');
 const nock = require('nock');
 const proxyquire = require('proxyquire');
 const moment = require('moment');
-const ivrCaller = proxyquire('../../ivr/caller', {
+const ivrCaller = proxyquire('../../ivr/team', {
   '../dialer': {
     dial: async (appUrl) => {},
     calledEveryone: async (appUrl) => false,
@@ -31,21 +31,22 @@ let campaign
 let team
 let user
 beforeEach(async () => {
-  await Campaign.query().delete();
-  await Team.query().delete();
   await User.query().delete();
+  await Team.query().delete();
 });
-beforeEach(async () => campaign = await Campaign.query().insert(teamsCampaign));
 beforeEach(async () => team = await Team.query().insert({name: 'planet savers', passcode: '1234'}));
 beforeEach(async () => user = await User.query().insert({phone_number: '098765', team_id: team.id}));
 
 describe('/team', () => {
-
+  beforeEach(async () => {
+    await Campaign.query().delete();
+    campaign = await Campaign.query().insert(teamsCampaign)
+  });
   context('with no existing user', () => {
     const payload = { From: '098765' };
     beforeEach(async () => { await User.query().delete() });
     it('creates new user record', async () => {
-      request.post(`/team?campaign_id=${campaign.id}`)
+      await request.post(`/team?campaign_id=${campaign.id}`)
         .type('form')
         .send(payload);
       user = await User.query().where({phone_number: '098765'}).first();
@@ -55,17 +56,17 @@ describe('/team', () => {
   context('with existing user', () => {
     const payload = { From: '098765' };
     it('creates no new user record', async () => {
-      request.post(`/team?campaign_id=${campaign.id}`)
+      await request.post(`/team?campaign_id=${campaign.id}`)
         .type('form')
         .send(payload);
-      count = await User.query().count();
-      expect(count).to.be(1);
+      let users = await User.query();
+      expect(users.length).to.be(1);
     });
   });
   context('with 1 pressed', () => {
     const payload = { Digits: '1', From: '098765' };
     it('announces user rejoined team & redirect to connect', () => {
-      request.post(`/team?campaign_id=${campaign.id}`)
+      return request.post(`/team?campaign_id=${campaign.id}`)
         .type('form')
         .send(payload)
         .expect(/rejoined/);
@@ -74,7 +75,7 @@ describe('/team', () => {
   context('with 2 pressed', () => {
     const payload = { Digits: '2', From: '098765' };
     it('prompts for team passcode', () => {
-      request.post(`/team?campaign_id=${campaign.id}`)
+      return request.post(`/team?campaign_id=${campaign.id}`)
         .type('form')
         .send(payload)
         .expect(/Please enter/);
@@ -83,7 +84,7 @@ describe('/team', () => {
   context('with * pressed', () => {
     const payload = { Digits: '*', From: '098765' };
     it('remove team id from user', async () => {
-      request.post(`/team?campaign_id=${campaign.id}`)
+      await request.post(`/team?campaign_id=${campaign.id}`)
         .type('form')
         .send(payload);
       user = await User.query().where({phone_number: '098765'}).first();
@@ -100,21 +101,27 @@ describe('/team', () => {
 });
 
 describe('/team/join', () => {
-    context('with an unknown number', () => {
-      const payload = { Digits: '1234', };
-      it('announces user joined team & redirect to connect', () => {
-        return request.post(`/team/join?campaign_id=${campaign.id}`)
-          .type('form')
-          .send(payload)
-          .expect(/joined/)
-          .expect(/connect\?campaign_id\=1\&team\=1/);
-      });
-      it('announces user joined team & redirect to connect', () => {
-        return request.post(`/team/join?campaign_id=${campaign.id}`)
-          .type('form')
-          .send(payload)
-          .expect(/joined/)
-          .expect(/connect\?campaign_id\=1\&team\=1/);
-      });
+  beforeEach(async () => {
+    await Campaign.query().delete();
+    campaign = await Campaign.query().insert(teamsCampaign)
+  });
+  context('with an unknown number', () => {
+    it('announces user joined team & redirect to connect', () => {
+      const payload = { Digits: '1234'};
+      return request.post(`/team/join?campaign_id=${campaign.id}&user_id=${user.id}`)
+        .type('form')
+        .send(payload)
+        .expect(/joined/)
+        .expect(/connect/)
+        .expect(/team=1/);
     });
+    it('announces user joined team & redirect to connect', () => {
+      const payload = { Digits: '0987'};
+      return request.post(`/team/join?campaign_id=${campaign.id}`)
+        .type('form')
+        .send(payload)
+        .expect(/incorrect team passcode/)
+        .expect(/connect/);
+    });
+  });
 });
