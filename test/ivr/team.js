@@ -40,56 +40,81 @@ beforeEach(async () => team = await Team.query().insert({name: 'planet savers', 
 beforeEach(async () => user = await User.query().insert({phone_number: '098765', team_id: team.id}));
 
 describe('/team', () => {
-  const payload = { From: '098765' };
 
   context('with no existing user', () => {
+    const payload = { From: '098765' };
     beforeEach(async () => { await User.query().delete() });
     it('creates new user record', async () => {
       request.post(`/team?campaign_id=${campaign.id}`)
         .type('form')
         .send(payload);
       user = await User.query().where({phone_number: '098765'}).first();
-      return expect(user).to.be.an(User);
+      expect(user).to.be.an(User);
     });
   });
   context('with existing user', () => {
-    it('creates no new user record', () => {
+    const payload = { From: '098765' };
+    it('creates no new user record', async () => {
+      request.post(`/team?campaign_id=${campaign.id}`)
+        .type('form')
+        .send(payload);
+      count = await User.query().count();
+      expect(count).to.be(1);
     });
   });
   context('with 1 pressed', () => {
+    const payload = { Digits: '1', From: '098765' };
     it('announces user rejoined team & redirect to connect', () => {
+      request.post(`/team?campaign_id=${campaign.id}`)
+        .type('form')
+        .send(payload)
+        .expect(/rejoined/);
     });
   });
   context('with 2 pressed', () => {
+    const payload = { Digits: '2', From: '098765' };
     it('prompts for team passcode', () => {
+      request.post(`/team?campaign_id=${campaign.id}`)
+        .type('form')
+        .send(payload)
+        .expect(/Please enter/);
     });
   });
   context('with * pressed', () => {
-    it('remove team id from user', () => {
+    const payload = { Digits: '*', From: '098765' };
+    it('remove team id from user', async () => {
+      request.post(`/team?campaign_id=${campaign.id}`)
+        .type('form')
+        .send(payload);
+      user = await User.query().where({phone_number: '098765'}).first();
+      expect(user.team_id).to.be(null);
     });
     it('announces user running solo & redirect to connect', () => {
+      return request.post(`/team?campaign_id=${campaign.id}`)
+        .type('form')
+        .send(payload)
+        .expect(/running solo/)
+        .expect(/connect/);
     });
   });
 });
-/*
-- no existing user - create new user
-- existing user - ceate no new user
-- digit 1 `rejoined` & redirect to connect with 1 team param
-- digit 2 `Please enter` & redirect to team/join
-- digit * user with team id now has null team id
-- digit * `running solo` & redirect to connect with 0 team param
-*/
 
 describe('/team/join', () => {
     context('with an unknown number', () => {
-      const payload = { CallUUID: '1231' };
-      it('create a record', async() => {
-        await request.post(startPath)
+      const payload = { Digits: '1234', };
+      it('announces user joined team & redirect to connect', () => {
+        return request.post(`/team/join?campaign_id=${campaign.id}`)
           .type('form')
           .send(payload)
-          .expect(/call queue/i);
-        const foundCaller = await Caller.query().where({phone_number: caller.phone_number}).first();
-        expect(foundCaller).to.be.a(Caller);
+          .expect(/joined/)
+          .expect(/connect\?campaign_id\=1\&team\=1/);
+      });
+      it('announces user joined team & redirect to connect', () => {
+        return request.post(`/team/join?campaign_id=${campaign.id}`)
+          .type('form')
+          .send(payload)
+          .expect(/joined/)
+          .expect(/connect\?campaign_id\=1\&team\=1/);
       });
     });
 });

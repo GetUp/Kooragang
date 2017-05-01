@@ -55,6 +55,7 @@ const inactiveCampaign = Object.assign({status: 'inactive'}, defaultCampaign)
 const statuslessCampaign = Object.assign({status: null}, defaultCampaign)
 const amdCampaign = Object.assign({status: 'active', detect_answering_machine: true}, defaultCampaign)
 const operationalWindowCampaign = Object.assign({daily_start_operation: '00:00:00', daily_stop_operation: '00:00:00'}, activeCampaign)
+const teamsCampaign = Object.assign({status: 'active', teams: true}, defaultCampaign)
 
 const CallUUID = '111';
 let campaign
@@ -173,6 +174,54 @@ describe('/connect', () => {
         .type('form')
         .send(payload)
         .expect(/times of operation/);
+    });
+  });
+
+  context('with teams active campaign', () => {
+    beforeEach(async () => {
+      await Campaign.query().delete();
+      await Team.query().delete();
+      await User.query().delete();
+    });
+    beforeEach(async () => campaign = await Campaign.query().insert(teamsCampaign));
+    beforeEach(async () => team = await Team.query().insert({name: 'planet savers', passcode: '1234'}));
+    beforeEach(async () => user = await User.query().insert({phone_number: '098765', team_id: team.id}));
+    const payload = { From: caller.phone_number };
+
+    context('with existing user and team', () => {
+      it('should announce the keypad input options & redirect to call_again', () => {
+        return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
+          .type('form')
+          .send(payload)
+          .expect(/membership/)
+          .expect(/joining a new team/)
+          .expect(/solo/);
+      });
+    });
+    context('with no existing user or team', () => {
+      it('should announce the keypad input options & redirect to call_again', () => {
+        return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
+          .type('form')
+          .send(payload)
+          .expect(/member of a calling/)
+          .expect(/solo/);
+      });
+    });
+    context('with true team param passed in connect url', () => {
+      it('should announce welcome to the getup dialer tool', () => {
+        return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}&team=1`)
+          .type('form')
+          .send(payload)
+          .expect(/welcome/);
+      });
+    });
+    context('with false team param passed in connect url', () => {
+      it('should announce welcome to the getup dialer tool', () => {
+        return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}&team=0`)
+          .type('form')
+          .send(payload)
+          .expect(/welcome/);
+      });
     });
   });
 });

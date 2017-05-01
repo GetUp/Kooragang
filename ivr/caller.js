@@ -88,17 +88,6 @@ app.post('/connect', async ({body, query}, res) => {
     let valid_team_digits = ['2', '*']
     r.addWait({length: 2})
     const user = await User.query().where({phone_number: body.From}).first()
-    if (user && user.team_id) {
-      valid_team_digits.push('1')
-      const team = await Team.query().where({id: user.team_id}).first()
-      r.addSpeakAU(`Press the one key on your keypad to resume your membership to the ${team.name} calling team`)
-      r.addWait({length: 1})
-      r.addSpeakAU('Press the two key if you\'re joining a new team.')
-    } else {
-      r.addSpeakAU('Press the two key on your keypad if you\'re a member of a calling team.')
-    }
-    r.addSpeakAU('Or press the star key to run this campaign solo.')
-
     const teamAction = r.addGetDigits({
       action: res.locals.appUrl(`team?campaign_id=${query.campaign_id}`),
       timeout: 10,
@@ -106,6 +95,17 @@ app.post('/connect', async ({body, query}, res) => {
       numDigits: 1,
       validDigits: valid_team_digits
     })
+    if (user && user.team_id) {
+      valid_team_digits.push('1')
+      const team = await Team.query().where({id: user.team_id}).first()
+      teamAction.addSpeakAU(`Press the one key on your keypad to resume your membership to the ${team.name} calling team`)
+      teamAction.addWait({length: 1})
+      teamAction.addSpeakAU('Press the two key if you\'re joining a new team.')
+    } else {
+      teamAction.addSpeakAU('Press the two key on your keypad if you\'re a member of a calling team.')
+    }
+    teamAction.addSpeakAU('Or press the star key to run this campaign solo.')
+
     r.addRedirect(res.locals.appUrl('team'))
     return res.send(r.toXML())
   }
