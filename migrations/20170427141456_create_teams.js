@@ -28,8 +28,6 @@ exports.up = function(knex, Promise) {
 
 exports.down = function(knex, Promise) {
   return knex.schema
-    .dropTableIfExists('teams')
-    .dropTableIfExists('users')
     .table('callers', table => {
       table.dropIndex(['team_id']);
       table.dropColumn('team_id');
@@ -37,4 +35,6 @@ exports.down = function(knex, Promise) {
     .table('campaigns', table => {
       table.dropColumn('teams');
     });
+    .dropTableIfExists('teams')
+    .dropTableIfExists('users')
 };

@@ -191,7 +191,7 @@ describe('/connect', () => {
     const payload = { From: '098765' };
 
     context('with existing user and team', () => {
-      it('should announce the keypad input options', () => {
+      it('should announce the team input options', () => {
         return request.post(`/connect?campaign_id=${campaign.id}`)
           .type('form')
           .send(payload)
@@ -205,7 +205,7 @@ describe('/connect', () => {
         await User.query().delete();
         await Team.query().delete();
       });
-      it('should announce the keypad input options', () => {
+      it('should announce the team input options', () => {
         return request.post(`/connect?campaign_id=${campaign.id}`)
           .type('form')
           .send(payload)
@@ -229,6 +229,15 @@ describe('/connect', () => {
           .expect(/Welcome/);
       });
     });
+    context('with a callback', () => {
+      const payload = { From: '33333' };
+      it('should ignore the team input options and announce welcome back', () => {
+        return request.post(`/connect?campaign_id=${campaign.id}&callback=1&number=${caller.phone_number}`)
+          .type('form')
+          .send(payload)
+          .expect(/Welcome back/);
+      });
+    });
   });
 });
 
@@ -238,7 +247,7 @@ describe('/ready', () => {
     beforeEach(() => startPath = `/ready?campaign_id=${campaign.id}&caller_number=${caller.phone_number}&start=1`);
 
     context('with an unknown number', () => {
-      const payload = { CallUUID: '1231' };
+      const payload = { CallUUID: '1231', From: '1231' };
       it('create a record', async() => {
         await request.post(startPath)
           .type('form')

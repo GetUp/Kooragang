@@ -84,10 +84,11 @@ app.post('/connect', async ({body, query}, res) => {
     return res.send(r.toXML());
   }
 
-  if (campaign.teams && !query.team) {
-    let valid_team_digits = ['2', '*']
+  if (campaign.teams && !query.team && !query.callback) {
     r.addWait({length: 2})
     const user = await User.query().where({phone_number: body.From}).first()
+    let valid_team_digits = ['2', '*']
+    if (user && user.team_id) { valid_team_digits.push('1') }
     const teamAction = r.addGetDigits({
       action: res.locals.appUrl(`team?campaign_id=${query.campaign_id}`),
       timeout: 10,
@@ -96,9 +97,8 @@ app.post('/connect', async ({body, query}, res) => {
       validDigits: valid_team_digits
     })
     if (user && user.team_id) {
-      valid_team_digits.push('1')
       const team = await Team.query().where({id: user.team_id}).first()
-      teamAction.addSpeakAU(`Press the one key on your keypad to resume your membership to the ${team.name} calling team`)
+      teamAction.addSpeakAU(`Press the one key to resume your membership to the ${team.name} calling team`)
       teamAction.addWait({length: 1})
       teamAction.addSpeakAU('Press the two key if you\'re joining a new team.')
     } else {
@@ -172,7 +172,14 @@ app.post('/ready', async ({body, query}, res) => {
       r.addSpeakAU('Sending an sms with instructions to your number. Thank you and speak soon!')
       return res.send(r.toXML());
     }
-    const caller = await Caller.query().insert({phone_number: query.caller_number, call_uuid: body.CallUUID, campaign_id: query.campaign_id});
+    caller_params = {
+      phone_number: query.caller_number,
+      call_uuid: body.CallUUID,
+      campaign_id: query.campaign_id
+    }
+    const user = User.query().where({phone_number: body.From}).first();
+    if (user && user.team) { caller_params.team_id = user.team_id }
+    const caller = await Caller.query().insert(caller_params);
     caller_id = caller.id;
   } else {
     caller_id = query.caller_id;

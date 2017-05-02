@@ -11,5 +11,6 @@ if (process.env.NODE_ENV === 'development' || process.env.IVR) {
 if (process.env.NODE_ENV === 'development' || !process.env.IVR) {
   app.use(require('./reports'));
   app.use(require('./campaigns/dashboard'));
+  app.use(require('./teams/team'));
 }
 app.listen(port, () => console.log('App running on port', port));

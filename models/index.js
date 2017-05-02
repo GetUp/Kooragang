@@ -123,6 +123,18 @@ class Team extends Model {
 
 class User extends Model {
   static get tableName() { return 'users' }
+  static get relationMappings() {
+    return {
+      team: {
+        relation: Model.BelongsToOneRelation,
+        modelClass: Team,
+        join: {
+          from: 'users.team_id',
+          to: 'teams.id'
+        }
+      }
+    }
+  }
 }
 
 module.exports = {

@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <meta name="description" content="PhoneBanking tool">
+    <meta name="robots" content="noindex">
+    <meta name="author" content="GetUp">
+    <link rel="icon" href="/favicon.ico">
+
+    <title>Vollie Dashboard | Kooragang Dailer</title>
+
+    <!-- Bootstrap core CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/font-awesome/4.0.0/css/font-awesome.css">
+    <link rel="stylesheet" href="/css/print.css" media="print">
+
+    <!-- Custom styles for this template -->
+    <style>
+    body {
+      padding-top: 50px;
+
+    }
+    .starter-template {
+      padding: 40px 15px;
+      text-align: center;
+     }
+	h2 {
+	  font-weight: normal;
+	  margin-top: 10px;
+	}
+    </style>
+  </head>
+
+  <body>
+
+    <nav class="navbar navbar-inverse navbar-fixed-top">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="#">Kooragang Dailer</a>
+        </div>
+        <div id="navbar" class="collapse navbar-collapse">
+          <ul class="nav navbar-nav">
+            <li><a href="#">Home</a></li>
+            <li class="active"><a href="/vollie">Vollie</a></li>
+            <li><a href="/team">Team</a></li>
+          </ul>
+        </div><!--/.nav-collapse -->
+      </div>
+    </nav>
+
+    <div class="container">
+    <div class="jumbotron">
+      <h1>Vollie</h1>
+    </div>
+      <div class="row">
+			<form action='/vollie'>
+				<div class="row">
+				  <div class="col-lg-6">
+				  	<p>
+				  		Please enter your phone number to see how you've gone!
+				  	</p>
+				  </div>
+				  <div class="col-lg-6">
+				    <div class="input-group">
+				      <input type="text" class="form-control" placeholder="eg. 0481565855" name="phone_number" value="<% if (user) { %> <%= user.phone_number %> <% } %>">
+				      <span class="input-group-btn">
+				        <button class="btn btn-secondary btn-success" type="submit">Go!</button>
+				      </span>
+				    </div>
+				  </div>
+				</div>
+			</form>
+		</div>
+		<br>
+      <div class="row">
+			<% if (team) { %>
+				<div class="row">
+			        <div class="col-xs-12">
+			          <div class="panel panel-info">
+			            <div class="panel-heading">
+		                    <h2>Your Results</h2>
+			            </div>
+			            <div class="panel-body">
+			              <p class="text-center"><img src="https://d12ib5wip3hs6y.cloudfront.net/kooragang/user.png" alt="" class="img-circle"></p>
+			              <p class="text-warning"><b>Phone</b> <%= user.phone_number %> <span title="Rating"><i class="fa fa-star-half-empty fa-lg pull-right"></i><i class="fa fa-star fa-lg pull-right"></i><i class="fa fa-star fa-lg pull-right"></i><i class="fa fa-star fa-lg pull-right"></i><i class="fa fa-star fa-lg pull-right"></i></span></p>
+			            </div>
+			            <div class="panel-heading">
+			              <div class="row">
+				            <div class="col-xs-12 divider text-center">
+				                <div class="col-xs-12 col-sm-4 emphasis">
+				                    <h2><strong> 356 </strong></h2>                    
+			                  		<p class="text-center"></i><span class="badge">Calls Made</span></p>
+				                </div>
+				                <div class="col-xs-12 col-sm-4 emphasis">
+				                    <h2><strong>67</strong></h2>                    
+			                  		<p class="text-center"><span class="badge"></span><span class="badge">Meaningful Conversations</span></p>
+				                </div>
+				                <div class="col-xs-12 col-sm-4 emphasis">
+				                    <h2><strong>12</strong></h2>                    
+			                  		<p class="text-center"><span class="badge">MPs Engaged</span></p>
+				                </div>
+				            </div>
+			            </div>
+			          </div>
+			        </div>
+			    </div>
+
+		        <div class="col-xs-12 col-sm-6 col-md-4 col-lg-4">
+		          <div class="panel panel-primary">
+		            <div class="panel-heading">
+		              <h4><%= team.name %></h4>
+		            </div>
+		            <div class="panel-body">
+		              <p class="text-center"></p>
+		               <p class="text-warning"><b>574</b> members <span title="Rating"><i class="fa fa-star-half-empty fa-lg pull-right"></i><i class="fa fa-star fa-lg pull-right"></i><i class="fa fa-star fa-lg pull-right"></i><i class="fa fa-star fa-lg pull-right"></i><i class="fa fa-star fa-lg pull-right"></i></span></p>
+		            </div>
+		            <div class="row"></div>
+		            <div class="panel-heading">
+		              <div class="row">
+		                <div class="col-xs-4 col-md-4" title="2K Calls Made">
+		                  <i class="glyphicon glyphicon-earphone fa-2x pull-left"></i><span class="badge">2K</span>
+		                </div>
+		                <div class="col-xs-4 col-md-4" title="345 Meaningful Conversations Had">
+		                  <i class="glyphicon glyphicon-stats fa-2x pull-left"></i><span style class="badge"></span><span class="badge">345</span>
+		                </div>
+		                <div class="col-xs-4 col-md-4" title="56 Calls to MPs">
+		                  <i class="glyphicon glyphicon-bullhorn fa-2x pull-left"></i><span class="badge">56</span>
+		                </div>
+		              </div><br>
+		              <p>This team has been running for the last 2 weeks</p>
+		              <hr>
+		              <p></p>
+		              <div>
+		                <a class="btn btn-block btn3d btn-info" href="/team?passcode=<%= team.passcode %>"><b><i class="fa fa-th-list fa-lg fa-fw"></i> View this Team</b></a>
+		                <p></p>
+		              </div>
+		              <p></p><br>
+		              <p>
+		              	<span class="label label-success">Phone Banking</span>
+		              	<span class="label label-warning">Field</span>
+		              	<span class="label label-danger">Training</span>
+		              	<span class="label label-info">Organising</span></p>
+		            </div>
+		          </div>
+		        </div>
+
+			<% } %>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  </body>
+</html>
