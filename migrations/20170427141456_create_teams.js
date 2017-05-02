@@ -34,7 +34,7 @@ exports.down = function(knex, Promise) {
     })
     .table('campaigns', table => {
       table.dropColumn('teams');
-    });
+    })
     .dropTableIfExists('teams')
     .dropTableIfExists('users')
 };
