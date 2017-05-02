@@ -116,7 +116,7 @@ describe('/team/join', () => {
         .expect(/team=1/)
     })
   })
-  context('with a passcode that does not matche an existing team', () => {
+  context('with a passcode that does not match an existing team', () => {
     it('announces passcode incorrect & redirect to connect', () => {
       const payload = { Digits: '0987'}
       return request.post(`/team/join?campaign_id=${campaign.id}`)
