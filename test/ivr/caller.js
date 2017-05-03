@@ -197,7 +197,7 @@ describe('/connect', () => {
           .send(payload)
           .expect(/membership/)
           .expect(/joining a new team/)
-          .expect(/solo/);
+          .expect(/without a team/);
       });
     });
     context('with no existing user or team', () => {
@@ -210,7 +210,7 @@ describe('/connect', () => {
           .type('form')
           .send(payload)
           .expect(/member of a calling/)
-          .expect(/solo/);
+          .expect(/without a team/);
       });
     });
     context('with true team param passed in connect url', () => {
@@ -491,17 +491,6 @@ describe('/survey', () => {
         .expect(/have left the call queue/)
         .expect(/call_again\?caller_id=1/)
     })
-  })
-
-  context('without a call record (* pressed while in the queue)', () => {
-    beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign));
-    beforeEach(async () => await Call.query().delete())
-    it('prompts to re-enter the queue', () => {
-      return request.post(`/survey?q=disposition&caller_id=1&campaign_id=${campaign.id}`)
-        .expect(/have left the call queue/)
-        .expect(/call_again\?caller_id=1/)
-    });
-
     it('records an event', async() => {
       await request.post(`/survey?q=disposition&caller_id=1&campaign_id=${campaign.id}`)
         .type('form')

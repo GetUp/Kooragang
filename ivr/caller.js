@@ -104,7 +104,7 @@ app.post('/connect', async ({body, query}, res) => {
     } else {
       teamAction.addSpeakAU('Press the two key on your keypad if you\'re a member of a calling team.')
     }
-    teamAction.addSpeakAU('Or press the star key to run this campaign solo.')
+    teamAction.addSpeakAU('Otherwise to continue without a team press the star key.')
 
     r.addRedirect(res.locals.appUrl('team'))
     return res.send(r.toXML())

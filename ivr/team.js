@@ -29,7 +29,7 @@ app.post('/team', async ({query, body}, res) => {
   }
 
   await user.$query().patch({last_joined_at: new Date(), updated_at: new Date(), team_id: null})
-  r.addSpeakAU('Thanks for that, you\'re running solo this time.')
+  r.addSpeakAU('Thanks for that, you\'re calling without a team this time.')
   r.addRedirect(res.locals.appUrl(`connect?campaign_id=${query.campaign_id}&team=0`))
   res.send(r.toXML())
 })

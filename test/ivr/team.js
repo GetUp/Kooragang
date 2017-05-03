@@ -90,11 +90,11 @@ describe('/team', () => {
       user = await User.query().where({phone_number: '098765'}).first()
       expect(user.team_id).to.be(null)
     })
-    it('announces user running solo & redirect to connect', () => {
+    it('announces user calling without a team & redirect to connect', () => {
       return request.post(`/team?campaign_id=${campaign.id}`)
         .type('form')
         .send(payload)
-        .expect(/running solo/)
+        .expect(/without a team/)
         .expect(/connect/)
     })
   })
