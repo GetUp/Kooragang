@@ -84,132 +84,136 @@
         </form>
         <br>
         <% if (team) { %>
-          <div class="row">
-            <div class="col-xs-12">
-              <div class="panel panel-default">
-                <div class="panel-heading">
-                  <h2>
-                    <div class="pull-right text">
-                      <small class="text-warning">
-                        <%= data.rows[0].callers %></b> members
-                      </small>
-                    </div>
-                    <%= data.rows[0].name %> -
-                    <br>
-                    <small>
-                      <%= moment(data.rows[0].date).format('Do MMMM YYYY'); %>
-                    </small>
-                  </h2>
-                </div>
-
-                <div class="panel-body">
-                  <div class="row">
-                    <div class="col-xs-12 divider text-center">
-                        <div class="col-xs-12 col-sm-4 emphasis">
-                            <h2><strong> <%= data.rows[0].calls %> </strong></h2>
-                            <p class="text-center"></i><span class="badge">Calls Made</span></p>
-                        </div>
-                        <div class="col-xs-12 col-sm-4 emphasis">
-                            <h2><strong><%= data.rows[0].meaningful_conversations %></strong></h2>
-                            <p class="text-center"><span class="badge"></span><span class="badge">Meaningful Conversations</span></p>
-                        </div>
-                        <div class="col-xs-12 col-sm-4 emphasis">
-                            <h2><strong><%= data.rows[0].actions %></strong></h2>
-                            <p class="text-center"><span class="badge">Actions</span></p>
-                        </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!--<div class="col-xs-12">
-              <div class="panel panel-primary">
-                <div class="panel-heading">
-                  <h2>Overall Results</h2>
-                </div>
-                <div class="panel-body">
-                  <p class="text-center"><img src="https://d12ib5wip3hs6y.cloudfront.net/kooragang/group.png" alt="" class="img-circle"></p>
-                  <p class="text-warning"><b>234</b> Members <span title="Rating"><i class="fa fa-star fa-lg pull-right"></i><i class="fa fa-star fa-lg pull-right"></i><i class="fa fa-star fa-lg pull-right"></i><i class="fa fa-star fa-lg pull-right"></i><i class="fa fa-star fa-lg pull-right"></i></span></p>
-                </div>
-                <div class="panel-heading">
-                  <div class="row">
-                    <div class="col-xs-12 divider text-center">
-                        <div class="col-xs-12 col-sm-4 emphasis">
-                            <h2><strong> 356 </strong></h2>
-                            <p class="text-center"></i><span class="badge">Calls Made</span></p>
-                        </div>
-                        <div class="col-xs-12 col-sm-4 emphasis">
-                            <h2><strong>67</strong></h2>
-                            <p class="text-center"><span class="badge"></span><span class="badge">Meaningful Conversations</span></p>
-                        </div>
-                        <div class="col-xs-12 col-sm-4 emphasis">
-                            <h2><strong>12</strong></h2>
-                            <p class="text-center"><span class="badge">MPs Engaged</span></p>
-                        </div>
-                    </div>
-
-                    <div class="col-xs-12 divider text-center">
-                      <h4>
-                        <span class="label label-success">Phone Banking</span>
-                          <span class="label label-warning">Field</span>
-                          <span class="label label-danger">Training</span>
-                          <span class="label label-info">Organising</span>
-                        </h4>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>-->
-
-            <% for(var i=1; i < data.rows.length; i++) {%>
-              <div class="col-xs-12 col-sm-6 col-md-4 col-lg-4">
+          <% if (data && data.rows.length > 0) { %>
+            <div class="row">
+              <div class="col-xs-12">
                 <div class="panel panel-default">
                   <div class="panel-heading">
-                    <h4>
-                      <%= data.rows[i].name %> -
+                    <h2>
+                      <div class="pull-right text">
+                        <small class="text-warning">
+                          <%= data.rows[0].callers %></b> members
+                        </small>
+                      </div>
+                      <%= data.rows[0].name %> -
                       <br>
-                      <small><%= moment(data.rows[i].date).format('Do MMMM YYYY'); %></small>
-                    </h4>
+                      <small>
+                        <%= moment(data.rows[0].date).format('Do MMMM YYYY'); %>
+                      </small>
+                    </h2>
                   </div>
+
                   <div class="panel-body">
-                    <p class="text-center"></p>
-                    <p class="text-warning">
-                      <b>
-                        <%= data.rows[i].callers %></b> members
-                        <span title="Rating Coming Soon">
-                          <i class="fa fa-star fa-lg pull-right"></i>
-                          <i class="fa fa-star fa-lg pull-right"></i>
-                          <i class="fa fa-star fa-lg pull-right"></i>
-                          <i class="fa fa-star fa-lg pull-right"></i>
-                          <i class="fa fa-star fa-lg pull-right"></i>
-                        </span>
-                    </p>
-                  </div>
-                  <div class="row"></div>
-                  <div class="panel-heading">
                     <div class="row">
-                      <div class="col-xs-4 col-md-4" title="<%= data.rows[i].calls %> Calls Made">
-                        <i class="glyphicon glyphicon-earphone fa-2x pull-left"></i><span class="badge"><%= data.rows[i].calls %></span>
+                      <div class="col-xs-12 divider text-center">
+                          <div class="col-xs-12 col-sm-4 emphasis">
+                              <h2><strong> <%= data.rows[0].calls %> </strong></h2>
+                              <p class="text-center"></i><span class="badge">Calls Made</span></p>
+                          </div>
+                          <div class="col-xs-12 col-sm-4 emphasis">
+                              <h2><strong><%= data.rows[0].meaningful_conversations %></strong></h2>
+                              <p class="text-center"><span class="badge"></span><span class="badge">Meaningful Conversations</span></p>
+                          </div>
+                          <div class="col-xs-12 col-sm-4 emphasis">
+                              <h2><strong><%= data.rows[0].actions %></strong></h2>
+                              <p class="text-center"><span class="badge">Actions</span></p>
+                          </div>
                       </div>
-                      <div class="col-xs-4 col-md-4" title="<%= data.rows[i].meaningful_conversations %> Meaningful Conversations Had">
-                        <i class="glyphicon glyphicon-stats fa-2x pull-left"></i><span style class="badge"></span><span class="badge"><%= data.rows[i].meaningful_conversations %></span>
-                      </div>
-                      <div class="col-xs-4 col-md-4" title="<%= data.rows[i].actions %> Calls to MPs">
-                        <i class="glyphicon glyphicon-bullhorn fa-2x pull-left"></i><span class="badge"><%= data.rows[i].actions %></span>
-                      </div>
-                    </div>
-                    <hr>
-                    <p></p>
-                    <div>
-                      <a class="btn btn-block btn3d btn-primary" disabled="disabled" title="Full Results Coming Soon"><b><i class="fa fa-th-list fa-lg fa-fw"></i> View Full Results</b></a>
-                      <p></p>
                     </div>
                   </div>
                 </div>
               </div>
-            <% } %>
-          </div>
+
+              <!--<div class="col-xs-12">
+                <div class="panel panel-primary">
+                  <div class="panel-heading">
+                    <h2>Overall Results</h2>
+                  </div>
+                  <div class="panel-body">
+                    <p class="text-center"><img src="https://d12ib5wip3hs6y.cloudfront.net/kooragang/group.png" alt="" class="img-circle"></p>
+                    <p class="text-warning"><b>234</b> Members <span title="Rating"><i class="fa fa-star fa-lg pull-right"></i><i class="fa fa-star fa-lg pull-right"></i><i class="fa fa-star fa-lg pull-right"></i><i class="fa fa-star fa-lg pull-right"></i><i class="fa fa-star fa-lg pull-right"></i></span></p>
+                  </div>
+                  <div class="panel-heading">
+                    <div class="row">
+                      <div class="col-xs-12 divider text-center">
+                          <div class="col-xs-12 col-sm-4 emphasis">
+                              <h2><strong> 356 </strong></h2>
+                              <p class="text-center"></i><span class="badge">Calls Made</span></p>
+                          </div>
+                          <div class="col-xs-12 col-sm-4 emphasis">
+                              <h2><strong>67</strong></h2>
+                              <p class="text-center"><span class="badge"></span><span class="badge">Meaningful Conversations</span></p>
+                          </div>
+                          <div class="col-xs-12 col-sm-4 emphasis">
+                              <h2><strong>12</strong></h2>
+                              <p class="text-center"><span class="badge">MPs Engaged</span></p>
+                          </div>
+                      </div>
+
+                      <div class="col-xs-12 divider text-center">
+                        <h4>
+                          <span class="label label-success">Phone Banking</span>
+                            <span class="label label-warning">Field</span>
+                            <span class="label label-danger">Training</span>
+                            <span class="label label-info">Organising</span>
+                          </h4>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>-->
+
+              <% for(var i=1; i < data.rows.length; i++) {%>
+                <div class="col-xs-12 col-sm-6 col-md-4 col-lg-4">
+                  <div class="panel panel-default">
+                    <div class="panel-heading">
+                      <h4>
+                        <%= data.rows[i].name %> -
+                        <br>
+                        <small><%= moment(data.rows[i].date).format('Do MMMM YYYY'); %></small>
+                      </h4>
+                    </div>
+                    <div class="panel-body">
+                      <p class="text-center"></p>
+                      <p class="text-warning">
+                        <b>
+                          <%= data.rows[i].callers %></b> members
+                          <span title="Rating Coming Soon">
+                            <i class="fa fa-star fa-lg pull-right"></i>
+                            <i class="fa fa-star fa-lg pull-right"></i>
+                            <i class="fa fa-star fa-lg pull-right"></i>
+                            <i class="fa fa-star fa-lg pull-right"></i>
+                            <i class="fa fa-star fa-lg pull-right"></i>
+                          </span>
+                      </p>
+                    </div>
+                    <div class="row"></div>
+                    <div class="panel-heading">
+                      <div class="row">
+                        <div class="col-xs-4 col-md-4" title="<%= data.rows[i].calls %> Calls Made">
+                          <i class="glyphicon glyphicon-earphone fa-2x pull-left"></i><span class="badge"><%= data.rows[i].calls %></span>
+                        </div>
+                        <div class="col-xs-4 col-md-4" title="<%= data.rows[i].meaningful_conversations %> Meaningful Conversations Had">
+                          <i class="glyphicon glyphicon-stats fa-2x pull-left"></i><span style class="badge"></span><span class="badge"><%= data.rows[i].meaningful_conversations %></span>
+                        </div>
+                        <div class="col-xs-4 col-md-4" title="<%= data.rows[i].actions %> Calls to MPs">
+                          <i class="glyphicon glyphicon-bullhorn fa-2x pull-left"></i><span class="badge"><%= data.rows[i].actions %></span>
+                        </div>
+                      </div>
+                      <hr>
+                      <p></p>
+                      <div>
+                        <a class="btn btn-block btn3d btn-primary" disabled="disabled" title="Full Results Coming Soon"><b><i class="fa fa-th-list fa-lg fa-fw"></i> View Full Results</b></a>
+                        <p></p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              <% } %>
+            </div>
+          <% } else { %>
+            <h3>Your team is yet to make calls</h3>
+          <% } %>
         <% } else if (req.query.passcode) { %>
           <h3>No Team Found Please Enter Valid Team Passcode</h3>
         <% } %>
