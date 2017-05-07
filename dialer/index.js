@@ -97,7 +97,7 @@ const updateAndCall = async (campaign, callee, appUrl) => {
   };
   if (campaign.detect_answering_machine) {
     params.machine_detection = 'true';
-    params.machine_detection_time = '3500';
+    params.machine_detection_time = '5000';
     params.machine_detection_url = `${appUrl}/machine_detection?callee_id=${callee.id}&campaign_id=${callee.campaign_id}`;
   }
   if (process.env.NODE_ENV === 'development') console.error('CALLING', params)
