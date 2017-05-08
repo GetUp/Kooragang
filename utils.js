@@ -5,6 +5,11 @@ module.exports.sleep = (ms = 0) => {
   return new Promise(r => setTimeout(r, timeout));
 }
 
+module.exports.error_exit = error => {
+  console.error(error)
+  process.exit(1)
+}
+
 module.exports.extractCallerNumber = (query, body) => {
   if (query.callback) {
     return query.number;

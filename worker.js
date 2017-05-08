@@ -1,5 +1,5 @@
 const {dial, calledEveryone, notifyAgents} = require('./dialer');
-const {sleep} = require('./utils');
+const {sleep, error_exit} = require('./utils');
 const {Campaign, Caller} = require('./models');
 const host = process.env.BASE_URL;
 if (!host) throw `BASE_URL must be set`;
@@ -25,4 +25,4 @@ const work = async () => {
   }
 }
 
-work()
+work().catch(error_exit)
