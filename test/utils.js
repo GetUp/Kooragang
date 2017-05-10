@@ -1,7 +1,7 @@
 const expect = require('expect.js')
 const moment = require('moment')
 const { Campaign } = require('../models')
-const {withinDailyTimeOfOperation, dailyTimeOfOperationInWords} = require('../utils');
+/*const {withinDailyTimeOfOperation, dailyTimeOfOperationInWords} = require('../utils');
 
 describe('withinDailyTimeOfOperation', () => {
   let campaign
@@ -31,8 +31,8 @@ describe('withinDailyTimeOfOperation', () => {
     })
   })
 })
-
-describe('dailyTimeOfOperationInWords', () => {
+*/
+/*describe('dailyTimeOfOperationInWords', () => {
   context('with an on-the-hour time', () => {
     const campaign = {
       daily_start_operation: '09:00',
@@ -71,4 +71,4 @@ describe('dailyTimeOfOperationInWords', () => {
       expect(string).to.match(/12 am/)
     })
   })
-})
+})*/

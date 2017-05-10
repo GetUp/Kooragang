@@ -14,18 +14,6 @@ module.exports.extractCallerNumber = (query, body) => {
   }
 };
 
-module.exports.authenticationNeeded = (callback, entry, campaign_passcode, authenticated) => {
-  return !(callback || entry === "more_info" || !campaign_passcode || authenticated);
+module.exports.authenticationNeeded = (callback, campaign_passcode, authenticated) => {
+  return !(callback || !campaign_passcode || authenticated);
 };
-
-module.exports.withinDailyTimeOfOperation = campaign => {
-  const start = moment(campaign.daily_start_operation, 'HHmm')
-  const stop = moment(campaign.daily_stop_operation, 'HHmm')
-  return moment().isBetween(start, stop, null, '[]')
-}
-
-module.exports.dailyTimeOfOperationInWords = campaign => {
-  const start = moment(campaign.daily_start_operation, 'HHmm').format('h mm a').replace(/00\s/,'')
-  const stop = moment(campaign.daily_stop_operation, 'HHmm').format('h mm a').replace(/00\s/,'')
-  return `Please call back within the hours of ${start}, and ${stop}.`
-}

@@ -3,7 +3,6 @@ const moment = require('moment');
 const plivo = require('plivo');
 const _ = require('lodash');
 const api = require('../api');
-const {withinDailyTimeOfOperation, dailyTimeOfOperationInWords} = require('../utils');
 const dialer = require('../dialer');
 const {
   sleep,
@@ -26,7 +25,7 @@ app.post('/connect', async ({body, query}, res) => {
     });
   }
 
-  if (!campaign){
+  if (!(campaign instanceof Campaign)){
     r.addWait({length: 2});
     r.addSpeakAU('An error has occurred. The number is not associated with a campaign');
     r.addWait({length: 1});
@@ -37,9 +36,8 @@ app.post('/connect', async ({body, query}, res) => {
   const callback = query.callback ? query.callback === "1" : false;
   const authenticated = query.authenticated ? query.authenticated === "1" : false;
   const promptAuth = authenticationNeeded(callback, query.entry, campaign.passcode, authenticated);
-  const promptIntro = query.entry !== "more_info";
 
-  if (campaign.status === "paused" || campaign.status === null){
+  if (campaign.isPaused()){
     r.addWait({length: 2});
     r.addSpeakAU('Hi! Welcome to the GetUp Dialer tool.');
     r.addWait({length: 1});
@@ -47,23 +45,22 @@ app.post('/connect', async ({body, query}, res) => {
     return res.send(r.toXML());
   }
 
-  if (!withinDailyTimeOfOperation(campaign)) {
+  if (!campaign.isWithinDailyTimeOfOperation()) {
     r.addWait({length: 2});
     r.addSpeakAU(`Hi! Welcome to the GetUp Dialer tool.`);
     r.addWait({length: 1});
-    r.addSpeakAU(`The campaign is currently outside of it\'s daily times of operation! ${dailyTimeOfOperationInWords(campaign)} Thank you and have a great day!`);
+    r.addSpeakAU(`The campaign is currently outside of it\'s daily times of operation! ${campaign.dailyTimeOfOperationInWords()} Thank you and have a great day!`);
     return res.send(r.toXML());
   }
 
-  const callerNumber = extractCallerNumber(query, body);
-  if (_.isEmpty(callerNumber)){
+  const caller_number = extractCallerNumber(query, body);
+  if (_.isEmpty(caller_number)){
     r.addWait({length: 2});
     r.addSpeakAU('It appears you do not have caller id enabled. Please enable it and call back. Thank you.');
     return res.send(r.toXML());
   }
 
-  const campaignComplete = await dialer.calledEveryone(campaign);
-  if (campaignComplete || campaign.status == "inactive") {
+  if (campaign.isComplete()) {
     r.addWait({length: 2});
     r.addSpeakAU(`Hi! Welcome to the GetUp Dialer tool.`);
     r.addWait({length: 1});
@@ -109,15 +106,22 @@ app.post('/connect', async ({body, query}, res) => {
     r.addRedirect(res.locals.appUrl('team'))
     return res.send(r.toXML())
   }
+  r.addRedirect(res.locals.appUrl(`briefing?campaign_id=${campaign.id}&caller_number=${caller_number}&start=1&callback=${query.callback ? query.callback : 0}`));
+  res.send(r.toXML())
+});
 
+app.post('/briefing', async ({body, query}, res) => {
+  const r = plivo.Response();
+  const campaign = await Campaign.query().where({id: (query.campaign_id || null)}).first();
   let valid_briefing_digits = ['1', '2', '3', '4'];
+
   if(Object.keys(campaign.more_info).length > 0) {
     let more_info_digits = Object.keys(campaign.more_info);
     valid_briefing_digits = valid_briefing_digits.concat(more_info_digits);
   }
 
   const briefing = r.addGetDigits({
-    action: res.locals.appUrl(`ready?campaign_id=${campaign.id}&caller_number=${callerNumber}&start=1&authenticated=${query.authenticated ? '1' : '0'}`),
+    action: res.locals.appUrl(`ready?campaign_id=${campaign.id}&caller_number=${query.caller_number}&start=1&authenticated=${query.authenticated ? '1' : '0'}`),
     method: 'POST',
     timeout: 5,
     numDigits: 1,
@@ -126,20 +130,21 @@ app.post('/connect', async ({body, query}, res) => {
   });
 
   briefing.addWait({length: 2});
-  if (promptIntro) {
-    if (query.callback) {
+  if (query.entry !== 'more_info') {
+    if (query.callback === '1') {
       briefing.addSpeakAU(`Hi! Welcome back.`);
     } else {
       briefing.addSpeakAU(`Hi! Welcome to the GetUp Dialer tool. Today you will be making calls for the ${campaign.name} campaign.`);
       briefing.addWait({length: 1});
       briefing.addSpeakAU('If you cannot afford long phone calls and would like to be called back instead, please press the 2 key');
     }
-    briefing.addWait({length: 1});
-    briefing.addSpeakAU('You should have a copy of the script and the disposition codes in front of you.');
-    briefing.addWait({length: 1});
-    briefing.addSpeakAU('If not, please press the 3 key');
-    briefing.addWait({length: 1});
   }
+  briefing.addWait({length: 1});
+  briefing.addSpeakAU('You should have a copy of the script and the disposition codes in front of you.');
+  briefing.addWait({length: 1});
+  briefing.addSpeakAU('If not, please press the 3 key');
+  briefing.addWait({length: 1});
+
   if (query.entry_key != "4") {
     briefing.addSpeakAU('For info on the dialing tool you are using, please press the 4 key');
     briefing.addWait({length: 1});
@@ -184,8 +189,7 @@ app.post('/ready', async ({body, query}, res) => {
   } else {
     caller_id = query.caller_id;
   }
-  const campaignComplete = await dialer.calledEveryone(campaign);
-  if (campaignComplete) {
+  if (campaign.isComplete()) {
     r.addSpeakAU('The campaign has been completed!');
     r.addRedirect(res.locals.appUrl('disconnect?completed=1'));
     return res.send(r.toXML());
@@ -204,13 +208,13 @@ app.post('/ready', async ({body, query}, res) => {
 
   if (body.Digits === '4') {
     r.addSpeakAU("Welcome to the Get Up dialer tool! This system works by dialing a number of people and patching them through to you when they pick up. Until they pick up, you'll hear music playing. When the music stops, that's your queue to start talking. Then you can attempt to have a conversation with them. At the end of the conversation, you'll be prompted to enter numbers into your phone to indicate the outcome of the call. It's important to remember that you never have to hang up your phone to end a call. If you need to end a call, just press star.");
-    r.addRedirect(res.locals.appUrl(`connect?campaign_id=${campaign.id}&entry=more_info&entry_key=4&authenticated=${query.authenticated}`));
+    r.addRedirect(res.locals.appUrl(`briefing?campaign_id=${campaign.id}&entry=more_info&entry_key=4&authenticated=${query.authenticated}`));
     return res.send(r.toXML());
   }
 
   if(Object.keys(campaign.more_info).length > 0 && Object.keys(campaign.more_info).includes(body.Digits)) {
     r.addSpeakAU(campaign.more_info[body.Digits].content);
-    r.addRedirect(res.locals.appUrl(`connect?campaign_id=${campaign.id}&entry=more_info&entry_key=${body.Digits}&authenticated=${query.authenticated}`));
+    r.addRedirect(res.locals.appUrl(`briefing?campaign_id=${campaign.id}&entry=more_info&entry_key=${body.Digits}&authenticated=${query.authenticated}`));
     return res.send(r.toXML());
   }
 

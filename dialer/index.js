@@ -120,14 +120,6 @@ const decrementCallsInProgress = async campaign => {
 }
 module.exports.decrementCallsInProgress = decrementCallsInProgress;
 
-module.exports.calledEveryone = async (campaign) => {
-  if (campaign.calls_in_progress > 0) return false;
-  const {count} = await Callee.query().count('id as count')
-    .where({campaign_id: campaign.id})
-    .whereNull('last_called_at').first();
-  return parseInt(count, 10) === 0;
-}
-
 module.exports.notifyAgents = async (campaign) => {
   const availableCallers = await Caller.query().where({status: 'available', campaign_id: campaign.id});
   for (let caller of availableCallers) {
