@@ -177,8 +177,12 @@ app.post('/ready', async ({body, query}, res) => {
       call_uuid: body.CallUUID,
       campaign_id: query.campaign_id
     }
-    const user = User.query().where({phone_number: body.From}).first();
-    if (user && user.team) { caller_params.team_id = user.team_id }
+    if (body.From) {
+      const user = await User.query().where({phone_number: body.From}).first();
+      if (user && user.team_id) {
+        caller_params.team_id = user.team_id
+      }
+    }
     const caller = await Caller.query().insert(caller_params);
     caller_id = caller.id;
   } else {
