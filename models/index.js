@@ -7,6 +7,7 @@ const knex = require('knex')(config[env]);
 const objection = require('objection');
 const Model = objection.Model;
 const transaction = objection.transaction;
+const _ = require('lodash');
 
 Model.knex(knex);
 
@@ -22,6 +23,30 @@ class Campaign extends Model {
           to: 'callees.campaign_id'
         }
       }
+    }
+  }
+  valid() {
+    const errors = []
+    const questionsNotReferenced = _.omit(this.questions, 'disposition')
+    if (!this.questions.disposition) errors.push('disposition question required')
+    for (let question in this.questions) {
+      const questionData = this.questions[question]
+      for (let field of ['name', 'answers']) {
+        if (!questionData[field]) errors.push(`${question} question requires ${field}`)
+      }
+      for (let answer in questionData.answers) {
+        const answerData = questionData.answers[answer];
+        if (!answer.match(/^[2-9]$/)) errors.push(`answer ${answer} for ${question} question is not valid`)
+        if (!answerData.value) errors.push(`answer ${answer} for ${question} question is missing value`)
+          if (answerData.next){
+            if (!this.questions[answerData.next]) errors.push(`${answerData.next} next for answer ${answer} in ${question} question has invalid next`)
+            delete questionsNotReferenced[answerData.next]
+          }
+      }
+    }
+    if (Object.keys(questionsNotReferenced).length) errors.push(`no references to ${Object.keys(questionsNotReferenced).join(', ')}`)
+    if (errors.length) {
+      throw new objection.ValidationError({ questions: errors.map(e => { return { message: e }}) })
     }
   }
 }

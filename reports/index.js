@@ -11,6 +11,12 @@ app.get('/stats/:id', async ({body, params, query}, res) => {
   const campaign = await Campaign.query().where({id: params.id}).first();
   if (!campaign) res.sendStatus(404);
   const generateReport = async () => {
+    let validationErrors;
+    try{
+      campaign.valid()
+    } catch(e) {
+      validationErrors = _.map(e.data.questions, 'message').join(' and ');
+    };
     const callerCounts = await Caller.knexQuery().select('status')
       .count('callers.id as count')
       .whereRaw("created_at >= NOW() - INTERVAL '60 minutes'")
@@ -44,6 +50,7 @@ app.get('/stats/:id', async ({body, params, query}, res) => {
       available: getCountForStatus('available'),
       "in-call": getCountForStatus('in-call'),
       completed: getCountForStatus('complete'),
+      validationErrors
     };
     if (graph) {
       const time_period_in_hours = 24;
