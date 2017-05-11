@@ -69,7 +69,8 @@ class Campaign extends Model {
       .where({campaign_id: this.id})
       .whereNull('last_called_at').first();
     return parseInt(count, 10) === 0;
-
+  }
+  
   valid() {
     const errors = []
     const questionsNotReferenced = _.omit(this.questions, 'disposition')
