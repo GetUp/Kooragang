@@ -7,7 +7,8 @@ const dialer = require('../dialer');
 const {
   sleep,
   extractCallerNumber,
-  authenticationNeeded
+  authenticationNeeded,
+  isValidCallerNumber
 } = require('../utils');
 const {Call, Callee, Caller, Campaign, SurveyResult, Event, User, Team} = require('../models');
 
@@ -25,7 +26,7 @@ app.post('/connect', async ({body, query}, res) => {
     });
   }
 
-  if (!(campaign instanceof Campaign)){
+  if (!campaign){
     r.addWait({length: 2});
     r.addSpeakAU('An error has occurred. The number is not associated with a campaign');
     r.addWait({length: 1});
@@ -54,9 +55,9 @@ app.post('/connect', async ({body, query}, res) => {
   }
 
   const caller_number = extractCallerNumber(query, body);
-  if (_.isEmpty(caller_number)){
+  if (!isValidCallerNumber(caller_number)){
     r.addWait({length: 2});
-    r.addSpeakAU('It appears you do not have caller id enabled. Please enable it and call back. Thank you.');
+    r.addSpeakAU('It appears you do not have caller ID enabled. Please enable it and call back. Thank you.');
     return res.send(r.toXML());
   }
 
@@ -70,13 +71,13 @@ app.post('/connect', async ({body, query}, res) => {
 
   if (promptAuth) {
     r.addWait({length: 2});
-    r.addSpeakAU('Please enter the campaign passcode on your keypad now.')
     const passcodeAction = r.addGetDigits({
       action: res.locals.appUrl(`passcode?campaign_id=${query.campaign_id}`),
       timeout: 10,
       retries: 10,
       numDigits: campaign.passcode.length
     });
+    passcodeAction.addSpeakAU('Please enter the campaign passcode on your keypad now.')
     r.addRedirect(res.locals.appUrl('passcode'));
     return res.send(r.toXML());
   }
@@ -87,7 +88,7 @@ app.post('/connect', async ({body, query}, res) => {
     let valid_team_digits = ['2', '*']
     if (user && user.team_id) { valid_team_digits.push('1') }
     const teamAction = r.addGetDigits({
-      action: res.locals.appUrl(`team?campaign_id=${query.campaign_id}`),
+      action: res.locals.appUrl(`team?campaign_id=${query.campaign_id}&callback=${query.callback ? query.callback : 0}&authenticated=${query.authenticated ? '1' : '0'}`),
       timeout: 10,
       retries: 10,
       numDigits: 1,
@@ -107,7 +108,7 @@ app.post('/connect', async ({body, query}, res) => {
     return res.send(r.toXML())
   }
 
-  r.addRedirect(res.locals.appUrl(`briefing?campaign_id=${campaign.id}&caller_number=${caller_number}&start=1&callback=${query.callback ? query.callback : 0}`));
+  r.addRedirect(res.locals.appUrl(`briefing?campaign_id=${campaign.id}&caller_number=${caller_number}&start=1&callback=${query.callback ? query.callback : 0}&authenticated=${query.authenticated ? '1' : '0'}`));
   res.send(r.toXML())
 });
 

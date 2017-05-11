@@ -1,4 +1,5 @@
 const moment = require('moment');
+const _ = require('lodash');
 
 module.exports.sleep = (ms = 0) => {
   const timeout = process.env.NODE_ENV === "test" ? 0 : ms;
@@ -6,7 +7,7 @@ module.exports.sleep = (ms = 0) => {
 }
 
 module.exports.extractCallerNumber = (query, body) => {
-  if (query.callback) {
+  if (query.callback === '1') {
     return query.number;
   } else {
     const sip = body.From.match(/sip:(\w+)@/);
@@ -16,4 +17,8 @@ module.exports.extractCallerNumber = (query, body) => {
 
 module.exports.authenticationNeeded = (callback, campaign_passcode, authenticated) => {
   return !(callback || !campaign_passcode || authenticated);
+};
+
+module.exports.isValidCallerNumber = (caller_number) => {
+  return !_.isEmpty(caller_number) && caller_number !== 'anonymous'
 };

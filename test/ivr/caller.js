@@ -4,8 +4,7 @@ const proxyquire = require('proxyquire');
 const moment = require('moment');
 const ivrCaller = proxyquire('../../ivr/caller', {
   '../dialer': {
-    dial: async (appUrl) => {},
-    calledEveryone: async (appUrl) => false,
+    dial: async (appUrl) => {}
   }
 });
 const app = require('../../ivr/common');
@@ -119,7 +118,18 @@ describe('/connect', () => {
       return request.post(`/connect?campaign_id=${campaign.id}`)
         .type('form')
         .send(payload)
-        .expect(/caller id/);
+        .expect(/caller ID/);
+    });
+  });
+
+  context('with a private number', () => {
+    beforeEach(async () => { await Callee.query().insert(associatedCallee) });
+    const payload = { From: 'anonymous' };
+    it('directs them to enable caller id', () => {
+      return request.post(`/connect?campaign_id=${campaign.id}`)
+        .type('form')
+        .send(payload)
+        .expect(/caller ID/);
     });
   });
 
