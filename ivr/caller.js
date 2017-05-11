@@ -6,8 +6,8 @@ const api = require('../api');
 const dialer = require('../dialer');
 const {
   sleep,
-  authenticationNeeded,
   extractCallerNumber,
+  authenticationNeeded
 } = require('../utils');
 const {Call, Callee, Caller, Campaign, SurveyResult, Event, User, Team} = require('../models');
 
