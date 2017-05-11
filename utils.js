@@ -13,3 +13,7 @@ module.exports.extractCallerNumber = (query, body) => {
     return sip ? sip[1] : body.From.replace(/\s/g, '').replace(/^0/, '61');
   }
 };
+
+module.exports.authenticationNeeded = (callback, campaign_passcode, authenticated) => {
+  return !(callback || !campaign_passcode || authenticated);
+};

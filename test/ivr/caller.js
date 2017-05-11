@@ -58,6 +58,7 @@ const statuslessCampaign = Object.assign({status: null}, defaultCampaign)
 const amdCampaign = Object.assign({status: 'active', detect_answering_machine: true}, defaultCampaign)
 const operationalWindowCampaign = Object.assign({daily_start_operation: '00:00:00', daily_stop_operation: '00:00:00'}, activeCampaign)
 const teamsCampaign = Object.assign({status: 'active', teams: true}, defaultCampaign)
+const authCampaign = Object.assign({status: 'active', passcode: '1234'}, defaultCampaign)
 
 const CallUUID = '111';
 let campaign
@@ -238,6 +239,58 @@ describe('/connect', () => {
     });
     context('with a callback', () => {
       const payload = { From: '33333' };
+      it('should ignore the team input options and announce welcome back', () => {
+        return request.post(`/connect?campaign_id=${campaign.id}&callback=1&number=${caller.phone_number}`)
+          .type('form')
+          .send(payload)
+          .expect(/<Redirect/)
+          .expect(/briefing/);
+      });
+    });
+  });
+
+  context('with an authenticated campaign', () => {
+    beforeEach(async () => { await Campaign.query().delete() });
+    beforeEach(async () => campaign = await Campaign.query().insert(authCampaign));
+    beforeEach(async () => { await Callee.query().insert(associatedCallee) });
+    const payload = { From: caller.phone_number };
+    context('with a callback and authenticated false', () => {
+      it('should be prompted to enter passcode', () => {
+        console.log(campaign.passcode)
+        return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
+          .type('form')
+          .send(payload)
+          .expect(/Please enter the campaign passcode/);
+      });
+    });
+    context('with a callback true', () => {
+      it('should redirect to briefing', () => {
+        return request.post(`/connect?campaign_id=${campaign.id}&callback=1&number=${caller.phone_number}`)
+          .type('form')
+          .send(payload)
+          .expect(/<Redirect/)
+          .expect(/briefing/);
+      });
+    });
+    context('with a authenticed true', () => {
+      it('should redirect to briefing', () => {
+        return request.post(`/connect?campaign_id=${campaign.id}&authenticated=1&number=${caller.phone_number}`)
+          .type('form')
+          .send(payload)
+          .expect(/<Redirect/)
+          .expect(/briefing/);
+      });
+    });
+    context('with a correct passcode entered', () => {
+      it('should redirect to briefing', () => {
+        return request.post(`/connect?campaign_id=${campaign.id}&callback=1&number=${caller.phone_number}`)
+          .type('form')
+          .send(payload)
+          .expect(/<Redirect/)
+          .expect(/briefing/);
+      });
+    });
+    context('with an incorrect passcode entered', () => {
       it('should ignore the team input options and announce welcome back', () => {
         return request.post(`/connect?campaign_id=${campaign.id}&callback=1&number=${caller.phone_number}`)
           .type('form')

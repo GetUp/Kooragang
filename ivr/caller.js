@@ -6,6 +6,7 @@ const api = require('../api');
 const dialer = require('../dialer');
 const {
   sleep,
+  authenticationNeeded,
   extractCallerNumber,
 } = require('../utils');
 const {Call, Callee, Caller, Campaign, SurveyResult, Event, User, Team} = require('../models');
@@ -34,6 +35,7 @@ app.post('/connect', async ({body, query}, res) => {
 
   const callback = query.callback ? query.callback === "1" : false;
   const authenticated = query.authenticated ? query.authenticated === "1" : false;
+  const promptAuth = authenticationNeeded(callback, campaign.passcode, authenticated);
 
   if (campaign.isPaused()){
     r.addWait({length: 2});
@@ -66,7 +68,7 @@ app.post('/connect', async ({body, query}, res) => {
     return res.send(r.toXML());
   }
 
-  if (campaign.passcode && !callback && !authenticated) {
+  if (promptAuth) {
     r.addWait({length: 2});
     r.addSpeakAU('Please enter the campaign passcode on your keypad now.')
     const passcodeAction = r.addGetDigits({
