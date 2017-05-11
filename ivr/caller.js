@@ -57,7 +57,7 @@ app.post('/connect', async ({body, query}, res) => {
   const caller_number = extractCallerNumber(query, body);
   if (!isValidCallerNumber(caller_number)){
     r.addWait({length: 2});
-    r.addSpeakAU('It appears you do not have caller ID enabled. Please enable it and call back. Thank you.');
+    r.addSpeakAU('It appears you do not have caller ID enabled. Please enable it and call back. Don\'t worry even when your caller ID is enabled the people you\'re talking to see your number. Thank you.');
     return res.send(r.toXML());
   }
 
