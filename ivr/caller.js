@@ -7,7 +7,6 @@ const dialer = require('../dialer');
 const {
   sleep,
   extractCallerNumber,
-  authenticationNeeded,
 } = require('../utils');
 const {Call, Callee, Caller, Campaign, SurveyResult, Event, User, Team} = require('../models');
 
@@ -35,7 +34,6 @@ app.post('/connect', async ({body, query}, res) => {
 
   const callback = query.callback ? query.callback === "1" : false;
   const authenticated = query.authenticated ? query.authenticated === "1" : false;
-  const promptAuth = authenticationNeeded(callback, query.entry, campaign.passcode, authenticated);
 
   if (campaign.isPaused()){
     r.addWait({length: 2});
@@ -60,7 +58,7 @@ app.post('/connect', async ({body, query}, res) => {
     return res.send(r.toXML());
   }
 
-  if (campaign.isComplete()) {
+  if (await campaign.isComplete()) {
     r.addWait({length: 2});
     r.addSpeakAU(`Hi! Welcome to the GetUp Dialer tool.`);
     r.addWait({length: 1});
@@ -68,7 +66,7 @@ app.post('/connect', async ({body, query}, res) => {
     return res.send(r.toXML());
   }
 
-  if (promptAuth) {
+  if (campaign.passcode && !callback && !authenticated) {
     r.addWait({length: 2});
     r.addSpeakAU('Please enter the campaign passcode on your keypad now.')
     const passcodeAction = r.addGetDigits({
@@ -106,6 +104,7 @@ app.post('/connect', async ({body, query}, res) => {
     r.addRedirect(res.locals.appUrl('team'))
     return res.send(r.toXML())
   }
+
   r.addRedirect(res.locals.appUrl(`briefing?campaign_id=${campaign.id}&caller_number=${caller_number}&start=1&callback=${query.callback ? query.callback : 0}`));
   res.send(r.toXML())
 });
@@ -189,7 +188,7 @@ app.post('/ready', async ({body, query}, res) => {
   } else {
     caller_id = query.caller_id;
   }
-  if (campaign.isComplete()) {
+  if (await campaign.isComplete()) {
     r.addSpeakAU('The campaign has been completed!');
     r.addRedirect(res.locals.appUrl('disconnect?completed=1'));
     return res.send(r.toXML());

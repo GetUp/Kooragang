@@ -33,7 +33,6 @@ class Campaign extends Model {
       'isWithinDailyTimeOfOperation',
       'dailyTimeOfOperationInWords',
       'areCallsInProgress',
-      'areCalleesRemaining',
       'calledEveryone'
     ];
   }
@@ -46,8 +45,8 @@ class Campaign extends Model {
   isInactive() {
     return this.status === "inactive"
   }
-  isComplete() {
-    return this.isInactive() || this.calledEveryone()
+  async isComplete() {
+    return this.isInactive() || (await this.calledEveryone())
   }
   isWithinDailyTimeOfOperation() {
     const start = moment(this.daily_start_operation, 'HHmm')
@@ -60,7 +59,7 @@ class Campaign extends Model {
     return `Please call back within the hours of ${start}, and ${stop}.`
   }
   areCallsInProgress() {
-    this.calls_in_progress > 0
+    return this.calls_in_progress > 0
   }
   async calledEveryone() {
     if (this.areCallsInProgress()) return false;
@@ -68,9 +67,6 @@ class Campaign extends Model {
       .where({campaign_id: this.id})
       .whereNull('last_called_at').first();
     return parseInt(count, 10) === 0;
-  }
-  async areCalleesRemaining() {
-    return !this.areCalleesRemaining()
   }
 }
 
