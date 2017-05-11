@@ -410,6 +410,28 @@ describe('/ready', () => {
         .expect(regexp)
     });
   });
+
+  context('with existing user and team', () => {
+    beforeEach(async () => {
+      await Campaign.query().delete();
+      await User.query().delete();
+      await Team.query().delete();
+    });
+    beforeEach(async () => campaign = await Campaign.query().insert(teamsCampaign));
+    beforeEach(async () => team = await Team.query().insert({name: 'planet savers', passcode: '1234'}));
+    beforeEach(async () => user = await User.query().insert({phone_number: '098765', team_id: team.id}));
+    const payload = {
+      call_uuid: CallUUID,
+      From: '098765'
+    };
+    it('should update caller creation params to include team id', async () => {
+      await request.post(`/ready?campaign_id=${campaign.id}&start=1&caller_number=${caller.phone_number}`)
+        .type('form')
+        .send(payload);
+      const new_caller = await Caller.query().where({phone_number: caller.phone_number}).first()
+      expect(new_caller.team_id).to.be(team.id)
+    });
+  });
 });
 
 describe('/call_ended', () => {
