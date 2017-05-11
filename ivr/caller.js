@@ -195,18 +195,19 @@ app.post('/ready', async ({body, query}, res) => {
     return res.send(r.toXML());
   }
 
-  if (body.Digits === '0') {
+  if (body.Digits === '9' && query.call_id) {
+    await Event.query().insert({name: 'undo', campaign_id: campaign.id, caller_id, call_id: query.call_id, value: {log_id: query.log_id}})
+    await SurveyResult.query().where({call_id: query.call_id}).delete();
+    r.addRedirect(res.locals.appUrl(`survey?q=disposition&caller_id=${caller_id}&campaign_id=${campaign.id}&undo=1`))
+    return res.send(r.toXML());
+  } else if (body.Digits === '0') {
     r.addRedirect(res.locals.appUrl('disconnect'));
     return res.send(r.toXML());
-  }
-
-  if (body.Digits === '2') {
+  } else if (body.Digits === '2') {
     await Caller.query().where({id: caller_id}).patch({callback: true});
     r.addSpeakAU('We will call you back immediately. Please hang up now!');
     return res.send(r.toXML());
-  }
-
-  if (body.Digits === '4') {
+  } else if (body.Digits === '4') {
     r.addSpeakAU("Welcome to the Get Up dialer tool! This system works by dialing a number of people and patching them through to you when they pick up. Until they pick up, you'll hear music playing. When the music stops, that's your queue to start talking. Then you can attempt to have a conversation with them. At the end of the conversation, you'll be prompted to enter numbers into your phone to indicate the outcome of the call. It's important to remember that you never have to hang up your phone to end a call. If you need to end a call, just press star.");
     r.addRedirect(res.locals.appUrl(`connect?campaign_id=${campaign.id}&entry=more_info&entry_key=4&authenticated=${query.authenticated}`));
     return res.send(r.toXML());
@@ -314,7 +315,7 @@ app.post('/survey', async ({query, body}, res) => {
     timeout: 10,
     validDigits: Object.keys(questionData.answers),
   });
-  if (question === 'disposition') {
+  if (question === 'disposition' && !query.undo) {
     surveyResponse.addSpeakAU('The call has ended.');
   }
   surveyResponse.addSpeakAU(`${questionData.name}`);
@@ -353,7 +354,7 @@ app.post('/survey_result', async ({query, body}, res) => {
   if (next) {
     r.addRedirect(res.locals.appUrl(`survey?q=${next}&call_id=${query.call_id}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`));
   } else {
-    r.addRedirect(res.locals.appUrl(`call_again?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`));
+    r.addRedirect(res.locals.appUrl(`call_again?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&call_id=${query.call_id}`));
   }
   res.send(r.toXML());
 });
@@ -372,14 +373,20 @@ app.post('/call_again', async ({query, body}, res) => {
       return res.send(r.toXML());
     }
   }
+  const validDigits = ['1', '0'];
+  let message = 'Press 1 to continue calling. To finish your calling session, press the zero key.';
+  if (query.call_id) {
+    validDigits.push('9')
+    message += ' Or press 9 to make a correction.';
+  }
   const callAgain = r.addGetDigits({
-    action: res.locals.appUrl(`ready?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`),
+    action: res.locals.appUrl(`ready?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&call_id=${query.call_id}`),
     timeout: 10,
     retries: 10,
     numDigits: 1,
-    validDigits: ['1', '0']
+    validDigits
   });
-  callAgain.addSpeakAU('Press 1 to continue calling. To finish your calling session, press the zero key.');
+  callAgain.addSpeakAU(message);
   r.addRedirect(res.locals.appUrl('disconnect'));
   res.send(r.toXML());
 });
