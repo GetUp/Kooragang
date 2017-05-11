@@ -266,7 +266,6 @@ describe('/connect', () => {
     const payload = { From: caller.phone_number };
     context('with a callback and authenticated false', () => {
       it('should be prompted to enter passcode', () => {
-        console.log(campaign.passcode)
         return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
           .type('form')
           .send(payload)
@@ -413,6 +412,7 @@ describe('/ready', () => {
 
   context('with existing user and team', () => {
     beforeEach(async () => {
+      await Callee.query().delete();
       await Campaign.query().delete();
       await User.query().delete();
       await Team.query().delete();
@@ -428,7 +428,7 @@ describe('/ready', () => {
       await request.post(`/ready?campaign_id=${campaign.id}&start=1&caller_number=${caller.phone_number}`)
         .type('form')
         .send(payload);
-      const new_caller = await Caller.query().where({phone_number: caller.phone_number}).first()
+      const new_caller = await Caller.query().where({phone_number: caller.phone_number, campaign_id: campaign.id}).first()
       expect(new_caller.team_id).to.be(team.id)
     });
   });
