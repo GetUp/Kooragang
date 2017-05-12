@@ -103,8 +103,7 @@ app.post('/connect', async ({body, query}, res) => {
       teamAction.addSpeakAU('Press the two key on your keypad if you\'re a member of a calling team.')
     }
     teamAction.addSpeakAU('Otherwise to continue without a team press the star key.')
-
-    r.addRedirect(res.locals.appUrl('team'))
+    r.addSpeakAU('No key pressed. Hanging up now')
     return res.send(r.toXML())
   }
 

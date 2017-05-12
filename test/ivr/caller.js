@@ -215,6 +215,13 @@ describe('/connect', () => {
           .expect(/joining a new team/)
           .expect(/without a team/);
       });
+
+      it('should hangup if no input', () => {
+        return request.post(`/connect?campaign_id=${campaign.id}`)
+          .type('form')
+          .send(payload)
+          .expect(/No key pressed. Hanging up now/);
+      });
     });
     context('with no existing user or team', () => {
       beforeEach(async () => {
@@ -227,6 +234,13 @@ describe('/connect', () => {
           .send(payload)
           .expect(/member of a calling/)
           .expect(/without a team/);
+      });
+
+      it('should hangup if no input', () => {
+        return request.post(`/connect?campaign_id=${campaign.id}`)
+          .type('form')
+          .send(payload)
+          .expect(/No key pressed. Hanging up now/);
       });
     });
     context('with true team param passed in connect url', () => {
