@@ -1,5 +1,6 @@
 const env = process.env.NODE_ENV || 'development';
 
+const moment = require('moment');
 const pg = require('pg');
 pg.types.setTypeParser(1700, 'text', parseFloat)
 const config = require('../knexfile');
@@ -25,6 +26,51 @@ class Campaign extends Model {
       }
     }
   }
+
+  static get virtualAttributes() {
+    return [
+      'isPaused',
+      'isInactive',
+      'isComplete',
+      'isWithinDailyTimeOfOperation',
+      'dailyTimeOfOperationInWords',
+      'areCallsInProgress',
+      'calledEveryone'
+    ];
+  }
+  isPausing() {
+    return this.status === "pausing"
+  }
+  isPaused() {
+    return this.status === "paused" || this.status === null
+  }
+  isInactive() {
+    return this.status === "inactive"
+  }
+  async isComplete() {
+    return this.isInactive() || (await this.calledEveryone())
+  }
+  isWithinDailyTimeOfOperation() {
+    const start = moment(this.daily_start_operation, 'HHmm')
+    const stop = moment(this.daily_stop_operation, 'HHmm')
+    return moment().isBetween(start, stop, null, '[]')
+  }
+  dailyTimeOfOperationInWords() {
+    const start = moment(this.daily_start_operation, 'HHmm').format('h mm a').replace(/00\s/,'')
+    const stop = moment(this.daily_stop_operation, 'HHmm').format('h mm a').replace(/00\s/,'')
+    return `Please call back within the hours of ${start}, and ${stop}.`
+  }
+  areCallsInProgress() {
+    return this.calls_in_progress > 0
+  }
+  async calledEveryone() {
+    if (this.areCallsInProgress()) return false;
+    const {count} = await Callee.query().count('id as count')
+      .where({campaign_id: this.id})
+      .whereNull('last_called_at').first();
+    return parseInt(count, 10) === 0;
+  }
+  
   valid() {
     const errors = []
     const questionsNotReferenced = _.omit(this.questions, 'disposition')

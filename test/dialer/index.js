@@ -376,17 +376,17 @@ describe('.calledEveryone', () => {
       const anotherCampaign = await Campaign.query().insert({name: 'another'});
       Callee.query().insert({phone_number: '123456789', campaign_id: anotherCampaign.id});
     });
-    it('should return true', async () => expect(await dialer.calledEveryone(campaign)).to.be(true));
+    it('should return true', async () => expect(await campaign.calledEveryone()).to.be(true));
 
     context('with calls_in_progress > 0', () => {
       beforeEach(async() => {
         campaign = await Campaign.query().patchAndFetchById(campaign.id, {calls_in_progress: 1});
       });
-      it('should return false', async () => expect(await dialer.calledEveryone(campaign)).to.be(false));
+      it('should return false', async () => expect(await campaign.calledEveryone()).to.be(false));
     })
   });
   context('with available callees', () => {
     beforeEach(async () => Callee.query().insert({phone_number: '123456789', campaign_id: campaign.id}));
-    it('should return false', async () => expect(await dialer.calledEveryone(campaign)).to.be(false));
+    it('should return false', async () => expect(await campaign.calledEveryone()).to.be(false));
   });
 });
