@@ -20,7 +20,7 @@ app.post('/team', async ({query, body}, res) => {
   if (user && body.Digits === '2') {
     r.addSpeakAU('Please enter in your teams passcode on your keypad now.')
     const teamAction = r.addGetDigits({
-      action: res.locals.appUrl(`team/join?campaign_id=${query.campaign_id}&user_id=${user.id}`),
+      action: res.locals.appUrl(`team/join?campaign_id=${query.campaign_id}&user_id=${user.id}&callback=${query.callback ? query.callback : 0}&authenticated=${query.authenticated ? '1' : '0'}`),
       timeout: 10,
       retries: 10,
       numDigits: 4
@@ -30,7 +30,7 @@ app.post('/team', async ({query, body}, res) => {
 
   await user.$query().patch({last_joined_at: new Date(), updated_at: new Date(), team_id: null})
   r.addSpeakAU('Thanks for that, you\'re calling without a team this time.')
-  r.addRedirect(res.locals.appUrl(`connect?campaign_id=${query.campaign_id}&team=0`))
+  r.addRedirect(res.locals.appUrl(`connect?campaign_id=${query.campaign_id}&team=1`))
   res.send(r.toXML())
 })
 
@@ -43,7 +43,7 @@ app.post('/team/join', async ({query, body}, res) => {
     r.addWait({length: 1})
     r.addSpeakAU(`Thanks for that, you\'ve joined team ${team.name}.`)
     r.addWait({length: 1})
-    r.addRedirect(res.locals.appUrl(`connect?campaign_id=${query.campaign_id}&team=1`))
+    r.addRedirect(res.locals.appUrl(`connect?campaign_id=${query.campaign_id}&callback=${query.callback ? query.callback : 0}&authenticated=${query.authenticated ? '1' : '0'}&team=1`))
     return res.send(r.toXML())
   }
   r.addWait({length: 1})

@@ -4,8 +4,7 @@ const proxyquire = require('proxyquire');
 const moment = require('moment');
 const ivrCaller = proxyquire('../../ivr/caller', {
   '../dialer': {
-    dial: async (appUrl) => {},
-    calledEveryone: async (appUrl) => false,
+    dial: async (appUrl) => {}
   }
 });
 const app = require('../../ivr/common');
@@ -58,6 +57,7 @@ const statuslessCampaign = Object.assign({status: null}, defaultCampaign)
 const amdCampaign = Object.assign({status: 'active', detect_answering_machine: true}, defaultCampaign)
 const operationalWindowCampaign = Object.assign({daily_start_operation: '00:00:00', daily_stop_operation: '00:00:00'}, activeCampaign)
 const teamsCampaign = Object.assign({status: 'active', teams: true}, defaultCampaign)
+const authCampaign = Object.assign({status: 'active', passcode: '1234'}, defaultCampaign)
 
 const CallUUID = '111';
 let campaign
@@ -102,6 +102,7 @@ describe('/connect', () => {
   });
 
   context('with a sip number', () => {
+    beforeEach(async () => { await Callee.query().insert(associatedCallee) });
     it('should strip out sip details for caller number', async () => {
       await request.post(`/connect?campaign_id=${campaign.id}`)
         .type('form')
@@ -111,22 +112,36 @@ describe('/connect', () => {
   });
 
   context('with a private number', () => {
+    beforeEach(async () => { await Callee.query().insert(associatedCallee) });
     const payload = { From: '' };
     it('directs them to enable caller id', () => {
       return request.post(`/connect?campaign_id=${campaign.id}`)
         .type('form')
         .send(payload)
-        .expect(/caller id/);
+        .expect(/caller ID/);
+    });
+  });
+
+  context('with a private number', () => {
+    beforeEach(async () => { await Callee.query().insert(associatedCallee) });
+    const payload = { From: 'anonymous' };
+    it('directs them to enable caller id', () => {
+      return request.post(`/connect?campaign_id=${campaign.id}`)
+        .type('form')
+        .send(payload)
+        .expect(/caller ID/);
     });
   });
 
   context('with a callback', () => {
     const payload = { From: '33333' };
+    beforeEach(async () => { await Callee.query().insert(associatedCallee) });
     it('should use the number passed in the number parameter', () => {
       return request.post(`/connect?campaign_id=${campaign.id}&callback=1&number=${caller.phone_number}`)
         .type('form')
         .send(payload)
-        .expect(/Welcome back/)
+        .expect(/<Redirect/)
+        .expect(/briefing/)
         .expect(new RegExp(caller.phone_number));
     });
   });
@@ -188,6 +203,7 @@ describe('/connect', () => {
     beforeEach(async () => campaign = await Campaign.query().insert(teamsCampaign));
     beforeEach(async () => team = await Team.query().insert({name: 'planet savers', passcode: '1234'}));
     beforeEach(async () => user = await User.query().insert({phone_number: '098765', team_id: team.id}));
+    beforeEach(async () => { await Callee.query().insert(associatedCallee) });
     const payload = { From: '098765' };
 
     context('with existing user and team', () => {
@@ -198,6 +214,13 @@ describe('/connect', () => {
           .expect(/membership/)
           .expect(/joining a new team/)
           .expect(/without a team/);
+      });
+
+      it('should hangup if no input', () => {
+        return request.post(`/connect?campaign_id=${campaign.id}`)
+          .type('form')
+          .send(payload)
+          .expect(/No key pressed. Hanging up now/);
       });
     });
     context('with no existing user or team', () => {
@@ -212,21 +235,21 @@ describe('/connect', () => {
           .expect(/member of a calling/)
           .expect(/without a team/);
       });
+
+      it('should hangup if no input', () => {
+        return request.post(`/connect?campaign_id=${campaign.id}`)
+          .type('form')
+          .send(payload)
+          .expect(/No key pressed. Hanging up now/);
+      });
     });
-    context('with true team param passed in connect url', () => {
-      it('should announce welcome to the getup dialer tool', () => {
+    context('with team param passed in connect url', () => {
+      it('should redirect to briefing', () => {
         return request.post(`/connect?campaign_id=${campaign.id}&team=1`)
           .type('form')
           .send(payload)
-          .expect(/Welcome/);
-      });
-    });
-    context('with false team param passed in connect url', () => {
-      it('should announce welcome to the getup dialer tool', () => {
-        return request.post(`/connect?campaign_id=${campaign.id}&team=0`)
-          .type('form')
-          .send(payload)
-          .expect(/Welcome/);
+          .expect(/<Redirect/)
+          .expect(/briefing/);
       });
     });
     context('with a callback', () => {
@@ -235,13 +258,67 @@ describe('/connect', () => {
         return request.post(`/connect?campaign_id=${campaign.id}&callback=1&number=${caller.phone_number}`)
           .type('form')
           .send(payload)
-          .expect(/Welcome back/);
+          .expect(/<Redirect/)
+          .expect(/briefing/);
+      });
+    });
+  });
+
+  context('with an authenticated campaign', () => {
+    beforeEach(async () => { await Campaign.query().delete() });
+    beforeEach(async () => campaign = await Campaign.query().insert(authCampaign));
+    beforeEach(async () => { await Callee.query().insert(associatedCallee) });
+    const payload = { From: caller.phone_number };
+    context('with a callback and authenticated false', () => {
+      it('should be prompted to enter passcode', () => {
+        return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
+          .type('form')
+          .send(payload)
+          .expect(/Please enter the campaign passcode/);
+      });
+    });
+    context('with a callback true', () => {
+      it('should redirect to briefing', () => {
+        return request.post(`/connect?campaign_id=${campaign.id}&callback=1&number=${caller.phone_number}`)
+          .type('form')
+          .send(payload)
+          .expect(/<Redirect/)
+          .expect(/briefing/);
+      });
+    });
+    context('with a authenticed true', () => {
+      it('should redirect to briefing', () => {
+        return request.post(`/connect?campaign_id=${campaign.id}&authenticated=1&number=${caller.phone_number}`)
+          .type('form')
+          .send(payload)
+          .expect(/<Redirect/)
+          .expect(/briefing/);
+      });
+    });
+    context('with a correct passcode entered', () => {
+      it('should redirect to briefing', () => {
+        return request.post(`/connect?campaign_id=${campaign.id}&callback=1&number=${caller.phone_number}`)
+          .type('form')
+          .send(payload)
+          .expect(/<Redirect/)
+          .expect(/briefing/);
+      });
+    });
+    context('with an incorrect passcode entered', () => {
+      it('should ignore the team input options and announce welcome back', () => {
+        return request.post(`/connect?campaign_id=${campaign.id}&callback=1&number=${caller.phone_number}`)
+          .type('form')
+          .send(payload)
+          .expect(/<Redirect/)
+          .expect(/briefing/);
       });
     });
   });
 });
 
 describe('/ready', () => {
+  beforeEach(async () => { await Callee.query().insert(associatedCallee) });
+
   context('with an starting path', () => {
     let startPath;
     beforeEach(() => startPath = `/ready?campaign_id=${campaign.id}&caller_number=${caller.phone_number}&start=1`);
@@ -340,6 +417,7 @@ describe('/ready', () => {
 
   context('with existing user and team', () => {
     beforeEach(async () => {
+      await Callee.query().delete();
       await Campaign.query().delete();
       await User.query().delete();
       await Team.query().delete();
@@ -355,7 +433,7 @@ describe('/ready', () => {
       await request.post(`/ready?campaign_id=${campaign.id}&start=1&caller_number=${caller.phone_number}`)
         .type('form')
         .send(payload);
-      const new_caller = await Caller.query().where({phone_number: caller.phone_number}).first()
+      const new_caller = await Caller.query().where({phone_number: caller.phone_number, campaign_id: campaign.id}).first()
       expect(new_caller.team_id).to.be(team.id)
     });
   });
