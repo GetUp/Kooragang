@@ -48,6 +48,8 @@ app.all('/answer', async (req, res, next) => {
   state[req.query.agent] = 'joining';
   const r = plivo.Response();
   r.addWait({length: 8});
+  r.addDTMF('*');
+  r.addWait({length: 8});
   r.addDTMF(1);
   r.addWait({length: 25});
   r.addRedirect(appUrl(`cycle?agent=${req.query.agent}`));
