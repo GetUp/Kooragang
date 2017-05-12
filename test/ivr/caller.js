@@ -427,7 +427,7 @@ describe('/call_ended', () => {
 
 describe('/hold_music', () => {
   it('should return a list of mp3', () => {
-    return request.post('/hold_music').expect(/welcome-pack-6.mp3/i);
+    return request.post('/hold_music').expect(/cloudfront.*welcome-pack-2.mp3/i);
   });
 });
 

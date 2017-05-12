@@ -245,10 +245,9 @@ app.post('/ready', async ({body, query}, res) => {
   res.send(r.toXML());
 });
 
-app.post('/hold_music', (req, res) => {
+app.all('/hold_music', (req, res) => {
   const r = plivo.Response();
-  _(1).range(7)
-    .each(i => r.addPlay(`http://holdmusic.io/public/welcome-pack/welcome-pack-${i}.mp3`) )
+  [1, 2].forEach(i => r.addPlay(`http://d1bm7er3ouf1yi.cloudfront.net/kooragang-hold-music/welcome-pack-${i}.mp3`) )
   res.send(r.toXML());
 });
 
