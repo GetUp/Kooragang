@@ -243,18 +243,9 @@ describe('/connect', () => {
           .expect(/No key pressed. Hanging up now/);
       });
     });
-    context('with true team param passed in connect url', () => {
+    context('with team param passed in connect url', () => {
       it('should redirect to briefing', () => {
         return request.post(`/connect?campaign_id=${campaign.id}&team=1`)
-          .type('form')
-          .send(payload)
-          .expect(/<Redirect/)
-          .expect(/briefing/);
-      });
-    });
-    context('with false team param passed in connect url', () => {
-      it('should redirect to briefing', () => {
-        return request.post(`/connect?campaign_id=${campaign.id}&team=0`)
           .type('form')
           .send(payload)
           .expect(/<Redirect/)
