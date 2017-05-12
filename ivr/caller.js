@@ -203,7 +203,7 @@ app.post('/ready', async ({body, query}, res) => {
   if (body.Digits === '9' && query.call_id) {
     await Event.query().insert({name: 'undo', campaign_id: campaign.id, caller_id, call_id: query.call_id, value: {log_id: query.log_id}})
     await SurveyResult.query().where({call_id: query.call_id}).delete();
-    r.addRedirect(res.locals.appUrl(`survey?q=disposition&caller_id=${caller_id}&campaign_id=${campaign.id}&undo=1`))
+    r.addRedirect(res.locals.appUrl(`survey?q=disposition&caller_id=${caller_id}&campaign_id=${campaign.id}&undo=1&call_id=${query.call_id}`))
     return res.send(r.toXML());
   } else if (body.Digits === '0') {
     r.addRedirect(res.locals.appUrl('disconnect'));

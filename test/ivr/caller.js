@@ -413,7 +413,7 @@ describe('/ready', () => {
     it('should redirect to survey results with disposition question', async () => {
       await request.post(url)
         .type('form').send({Digits: '9'})
-        .expect(new RegExp(`survey.*q=disposition.*caller_id=4.*campaign_id=${campaign.id}`));
+        .expect(new RegExp(`survey.*q=disposition.*caller_id=4.*campaign_id=${campaign.id}.*undo=1.*call_id=${call.id}`));
     });
     it('should log an event', async () => {
       await request.post(url)
