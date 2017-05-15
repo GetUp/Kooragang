@@ -8,6 +8,7 @@
     <h3><a href="/stats/<%= campaigns[i].id %>"><%= campaigns[i].name %></a></h3>
       <h4><u>Status:</u> <%= campaigns[i].status %></h4>
       <h4><u>Phone Number:</u> <%= campaigns[i].phone_number %></h4>
+      <h4><a href="/campaigns/<%= campaigns[i].id %>/edit">Edit</a></h4>
      </div>
   <% } %>
     </div>

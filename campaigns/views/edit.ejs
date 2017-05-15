@@ -1,0 +1,114 @@
+<div class="jumbotron">
+  <h1>
+    Editing '<%= campaign.name %>'
+  </h1>
+  <form action="/campaigns/2" method="POST">
+
+  <div class="form-block">
+      <label for="name">Campaign name</label>
+      <input id="name" type="text" name="name" value="<%= campaign.name %>" class="form-control">
+        
+      </input>
+    </div>
+  
+    <div class="form-block">
+      <label for="status">Campaign status</label>
+      <select id="status" type="select" name="status" value="active" class="form-control">
+        <% ['','active','paused','inactive'].forEach(function(option){ %>
+            <option value="<%= option %>" <% if (option == campaign.status) { %>selected<% } %>><%= option %></option>
+          <% }) %>
+      </select>
+    </div>
+  
+    <div class="form-block">
+      <label for="script_url">Script URL</label>
+      <input id="script_url" type="text" name="script_url" value="<%= campaign.script_url %>" class="form-control">        
+      </input>
+    </div>
+  
+    <div class="form-block">
+      <label for="phone_number">Phone Number (including country code)</label>
+      <input id="phone_number" type="text" name="phone_number" value="<%= campaign.phone_number %>" class="form-control">
+        
+      </input>
+    </div>
+  
+    <div class="form-block">
+      <label for="more_info">Pre-call information options (as JSON)</label>
+      <textarea id="more_info" type="text" name="more_info" class="form-control"><%= JSON.stringify(campaign.more_info) %></textarea>
+        
+      </input>
+    </div>
+  
+    <div class="form-block">
+      <label for="questions">Post-call survey questions (as JSON)</label>
+      <textarea id="questions" type="text" name="questions" class="form-control"><%= JSON.stringify(campaign.questions) %></textarea>
+        
+      </input>
+    </div>
+  
+    <div class="form-block">
+      <label for="daily_start_operation">No calls before this time (HH:MM)</label>
+      <input id="daily_start_operation" type="text" name="daily_start_operation" value="<%= campaign.daily_start_operation %>" class="form-control">
+        
+      </input>
+    </div>
+  
+    <div class="form-block">
+      <label for="daily_stop_operation">No calls after this time (HH:MM)</label>
+      <input id="daily_stop_operation" type="text" name="daily_stop_operation" value="<%= campaign.daily_stop_operation %>" class="form-control">
+        
+      </input>
+    </div>
+  
+    <div class="form-block">
+      <label for="detect_answering_machine">Automatically detect answering machine?</label>
+      <input id="detect_answering_machine" type="checkbox" name="detect_answering_machine" value="<%= campaign.detect_answering_machine %>" class="form-control">
+        
+      </input>
+    </div>
+  
+    <div class="form-block">
+      <label for="max_ratio">Maxiumum ratio of dials to callers</label>
+      <input id="max_ratio" type="text" name="max_ratio" value="<%= campaign.max_ratio %>" class="form-control">
+        
+      </input>
+    </div>
+  
+    <div class="form-block">
+      <label for="ratio_window">How far back should we look to recalculate the ratio? (seconds)</label>
+      <input id="ratio_window" type="text" name="ratio_window" value="<%= campaign.ratio_window %>" class="form-control">
+        
+      </input>
+    </div>
+  
+    <div class="form-block">
+      <label for="ratio_increment">How much should ratio change by each time it&#39;s recalculated?</label>
+      <input id="ratio_increment" type="text" name="ratio_increment" value="<%= campaign.ratio_increment %>" class="form-control">
+        
+      </input>
+    </div>
+  
+    <div class="form-block">
+      <label for="max_call_attempts">Maximum number of times to call before giving up</label>
+      <input id="max_call_attempts" type="text" name="max_call_attempts" value="<%= campaign.max_call_attempts %>" class="form-control">
+        
+      </input>
+    </div>
+  
+    <div class="form-block">
+      <label for="no_call_window">Minimum time between call attempts</label>
+      <input id="no_call_window" type="text" name="no_call_window" value="<%= campaign.no_call_window %>" class="form-control">
+        
+      </input>
+    </div>
+  
+    <div class="form-block">
+      <label for="exhaust_callees_before_recycling">Exhaust callees before starting the list again?</label>
+      <input id="exhaust_callees_before_recycling" type="checkbox" name="exhaust_callees_before_recycling" value="<%= campaign.exhaust_callees_before_recycling %>" class="form-control">
+        
+      </input>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save</button>
+</div>
