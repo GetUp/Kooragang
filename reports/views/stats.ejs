@@ -120,6 +120,13 @@ new Chart($("#visualisation"), {
         borderColor: "rgba(238, 238, 16, 0.8)"
       },
       {
+        label: "Drop ratio",
+        type: 'line',
+        data: <%- JSON.stringify(report.dropRatioData) %>,
+        fill: false,
+        borderColor: "rgba(74, 237, 76, 0.8)"
+      },
+      {
         label: "Completion",
         type: 'line',
         data: <%- JSON.stringify(report.completedData) %>,

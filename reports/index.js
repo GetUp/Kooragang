@@ -68,6 +68,13 @@ app.get('/stats/:id', async ({body, params, query}, res) => {
           and created_at > now() - '${time_period_in_hours} hours'::interval
           order by 1
           `)
+      const dropRatioData = await Event.raw(`
+          select created_at, round(((value::json)->>'calculatedRatio')::decimal * 100, 2) as ratio from events
+          where campaign_id = ${campaign.id}
+          and name = 'ratio'
+          and created_at > now() - '${time_period_in_hours} hours'::interval
+          order by 1
+          `)
       const callersData = await Event.raw(`
           select created_at, (value::json)->>'callers' as callers from events
           where campaign_id = ${campaign.id}
@@ -104,7 +111,8 @@ app.get('/stats/:id', async ({body, params, query}, res) => {
         callersData: callersData.rows.map(event => { return {x: event.created_at, y: parseFloat(event.callers)} }),
         completedData: completedData.rows.map(event => { return {x: event.created_at, y: 0} }),
         callsData: callsData.rows.map(event => { return {x: event.created_at, y: event.value} }),
-        ratioData: ratioData.rows.map(event => { return {x: event.created_at, y: parseFloat(event.ratio)} })
+        ratioData: ratioData.rows.map(event => { return {x: event.created_at, y: parseFloat(event.ratio)} }),
+        dropRatioData: dropRatioData.rows.map(event => { return {x: event.created_at, y: parseFloat(event.ratio)} })
       });
     }
     const currentCallers = data.available + data['in-call'];
