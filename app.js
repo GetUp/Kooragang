@@ -10,7 +10,7 @@ if (process.env.NODE_ENV === 'development' || process.env.IVR) {
   app.use(require('./ivr/caller'));
   app.use(require('./ivr/callee'));
 }
-if (process.env.NODE_ENV === 'development' || !process.env.IVR) {
+if (process.env.NODE_ENV === 'development' || !process.env.IVR || process.env.ADMIN) {
   app.set('view engine', 'ejs');
   app.use(require('express-ejs-layouts'))
   app.set('layout', __dirname + '/layouts/layout');
