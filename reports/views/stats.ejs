@@ -1,162 +1,104 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
-    <meta name="description" content="PhoneBanking tool">
-    <meta name="robots" content="noindex">
-    <meta name="author" content="GetUp">
-    <link rel="icon" href="/favicon.ico">
-
-    <title><%=campaign.name%> Stats</title>
-
-    <!-- Bootstrap core CSS -->
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
-    <link rel="stylesheet" href="/css/print.css" media="print">
-
-    <!-- Custom styles for this template -->
-    <style>
-    body {
-      padding-top: 50px;
-
-    }
-    .starter-template {
-      padding: 40px 15px;
-      text-align: center;
-     }
-h2 {
-  font-weight: normal;
-}
-    </style>
-  </head>
-
-  <body>
-
-    <nav class="navbar navbar-inverse navbar-fixed-top">
-      <div class="container">
-        <div class="navbar-header">
-          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
-            <span class="sr-only">Toggle navigation</span>
-            <span class="icon-bar"></span>
-            <span class="icon-bar"></span>
-            <span class="icon-bar"></span>
-          </button>
-          <a class="navbar-brand" href="#">Phone Bank Tool</a>
-        </div>
-        <div id="navbar" class="collapse navbar-collapse">
-          <ul class="nav navbar-nav">
-            <li class="active"><a href="/dashboard">Home</a></li>
-          </ul>
-        </div><!--/.nav-collapse -->
-      </div>
-    </nav>
-
-    <div class="container">
-    <div class="jumbotron">
-      <h1><%=campaign.name%> Campaign</h1>
+<div class="jumbotron">
+  <h1><%=campaign.name%> Campaign</h1>
+</div>
+  <div class="row">
+    <div id="script" class="col-md-12">
+      <h2>Validation errors: <strong><%=report.validationErrors || 'none'%></strong></h2>
+      <h2>Timestamp: <strong><%=report.timestamp%></strong></h2>
+      <h2>Campaign status: <strong><%=campaign.status%></strong></h2>
+      <h2>Callers available: <strong><%=report.available%></strong></h2>
+      <h2>Callers in-call: <strong><%=report['in-call']%></strong></h2>
+      <h2>Callers completed (last hour): <strong><%=report.completed%></strong></h2>
+      <h2>Approximate rate (last 10 minutes): <strong><%=report.rate%> calls per agent hour</strong></h2>
+      <h2>Average wait time (last 10 minutes): <strong><%=report.wait%></strong>s</h2>
+      <h2>Total calls (last 10 minutes): <strong><%=report.total%></strong></h2>
+      <h2>Drops (last 10 minutes): <strong><%=report.drops%></strong></h2>
+      <h2>Drops rate (last 10 minutes): <strong><%=report.dropRate%>%</strong> with target drop rate of <strong><%=campaign.acceptable_drop_rate * 100%>%</strong></h2>
+      <h2>Predictive ratio: <strong><%=campaign.ratio%></strong> (with max <%=campaign.max_ratio%>)</h2>
     </div>
-      <div class="row">
-        <div id="script" class="col-md-12">
-          <h2>Validation errors: <strong><%=report.validationErrors || 'none'%></strong></h2>
-          <h2>Timestamp: <strong><%=report.timestamp%></strong></h2>
-          <h2>Campaign status: <strong><%=campaign.status%></strong></h2>
-          <h2>Callers available: <strong><%=report.available%></strong></h2>
-          <h2>Callers in-call: <strong><%=report['in-call']%></strong></h2>
-          <h2>Callers completed (last hour): <strong><%=report.completed%></strong></h2>
-          <h2>Approximate rate (last 10 minutes): <strong><%=report.rate%> calls per agent hour</strong></h2>
-          <h2>Average wait time (last 10 minutes): <strong><%=report.wait%></strong>s</h2>
-          <h2>Total calls (last 10 minutes): <strong><%=report.total%></strong></h2>
-          <h2>Drops (last 10 minutes): <strong><%=report.drops%></strong></h2>
-          <h2>Drops rate (last 10 minutes): <strong><%=report.dropRate%>%</strong> with target drop rate of <strong><%=campaign.acceptable_drop_rate * 100%>%</strong></h2>
-          <h2>Predictive ratio: <strong><%=campaign.ratio%></strong> (with max <%=campaign.max_ratio%>)</h2>
-        </div>
-      </div>
+  </div>
 
-  <% if(graph){ %>
-      <div>
-        <canvas id="visualisation" width="10000px" height="800px"></canvas>
-      </div>
-  <% } %>
-    </div><!-- /.container -->
+<% if(graph){ %>
+  <div>
+    <canvas id="visualisation" width="10000px" height="800px"></canvas>
+  </div>
+<% } %>
+</div><!-- /.container -->
 
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.bundle.js"></script>
-  <% if(graph){ %>
-    <script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.bundle.js"></script>
+<% if(graph){ %>
+<script>
 new Chart($("#visualisation"), {
-  type: 'bar',
-  data: {
-    datasets: [
-      {
-        label: "Calls in Progress",
-        type: 'line',
-        data: <%- JSON.stringify(report.calls_in_progress) %>,
-        fill: false,
-        spanGaps: false
-      },
-      {
-        label: "Ratio",
-        type: 'line',
-        data: <%- JSON.stringify(report.ratioData) %>,
-        fill: false,
-        pointBorderColor: "rgba(63, 191, 191, 1)"
-      },
-      {
-        label: "Callers",
-        type: 'line',
-        data: <%- JSON.stringify(report.callersData) %>,
-        fill: false,
-        pointBorderColor: "rgba(63, 63, 191, 1)"
-      },
-      {
-        label: "Calls per second",
-        type: 'line',
-        data: <%- JSON.stringify(report.callsData) %>,
-        fill: false,
-        borderColor: "rgba(238, 238, 16, 0.8)"
-      },
-      {
-        label: "Completion",
-        type: 'line',
-        data: <%- JSON.stringify(report.completedData) %>,
-        fill: false,
-        pointStyle: 'star',
-        pointRadius: 5,
-          showLine: false,
-          pointBorderColor: "rgba(238, 16, 238,1)"
-      },
-      {
-        label: "Drops",
-        type: 'line',
-        data: <%- JSON.stringify(report.dropData) %>,
-        fill: false,
-        pointStyle: 'cross',
-        pointRadius: 5,
-          showLine: false,
-          pointBorderColor: "rgba(255,0,0,1)"
-      }
-    ]
+type: 'bar',
+data: {
+datasets: [
+  {
+    label: "Calls in Progress",
+    type: 'line',
+    data: <%- JSON.stringify(report.calls_in_progress) %>,
+    fill: false,
+    spanGaps: false
   },
-  options: {
-    responsive: false,
-    scales: {
-      xAxes: [{
-        type: 'time',
-      }],
-      yAxes: [{
-        ticks: {
-          beginAtZero:true,
-          suggestedMax: 20
-        }
-      }]
-    }
+  {
+    label: "Ratio",
+    type: 'line',
+    data: <%- JSON.stringify(report.ratioData) %>,
+    fill: false,
+    pointBorderColor: "rgba(63, 191, 191, 1)"
+  },
+  {
+    label: "Callers",
+    type: 'line',
+    data: <%- JSON.stringify(report.callersData) %>,
+    fill: false,
+    pointBorderColor: "rgba(63, 63, 191, 1)"
+  },
+  {
+    label: "Calls per second",
+    type: 'line',
+    data: <%- JSON.stringify(report.callsData) %>,
+    fill: false,
+    borderColor: "rgba(238, 238, 16, 0.8)"
+  },
+  {
+    label: "Completion",
+    type: 'line',
+    data: <%- JSON.stringify(report.completedData) %>,
+    fill: false,
+    pointStyle: 'star',
+    pointRadius: 5,
+      showLine: false,
+      pointBorderColor: "rgba(238, 16, 238,1)"
+  },
+  {
+    label: "Drops",
+    type: 'line',
+    data: <%- JSON.stringify(report.dropData) %>,
+    fill: false,
+    pointStyle: 'cross',
+    pointRadius: 5,
+      showLine: false,
+      pointBorderColor: "rgba(255,0,0,1)"
   }
+]
+},
+options: {
+responsive: false,
+scales: {
+  xAxes: [{
+    type: 'time',
+  }],
+  yAxes: [{
+    ticks: {
+      beginAtZero:true,
+      suggestedMax: 20
+    }
+  }]
+}
+}
 });
-    </script>
-  <% } %>
-  </body>
-</html>
+</script>
+<% } %>
