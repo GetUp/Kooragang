@@ -13,6 +13,7 @@ app.get('/dashboard', async ({body, params}, res) => {
 });
 
 app.get('/campaigns/:id/edit', async ({body, params}, res) => {
+  res.set('Content-Type', 'text/html');
   const campaign = await Campaign.query().where({id: params.id}).first();
   if (!campaign) res.sendStatus(404);
   return res.render('edit.ejs', {campaign})
