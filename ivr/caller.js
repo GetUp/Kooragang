@@ -4,6 +4,8 @@ const plivo = require('plivo');
 const _ = require('lodash');
 const api = require('../api');
 const dialer = require('../dialer');
+const config = require('../load/config')(process.env.ORG_NAME)
+
 const {
   sleep,
   extractCallerNumber,
@@ -30,7 +32,7 @@ app.post('/connect', async ({body, query}, res) => {
     r.addWait({length: 2});
     r.addSpeakAU('An error has occurred. The number is not associated with a campaign');
     r.addWait({length: 1});
-    r.addSpeakAU('GetUp technical staff have been notified. Hanging up now.');
+    r.addSpeakAU(config.text.ivr.technical_staff_notified);
     return res.send(r.toXML());
   }
 
@@ -40,7 +42,7 @@ app.post('/connect', async ({body, query}, res) => {
 
   if (campaign.isPaused()){
     r.addWait({length: 2});
-    r.addSpeakAU('Hi! Welcome to the GetUp Dialer tool.');
+    r.addSpeakAU(config.text.ivr.welcome);
     r.addWait({length: 1});
     r.addSpeakAU('The campaign is currently paused! Please contact the campaign coordinator for further instructions. Thank you and have a great day!');
     return res.send(r.toXML());
@@ -48,7 +50,7 @@ app.post('/connect', async ({body, query}, res) => {
 
   if (!campaign.isWithinDailyTimeOfOperation()) {
     r.addWait({length: 2});
-    r.addSpeakAU(`Hi! Welcome to the GetUp Dialer tool.`);
+    r.addSpeakAU(config.text.ivr.welcome);
     r.addWait({length: 1});
     r.addSpeakAU(`The campaign is currently outside of it\'s daily times of operation! ${campaign.dailyTimeOfOperationInWords()} Thank you and have a great day!`);
     return res.send(r.toXML());
@@ -63,7 +65,7 @@ app.post('/connect', async ({body, query}, res) => {
 
   if (await campaign.isComplete()) {
     r.addWait({length: 2});
-    r.addSpeakAU(`Hi! Welcome to the GetUp Dialer tool.`);
+    r.addSpeakAU(config.text.ivr.welcome);
     r.addWait({length: 1});
     r.addSpeakAU('The campaign has been completed! Please contact the campaign coordinator for further instructions. Thank you and have a great day!');
     return res.send(r.toXML());
@@ -135,7 +137,7 @@ app.post('/briefing', async ({body, query}, res) => {
     if (query.callback === '1') {
       briefing.addSpeakAU(`Hi! Welcome back.`);
     } else {
-      briefing.addSpeakAU(`Hi! Welcome to the GetUp Dialer tool. Today you will be making calls for the ${campaign.name} campaign.`);
+      briefing.addSpeakAU(config.text.ivr.welcome + ` Today you will be making calls for the ${campaign.name} campaign.`);
       briefing.addWait({length: 1});
       briefing.addSpeakAU('If you cannot afford long phone calls and would like to be called back instead, please press the 2 key');
     }
@@ -212,7 +214,7 @@ app.post('/ready', async ({body, query}, res) => {
   }
 
   if (body.Digits === '4') {
-    r.addSpeakAU("Welcome to the Get Up dialer tool! This system works by dialing a number of people and patching them through to you when they pick up. Until they pick up, you'll hear music playing. When the music stops, that's your queue to start talking. Then you can attempt to have a conversation with them. At the end of the conversation, you'll be prompted to enter numbers into your phone to indicate the outcome of the call. It's important to remember that you never have to hang up your phone to end a call. If you need to end a call, just press star.");
+    r.addSpeakAU(config.text.ivr.welcome + " This system works by dialing a number of people and patching them through to you when they pick up. Until they pick up, you'll hear music playing. When the music stops, that's your queue to start talking. Then you can attempt to have a conversation with them. At the end of the conversation, you'll be prompted to enter numbers into your phone to indicate the outcome of the call. It's important to remember that you never have to hang up your phone to end a call. If you need to end a call, just press star.");
     r.addRedirect(res.locals.appUrl(`briefing?campaign_id=${campaign.id}&entry=more_info&entry_key=4&authenticated=${query.authenticated}`));
     return res.send(r.toXML());
   }
