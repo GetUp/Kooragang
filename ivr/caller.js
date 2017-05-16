@@ -200,6 +200,12 @@ app.post('/ready', async ({body, query}, res) => {
     return res.send(r.toXML());
   }
 
+  if (body.Digits === '8' && query.call_id) {
+    await Event.query().insert({name: 'technical_issue_reported', campaign_id: campaign.id, caller_id, call_id: query.call_id, value: {log_id: query.log_id}})
+    r.addSpeakAU('Thanks for that, the tech issue is noted!')
+    r.addRedirect(res.locals.appUrl(`call_again?caller_id=${caller_id}&campaign_id=${query.campaign_id}&tech_issue_reported=1`));
+    return res.send(r.toXML());
+  }
   if (body.Digits === '9' && query.call_id) {
     await Event.query().insert({name: 'undo', campaign_id: campaign.id, caller_id, call_id: query.call_id, value: {log_id: query.log_id}})
     await SurveyResult.query().where({call_id: query.call_id}).delete();
@@ -378,10 +384,14 @@ app.post('/call_again', async ({query, body}, res) => {
     }
   }
   const validDigits = ['1', '0'];
-  let message = 'Press 1 to continue calling. To finish your calling session, press the zero key.';
+  let message = 'Press 1 to continue calling. To finish your calling session, press the zero key. ';
+  if (!query.tech_issue_reported) {
+    validDigits.push('8')
+    message += 'Press 8 to report a technical issue on your last call. ';
+  }
   if (query.call_id) {
     validDigits.push('9')
-    message += ' Or press 9 to make a correction.';
+    message += 'Or press 9 to make a correction.';
   }
   const callAgain = r.addGetDigits({
     action: res.locals.appUrl(`ready?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&call_id=${query.call_id}`),

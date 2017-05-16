@@ -396,6 +396,29 @@ describe('/ready', () => {
     });
   });
 
+  context('with 8 pressed', () => {
+    let call, url, caller;
+    beforeEach(async () => {
+      call = await Call.query().insert({status: 'answered'});
+      await SurveyResult.query().delete();
+      await SurveyResult.query().insert({call_id: call.id, question: 'disposition', answer: 'answering machine'})
+      url = `/ready?caller_id=4&campaign_id=${campaign.id}&call_id=${call.id}`
+    });
+    it('should redirect to ready', async () => {
+      await request.post(url)
+        .type('form').send({Digits: '8'})
+        .expect(/Thanks for that, the tech issue is noted/)
+        .expect(/call_again/)
+        .expect(/tech_issue_reported=1/);
+    });
+    it('should log an event', async () => {
+      await request.post(url)
+        .type('form').send({Digits: '8'})
+        .expect(200);
+      expect(await Event.query().where({name: 'technical_issue_reported', call_id: call.id, campaign_id: campaign.id, caller_id: 4}).first()).to.be.a(Event);
+    });
+  });
+
   context('with 9 pressed', () => {
     let call, url, caller;
     beforeEach(async () => {
