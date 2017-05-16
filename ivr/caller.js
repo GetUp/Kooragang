@@ -201,15 +201,14 @@ app.post('/ready', async ({body, query}, res) => {
   }
 
   if (body.Digits === '8' && query.call_id) {
-    await Event.query().insert({name: 'technical_issue_reported', campaign_id: campaign.id, caller_id, call_id: query.call_id, value: {query: query, body: body}})
-    r.addSpeakAU('Thanks for that, the tech issue is noted!')
-    r.addRedirect(res.locals.appUrl(`call_again?caller_id=${caller_id}&campaign_id=${query.campaign_id}&tech_issue_reported=1`));
-    return res.send(r.toXML());
-  }
-  if (body.Digits === '9' && query.call_id) {
     await Event.query().insert({name: 'undo', campaign_id: campaign.id, caller_id, call_id: query.call_id, value: {log_id: query.log_id}})
     await SurveyResult.query().where({call_id: query.call_id}).delete();
     r.addRedirect(res.locals.appUrl(`survey?q=disposition&caller_id=${caller_id}&campaign_id=${campaign.id}&undo=1&call_id=${query.call_id}`))
+    return res.send(r.toXML());
+  } else if (body.Digits === '9' && query.call_id) {
+    await Event.query().insert({name: 'technical_issue_reported', campaign_id: campaign.id, caller_id, call_id: query.call_id, value: {query: query, body: body}})
+    r.addSpeakAU('Thanks for that, the tech issue is noted!')
+    r.addRedirect(res.locals.appUrl(`call_again?caller_id=${caller_id}&campaign_id=${query.campaign_id}&tech_issue_reported=1`));
     return res.send(r.toXML());
   } else if (body.Digits === '0') {
     r.addRedirect(res.locals.appUrl('disconnect'));
@@ -384,15 +383,16 @@ app.post('/call_again', async ({query, body}, res) => {
     }
   }
   const validDigits = ['1', '0'];
-  let message = 'Press 1 to continue calling. To finish your calling session, press the zero key. ';
-  if (!query.tech_issue_reported) {
-    validDigits.push('8')
-    message += 'Press 8 to report a technical issue on your last call. ';
-  }
+  let message = 'Press 1 to continue calling or 0 to end your session. ';
   if (query.call_id) {
-    validDigits.push('9')
-    message += 'Or press 9 to make a correction.';
+    validDigits.push('8')
+    message += 'Press 8 to correct your entry ';
   }
+  if (!query.tech_issue_reported) {
+    validDigits.push('9')
+    message += 'or 9 to report a technical issue.';
+  }
+
   const callAgain = r.addGetDigits({
     action: res.locals.appUrl(`ready?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&call_id=${query.call_id}`),
     timeout: 10,

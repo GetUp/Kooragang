@@ -396,7 +396,7 @@ describe('/ready', () => {
     });
   });
 
-  context('with 8 pressed', () => {
+  context('with 9 pressed', () => {
     let call, url, caller;
     beforeEach(async () => {
       call = await Call.query().insert({status: 'answered'});
@@ -404,24 +404,24 @@ describe('/ready', () => {
     });
     it('announce tech issue it noted', async () => {
       await request.post(url)
-        .type('form').send({Digits: '8'})
+        .type('form').send({Digits: '9'})
         .expect(/Thanks for that, the tech issue is noted/);
     });
     it('should redirect to call again', async () => {
       await request.post(url)
-        .type('form').send({Digits: '8'})
+        .type('form').send({Digits: '9'})
         .expect(/call_again/)
         .expect(/tech_issue_reported=1/);
     });
     it('should log an event', async () => {
       await request.post(url)
-        .type('form').send({Digits: '8'})
+        .type('form').send({Digits: '9'})
         .expect(200);
       expect(await Event.query().where({name: 'technical_issue_reported', call_id: call.id, campaign_id: campaign.id, caller_id: 4}).first()).to.be.a(Event);
     });
   });
 
-  context('with 9 pressed', () => {
+  context('with 8 pressed', () => {
     let call, url, caller;
     beforeEach(async () => {
       call = await Call.query().insert({status: 'answered'});
@@ -431,18 +431,18 @@ describe('/ready', () => {
     });
     it('should delete the survey results', async () => {
       await request.post(url)
-        .type('form').send({Digits: '9'})
+        .type('form').send({Digits: '8'})
         .expect(200);
       expect((await SurveyResult.query()).length).to.be(0);
     });
     it('should redirect to survey results with disposition question', async () => {
       await request.post(url)
-        .type('form').send({Digits: '9'})
+        .type('form').send({Digits: '8'})
         .expect(new RegExp(`survey.*q=disposition.*caller_id=4.*campaign_id=${campaign.id}.*undo=1.*call_id=${call.id}`));
     });
     it('should log an event', async () => {
       await request.post(url)
-        .type('form').send({Digits: '9'})
+        .type('form').send({Digits: '8'})
         .expect(200);
       expect(await Event.query().where({name: 'undo', call_id: call.id, campaign_id: campaign.id, caller_id: 4}).first()).to.be.a(Event);
     });
@@ -801,12 +801,12 @@ describe('/call_again', () => {
   context('with a call_id passed', async () => {
     beforeEach(async () => { await Campaign.query().delete() });
     beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign));
-     it ('should let the user press 9 to correct', () => {
+     it ('should let the user press 8 to correct', () => {
       return request.post(`/call_again?campaign_id=${campaign.id}&call_id=1`)
         .type('form').send()
-        .expect(/9/)
+        .expect(/8/)
         .expect(/call_id=1/)
-        .expect(/press 9 to make a correction/i);
+        .expect(/Press 8 to correct your entry/i);
     });
   });
 });
