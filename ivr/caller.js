@@ -201,7 +201,7 @@ app.post('/ready', async ({body, query}, res) => {
   }
 
   if (body.Digits === '8' && query.call_id) {
-    await Event.query().insert({name: 'technical_issue_reported', campaign_id: campaign.id, caller_id, call_id: query.call_id, value: {log_id: query.log_id}})
+    await Event.query().insert({name: 'technical_issue_reported', campaign_id: campaign.id, caller_id, call_id: query.call_id, value: {query: query, body: body}})
     r.addSpeakAU('Thanks for that, the tech issue is noted!')
     r.addRedirect(res.locals.appUrl(`call_again?caller_id=${caller_id}&campaign_id=${query.campaign_id}&tech_issue_reported=1`));
     return res.send(r.toXML());
