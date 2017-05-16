@@ -405,7 +405,7 @@ describe('/ready', () => {
     it('announce tech issue it noted', async () => {
       await request.post(url)
         .type('form').send({Digits: '9'})
-        .expect(/Thanks for that, the tech issue is noted/);
+        .expect(/The technical issue has been reported/);
     });
     it('should redirect to call again', async () => {
       await request.post(url)
