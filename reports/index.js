@@ -28,6 +28,10 @@ app.get('/stats/:id', async ({body, params, query}, res) => {
       .whereRaw("ended_at >= NOW() - INTERVAL '10 minutes'")
       .where({campaign_id: campaign.id})
       .groupBy('dropped');
+    const techIssues = await Event.query()
+      .count('events.id as count')
+      .where({campaign_id: campaign.id, name: 'technical_issue_reported'});
+    const techIssueCount = _.sumBy(techIssues, ({count}) => parseInt(count, 10));
     const waitEvents = await Event.query()
       .whereIn('name', ['caller_complete', 'answered'])
       .where({campaign_id: campaign.id})
@@ -50,6 +54,7 @@ app.get('/stats/:id', async ({body, params, query}, res) => {
       available: getCountForStatus('available'),
       "in-call": getCountForStatus('in-call'),
       completed: getCountForStatus('complete'),
+      techIssueCount,
       validationErrors
     };
     if (graph) {
@@ -105,11 +110,20 @@ app.get('/stats/:id', async ({body, params, query}, res) => {
           and events.created_at > now() - '${time_period_in_hours} hours'::interval
           order by 1
           `)
+      const techIssueData = await Event.raw(`
+          select events.created_at, 1 as value from events
+          inner join callers on events.caller_id = callers.id and not callback
+          where events.campaign_id = ${campaign.id}
+          and events.name = 'technical_issue_reported'
+          and events.created_at > now() - '${time_period_in_hours} hours'::interval
+          order by 1
+          `)
       Object.assign(data, {
         calls_in_progress: calls_in_progress.rows.map(event => { return {x: event.created_at, y: event.calls_in_progress} }),
         dropData: dropData.rows.map(event => { return {x: event.created_at, y: 0.5} }),
         callersData: callersData.rows.map(event => { return {x: event.created_at, y: parseFloat(event.callers)} }),
         completedData: completedData.rows.map(event => { return {x: event.created_at, y: 0} }),
+        techIssueData: techIssueData.rows.map(event => { return {x: event.created_at, y: 1} }),
         callsData: callsData.rows.map(event => { return {x: event.created_at, y: event.value} }),
         ratioData: ratioData.rows.map(event => { return {x: event.created_at, y: parseFloat(event.ratio)} }),
         dropRatioData: dropRatioData.rows.map(event => { return {x: event.created_at, y: parseFloat(event.ratio)} })

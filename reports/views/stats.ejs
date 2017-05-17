@@ -71,6 +71,7 @@ h2 {
           <h2>Drops (last 10 minutes): <strong><%=report.drops%></strong></h2>
           <h2>Drops rate (last 10 minutes): <strong><%=report.dropRate%>%</strong> with target drop rate of <strong><%=campaign.acceptable_drop_rate * 100%>%</strong></h2>
           <h2>Predictive ratio: <strong><%=campaign.ratio%></strong> (with max <%=campaign.max_ratio%>)</h2>
+          <h2>Tech issue reports (24hrs): <strong><%=report.techIssueCount%></strong></h2>
         </div>
       </div>
 
@@ -135,6 +136,16 @@ new Chart($("#visualisation"), {
         pointRadius: 5,
           showLine: false,
           pointBorderColor: "rgba(238, 16, 238,1)"
+      },
+      {
+        label: "Issue",
+        type: 'line',
+        data: <%- JSON.stringify(report.techIssueData) %>,
+        fill: false,
+        pointStyle: 'star',
+        pointRadius: 10,
+          showLine: false,
+          pointBorderColor: "rgba(116, 238, 238,1)"
       },
       {
         label: "Drops",
