@@ -25,5 +25,5 @@ module.exports.authenticationNeeded = (callback, campaign_passcode, authenticate
 };
 
 module.exports.isValidCallerNumber = (caller_number) => {
-  return !_.isEmpty(caller_number) && caller_number !== 'anonymous'
+  return !_.isEmpty(caller_number) && caller_number !== 'anonymous' && caller_number !== 'undefined'
 };

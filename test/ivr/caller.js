@@ -133,6 +133,17 @@ describe('/connect', () => {
     });
   });
 
+  context('with a private number', () => {
+    beforeEach(async () => { await Callee.query().insert(associatedCallee) });
+    const payload = { From: 'undefined' };
+    it('directs them to enable caller id', () => {
+      return request.post(`/connect?campaign_id=${campaign.id}`)
+        .type('form')
+        .send(payload)
+        .expect(/caller ID/);
+    });
+  });
+
   context('with a callback', () => {
     const payload = { From: '33333' };
     beforeEach(async () => { await Callee.query().insert(associatedCallee) });
