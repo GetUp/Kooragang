@@ -13,7 +13,7 @@ app.get('/dashboard', async ({body, params}, res) => {
 });
 
 app.get('/campaigns/:id/edit', async ({body, params, user}, res) => {
-  if (!user) res.redirect('/auth/login') 
+  // if (!user) res.redirect('/auth/login') 
   res.set('Content-Type', 'text/html');
   const campaign = await Campaign.query().where({id: params.id}).first();
   if (!campaign) res.sendStatus(404);
@@ -21,7 +21,7 @@ app.get('/campaigns/:id/edit', async ({body, params, user}, res) => {
 })
 
 app.post('/campaigns/:id', async ({body, params, user}, res) => {
-  if (!user) res.redirect('/auth/login')
+  //  if (!user) res.redirect('/auth/login')
 
   var campaign = await Campaign.query().where({id: params.id}).first();
   if (!campaign) res.sendStatus(404);
