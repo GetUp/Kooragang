@@ -17,17 +17,22 @@
   },
   "dependencies": {
     "body-parser": "^1.17.1",
+    "connect-redis": "^3.3.0",
     "dotenv": "^4.0.0",
     "ejs": "^2.5.6",
     "es6-promisify": "^5.0.0",
     "express": "^4.15.2",
     "express-ejs-layouts": "^2.3.0",
+    "express-session": "^1.15.3",
     "knex": "^0.12.9",
     "lodash": "^4.17.4",
     "moment": "^2.18.1",
     "objection": "^0.7.12",
+    "passport": "^0.3.2",
+    "passport-google-oauth2": "^0.1.6",
     "pg": "^6.1.5",
-    "plivo": "GetUp/plivo-node#node-style-callbacks"
+    "plivo": "GetUp/plivo-node#node-style-callbacks",
+    "redis": "^2.7.1"
   },
   "devDependencies": {
     "expect.js": "^0.3.1",

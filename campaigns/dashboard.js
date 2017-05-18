@@ -12,14 +12,17 @@ app.get('/dashboard', async ({body, params}, res) => {
   return res.render('dashboard.ejs', {campaigns})
 });
 
-app.get('/campaigns/:id/edit', async ({body, params}, res) => {
+app.get('/campaigns/:id/edit', async ({body, params, user}, res) => {
+  if (!user) res.redirect('/auth/login') 
   res.set('Content-Type', 'text/html');
   const campaign = await Campaign.query().where({id: params.id}).first();
   if (!campaign) res.sendStatus(404);
   return res.render('edit.ejs', {campaign})
 })
 
-app.post('/campaigns/:id', async ({body, params}, res) => {
+app.post('/campaigns/:id', async ({body, params, user}, res) => {
+  if (!user) res.redirect('/auth/login')
+
   var campaign = await Campaign.query().where({id: params.id}).first();
   if (!campaign) res.sendStatus(404);
   campaign_params = _.pick(body, ['name', 'status', 'script_url', 'phone_number', 'daily_start_operation', 'daily_stop_operation','detect_answering_machine','max_ratio', 'ratio_window', 'ratio_increment', 'max_call_attempts', 'no_call_window', 'exhaust_callees_before_recycling']);
