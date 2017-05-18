@@ -49,6 +49,14 @@
   </div>
 
   <div class="form-block">
+    <label for="custom_dialogue">Custom dialogue overrides for the campaign (as JSON)</label>
+    <div>Possible keys are (in order): welcome, introduction, get_started, call_back, how_it_works, call_queue, back_in_call_queue, waiting_to_connect, left_call_queue, call_ended, continue_calling</div>
+    <textarea id="custom_dialogue" type="text" name="custom_dialogue" class="form-control"><%= JSON.stringify(campaign.custom_dialogue) %></textarea>
+      
+    </input>
+  </div>
+
+  <div class="form-block">
     <label for="daily_start_operation">No calls before this time (HH:MM)</label>
     <input id="daily_start_operation" type="text" name="daily_start_operation" value="<%= campaign.daily_start_operation %>" class="form-control">
       

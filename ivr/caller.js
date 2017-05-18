@@ -5,6 +5,7 @@ const _ = require('lodash');
 const api = require('../api');
 const dialer = require('../dialer');
 const config = require('../load/config')(process.env.ORG_NAME)
+const validUrl = require('valid-url')
 
 const {
   sleep,
@@ -137,31 +138,44 @@ app.post('/briefing', async ({body, query}, res) => {
     if (query.callback === '1') {
       briefing.addSpeakAU(`Hi! Welcome back.`);
     } else {
-      briefing.addSpeakAU(config.text.ivr.welcome + ` Today you will be making calls for the ${campaign.name} campaign.`);
-      briefing.addWait({length: 1});
-      briefing.addSpeakAU('If you cannot afford long phone calls and would like to be called back instead, please press the 2 key');
+      if (campaign.custom_dialogue.welcome){
+        briefing.addSpeakAU(campaign.custom_dialogue.welcome)
+      } else {
+        briefing.addSpeakAU(config.text.ivr.welcome + ` Today you will be making calls for the ${campaign.name} campaign.`);
+        briefing.addWait({length: 1});
+        briefing.addSpeakAU('If you cannot afford long phone calls and would like to be called back instead, please press the 2 key');
+      }
     }
   }
-  briefing.addWait({length: 1});
-  briefing.addSpeakAU('You should have a copy of the script and the disposition codes in front of you.');
-  briefing.addWait({length: 1});
-  briefing.addSpeakAU('If not, please press the 3 key');
-  briefing.addWait({length: 1});
 
-  if (query.entry_key != "4") {
-    briefing.addSpeakAU('For info on the dialing tool you are using, please press the 4 key');
+  if (campaign.custom_dialogue.introduction){
+    briefing.addSpeakAU(campaign.custom_dialogue.introduction)
+  } else {
     briefing.addWait({length: 1});
+    briefing.addSpeakAU('You should have a copy of the script and the disposition codes in front of you.');
+    briefing.addWait({length: 1});
+    briefing.addSpeakAU('If not, please press the 3 key');
+    briefing.addWait({length: 1});
+
+    if (query.entry_key != "4") {
+      briefing.addSpeakAU('For info on the dialing tool you are using, please press the 4 key');
+      briefing.addWait({length: 1});
+    }
   }
 
   for (key in campaign.more_info) {
     if (query.entry_key != key) {
       let info_item = campaign.more_info[key];
-      briefing.addSpeakAU('For info on '+ info_item.title +' please press the '+ key + 'key');
+      if (validUrl.isUri(info_item.title)){
+        briefing.addSpeakAU(info_item.title);
+      } else {
+        briefing.addSpeakAU('For info on '+ info_item.title +' please press the '+ key + 'key');
+      }
       briefing.addWait({length: 1});
     }
   }
 
-  briefing.addSpeakAU('Otherwise, press 1 to get started!');
+  briefing.addSpeakAU(campaign.custom_dialogue.get_started || 'Otherwise, press 1 to get started!');
   briefing.addWait({length: 8});
   briefing.addSpeakAU('This message will automatically replay until you select a number on your phone\'s key pad.');
   res.send(r.toXML());
@@ -209,12 +223,12 @@ app.post('/ready', async ({body, query}, res) => {
 
   if (body.Digits === '2') {
     await Caller.query().where({id: caller_id}).patch({callback: true});
-    r.addSpeakAU('We will call you back immediately. Please hang up now!');
+    r.addSpeakAU(campaign.custom_dialogue.call_back || 'We will call you back immediately. Please hang up now!');
     return res.send(r.toXML());
   }
 
   if (body.Digits === '4') {
-    r.addSpeakAU(config.text.ivr.welcome + " This system works by dialing a number of people and patching them through to you when they pick up. Until they pick up, you'll hear music playing. When the music stops, that's your queue to start talking. Then you can attempt to have a conversation with them. At the end of the conversation, you'll be prompted to enter numbers into your phone to indicate the outcome of the call. It's important to remember that you never have to hang up your phone to end a call. If you need to end a call, just press star.");
+    r.addSpeakAU(campaign.custom_dialogue.how_it_works || (config.text.ivr.welcome + " This system works by dialing a number of people and patching them through to you when they pick up. Until they pick up, you'll hear music playing. When the music stops, that's your queue to start talking. Then you can attempt to have a conversation with them. At the end of the conversation, you'll be prompted to enter numbers into your phone to indicate the outcome of the call. It's important to remember that you never have to hang up your phone to end a call. If you need to end a call, just press star."));
     r.addRedirect(res.locals.appUrl(`briefing?campaign_id=${campaign.id}&entry=more_info&entry_key=4&authenticated=${query.authenticated}`));
     return res.send(r.toXML());
   }
@@ -226,16 +240,20 @@ app.post('/ready', async ({body, query}, res) => {
   }
 
   if (query.start || body.Digits === '1') {
-    r.addSpeakAU('You are now in the call queue.')
+    r.addSpeakAU(campaign.custom_dialogue.call_queue || 'You are now in the call queue.')
   } else {
-    r.addSpeakAU('You have been placed back in the call queue.')
+    r.addSpeakAU(campaign.custom_dialogue.back_in_call_queue || 'You have been placed back in the call queue.')
   }
 
   let callbackUrl = `conference_event/caller?caller_id=${caller_id}&campaign_id=${query.campaign_id}`;
   if (query.start) {
-    r.addSpeakAU('We will connect you to a call shortly.')
-    r.addWait({length: 1});
-    r.addSpeakAU('Remember, don\'t hangup *your* phone. Press star to end a call. Or wait for the other person to hang up.');
+    if (campaign.custom_dialogue.waiting_to_connect){
+      r.addSpeakAU(campaign.custom_dialogue.waiting_to_connect)
+    } else {
+      r.addSpeakAU('We will connect you to a call shortly.')
+      r.addWait({length: 1});
+      r.addSpeakAU('Remember, don\'t hangup *your* phone. Press star to end a call. Or wait for the other person to hang up.');
+    }
     callbackUrl += '&start=1';
   }
 
@@ -302,7 +320,7 @@ app.post('/survey', async ({query, body}, res) => {
     call = await Call.query().where({conference_uuid: (body.ConferenceUUID || null)}).first();
   }
   if (!call) {
-    r.addSpeakAU('You have left the call queue.')
+    r.addSpeakAU(campaign.custom_dialogue.left_call_queue || 'You have left the call queue.')
     await Event.query().insert({campaign_id: query.campaign_id, name: 'left queue without call', value: body, caller_id})
     r.addRedirect(res.locals.appUrl(`call_again?caller_id=${caller_id}&campaign_id=${query.campaign_id}`));
     return res.send(r.toXML());
@@ -321,7 +339,7 @@ app.post('/survey', async ({query, body}, res) => {
     validDigits: Object.keys(questionData.answers),
   });
   if (question === 'disposition') {
-    surveyResponse.addSpeakAU('The call has ended.');
+    surveyResponse.addSpeakAU(campaign.custom_dialogue.call_ended || 'The call has ended.');
   }
   surveyResponse.addSpeakAU(`${questionData.name}`);
   res.send(r.toXML());
@@ -385,7 +403,7 @@ app.post('/call_again', async ({query, body}, res) => {
     numDigits: 1,
     validDigits: ['1', '0']
   });
-  callAgain.addSpeakAU('Press 1 to continue calling. To finish your calling session, press the zero key.');
+  callAgain.addSpeakAU(campaign.custom_dialogue.continue_calling || 'Press 1 to continue calling. To finish your calling session, press the zero key.');
   r.addRedirect(res.locals.appUrl('disconnect'));
   res.send(r.toXML());
 });

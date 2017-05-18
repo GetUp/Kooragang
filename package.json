@@ -33,7 +33,8 @@
     "passport-google-oauth20": "^1.0.0",
     "pg": "^6.1.5",
     "plivo": "GetUp/plivo-node#node-style-callbacks",
-    "redis": "^2.7.1"
+    "redis": "^2.7.1",
+    "valid-url": "^1.0.9"
   },
   "devDependencies": {
     "expect.js": "^0.3.1",
