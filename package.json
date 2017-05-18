@@ -30,6 +30,7 @@
     "objection": "^0.7.12",
     "passport": "^0.3.2",
     "passport-google-oauth2": "^0.1.6",
+    "passport-google-oauth20": "^1.0.0",
     "pg": "^6.1.5",
     "plivo": "GetUp/plivo-node#node-style-callbacks",
     "redis": "^2.7.1"
