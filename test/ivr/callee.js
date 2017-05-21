@@ -17,6 +17,7 @@ const {
   Caller,
   Campaign,
   Event,
+  Redirect,
   SurveyResult
 } = require('../../models');
 
@@ -57,6 +58,7 @@ const unassociatedCallee = {
 };
 
 beforeEach(async () => {
+  await Redirect.query().delete();
   await Event.query().delete();
   await Call.query().delete();
   await Callee.query().delete();
