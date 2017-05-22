@@ -11,5 +11,7 @@ const {
 } = require('../models');
 
 module.exports.dropFixtures = async() => {
-  return Promise.all([Event, SurveyResult, Call, Caller, User, Team, Redirect, Callee, Campaign].map(model => model.query().delete()))
+  for (const model of [Event, SurveyResult, Call, Caller, User, Team, Redirect, Callee, Campaign]){
+    await model.query().delete();
+  }
 }
