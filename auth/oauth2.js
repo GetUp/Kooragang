@@ -38,7 +38,7 @@ router.get('/auth/login', (req, res, next) => {
     }
     next();
   },
-  passport.authenticate('google', { scope: ['email', 'profile'] })
+  passport.authenticate('google', { scope: ['email', 'profile'], prompt: 'select_account' })
 );
 
 router.get('/auth/google/callback',
@@ -48,7 +48,7 @@ router.get('/auth/google/callback',
     delete req.session.oauth2return;
 
     const email = req.session.passport.user.email;
-    if (email.split('@') != process.env.PERMITTED_EMAIL_DOMAIN && process.env.PERMITTED_EMAILS.split(',').indexOf(email) < 0) {
+    if (email.split('@')[1] != process.env.PERMITTED_EMAIL_DOMAIN && process.env.PERMITTED_EMAILS.split(',').indexOf(email) < 0) {
       req.logout()
       redirect = '/auth/fail'
     }
@@ -63,7 +63,7 @@ router.get('/auth/logout', (req, res) => {
 
 router.get('/auth/fail', (req, res) => {
     res.setHeader('Content-Type', 'application/json');
-    res.send(JSON.stringify({ status: "Login failed" }));
+    res.send(JSON.stringify({ status: "Login failed because your google account is not authorised. Perhaps try logging in to a different google account." }));
 });
 
 // Middleware that requires the user to be logged in. If the user is not logged
