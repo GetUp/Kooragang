@@ -45,7 +45,6 @@ router.get('/auth/google/callback',
   passport.authenticate('google'),
   (req, res) => {
     const redirect = req.session.oauth2return || '/';
-
     delete req.session.oauth2return;
 
     const email = req.session.passport.user.email;
@@ -62,11 +61,10 @@ router.get('/auth/logout', (req, res) => {
   res.redirect('/dashboard')
 })
 
-router.get('/auth/fail',
-    (req, res) => {
-      res.send("Sorry you're not allowed to access that page")
-    }
-  );
+router.get('/auth/fail', (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.send(JSON.stringify({ status: "Login failed" }));
+});
 
 // Middleware that requires the user to be logged in. If the user is not logged
 // in, it will redirect the user to authorize the application and then return
