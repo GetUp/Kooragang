@@ -35,11 +35,14 @@ const malformedQuestion = {
   }
 };
 const more_info = require('../../seeds/more_info.example.json');
+const custom_dialogue = require('../../seeds/more_info.example.json');
+
 const defaultCampaign = {
   id: 1,
   name: 'test',
   questions: questions,
   more_info: more_info,
+  custom_dialogue: custom_dialogue,
   phone_number: '1111',
   sms_number: '22222222'
 }
@@ -48,6 +51,7 @@ const malformedCampaign = {
   name: 'test',
   questions: malformedQuestion,
   more_info: more_info,
+  custom_dialogue: custom_dialogue,
   phone_number: '1111',
   sms_number: '22222222'
 }
