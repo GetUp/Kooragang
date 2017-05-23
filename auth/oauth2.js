@@ -44,13 +44,13 @@ router.get('/auth/login', (req, res, next) => {
 router.get('/auth/google/callback',
   passport.authenticate('google'),
   (req, res) => {
-    const redirect = req.session.oauth2return || '/';
+    var redirect = req.session.oauth2return || '/';
     delete req.session.oauth2return;
 
     const email = req.session.passport.user.email;
     if (email.split('@') != process.env.PERMITTED_EMAIL_DOMAIN && process.env.PERMITTED_EMAILS.split(',').indexOf(email) < 0) {
       req.logout()
-      res.redirect('/auth/fail')
+      redirect = '/auth/fail'
     }
     res.redirect(redirect);
   }
