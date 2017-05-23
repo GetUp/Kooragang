@@ -22,7 +22,6 @@ passport.use(new GoogleStrategy({
     callbackURL: process.env.OAUTH2_CALLBACK,
     accessType: 'offline'
   }, (accessToken, refreshToken, profile, cb) => {
-    console.log(profile);
     cb(null, extractProfile(profile));
 }));
 
@@ -34,26 +33,25 @@ passport.deserializeUser((obj, cb) => {
 });
 
 router.get('/auth/login', (req, res, next) => {
-  console.log(req.session)
     if (req.query.return) {
       req.session.oauth2return = req.query.return;
     }
     next();
   },
-  passport.authenticate('google', { scope: ['email', 'profile'] })
+  passport.authenticate('google', { scope: ['email', 'profile'], prompt: 'select_account' })
 );
 
 router.get('/auth/google/callback',
   passport.authenticate('google'),
   (req, res) => {
-    const redirect = req.session.oauth2return || '/';
+    var redirect = req.session.oauth2return || '/';
     delete req.session.oauth2return;
+
     const email = req.session.passport.user.email;
-    if (email.split('@') != process.env.PERMITTED_EMAIL_DOMAIN && process.env.PERMITTED_EMAILS.split(',').indexOf(email) < 0) {
+    if (email.split('@')[1] != process.env.PERMITTED_EMAIL_DOMAIN && process.env.PERMITTED_EMAILS.split(',').indexOf(email) < 0) {
       req.logout()
-      res.redirect('/auth/fail')
+      redirect = '/auth/fail'
     }
-    console.log("Session", req.session)
     res.redirect(redirect);
   }
 );
@@ -63,11 +61,10 @@ router.get('/auth/logout', (req, res) => {
   res.redirect('/dashboard')
 })
 
-router.get('/auth/fail',
-    (req, res) => {
-      res.send("Sorry you're not allowed to access that page")
-    }
-  );
+router.get('/auth/fail', (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.send(JSON.stringify({ status: "Login failed because your google account is not authorised. Perhaps try logging in to a different google account." }));
+});
 
 // Middleware that requires the user to be logged in. If the user is not logged
 // in, it will redirect the user to authorize the application and then return

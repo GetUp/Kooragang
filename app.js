@@ -17,13 +17,13 @@ if (process.env.NODE_ENV === 'development' || !process.env.IVR || process.env.AD
   const redis   = require("redis");
   const session = require('express-session');
   const redisStore = require('connect-redis')(session);
-  const redisClient  = redis.createClient();
+  const redisClient  = redis.createClient(process.env.REDIS_URL || 'redis://localhost:6379');
   const passport = require('passport');
 
   app.use(session({
     secret: process.env.SESSION_SECRET,
     // create new redis store.
-    store: new redisStore({ host: process.env.REDIS_HOST || 'localhost', port: process.env.REDIS_PORT || 6379, client: redisClient, ttl :  260}),
+    store: new redisStore({client: redisClient, ttl :  260}),
     saveUninitialized: false,
     resave: false,
     signed: true
