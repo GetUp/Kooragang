@@ -71,7 +71,7 @@ class Campaign extends Model {
       .whereNull('last_called_at').first();
     return parseInt(count, 10) === 0;
   }
-  
+
   valid() {
     const errors = []
     const questionsNotReferenced = _.omit(this.questions, 'disposition')
@@ -210,6 +210,10 @@ class User extends Model {
   }
 }
 
+class Redirect extends Model {
+  static get tableName() { return 'redirects' }
+}
+
 module.exports = {
   Call,
   Callee,
@@ -220,6 +224,7 @@ module.exports = {
   Event,
   Team,
   User,
+  Redirect,
   transaction,
   knex
 };

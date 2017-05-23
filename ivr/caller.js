@@ -216,18 +216,24 @@ app.post('/ready', async ({body, query}, res) => {
     return res.send(r.toXML());
   }
 
-  if (body.Digits === '0') {
+  if (body.Digits === '8' && query.call_id) {
+    await Event.query().insert({name: 'undo', campaign_id: campaign.id, caller_id, call_id: query.call_id, value: {log_id: query.log_id}})
+    await SurveyResult.query().where({call_id: query.call_id}).delete();
+    r.addRedirect(res.locals.appUrl(`survey?q=disposition&caller_id=${caller_id}&campaign_id=${campaign.id}&undo=1&call_id=${query.call_id}`))
+    return res.send(r.toXML());
+  } else if (body.Digits === '9' && query.call_id) {
+    await Event.query().insert({name: 'technical_issue_reported', campaign_id: campaign.id, caller_id, call_id: query.call_id, value: {query: query, body: body}})
+    r.addSpeakAU('The technical issue has been reported. The team will investigate. Thank you!')
+    r.addRedirect(res.locals.appUrl(`call_again?caller_id=${caller_id}&campaign_id=${query.campaign_id}&tech_issue_reported=1&call_id=${query.call_id}`));
+    return res.send(r.toXML());
+  } else if (body.Digits === '0') {
     r.addRedirect(res.locals.appUrl('disconnect'));
     return res.send(r.toXML());
-  }
-
-  if (body.Digits === '2') {
+  } else if (body.Digits === '2') {
     await Caller.query().where({id: caller_id}).patch({callback: true});
     r.addSpeakAU(campaign.custom_dialogue.call_back || 'We will call you back immediately. Please hang up now!');
     return res.send(r.toXML());
-  }
-
-  if (body.Digits === '4') {
+  } else if (body.Digits === '4') {
     r.addSpeakAU(campaign.custom_dialogue.how_it_works || (config.text.ivr.welcome + " This system works by dialing a number of people and patching them through to you when they pick up. Until they pick up, you'll hear music playing. When the music stops, that's your queue to start talking. Then you can attempt to have a conversation with them. At the end of the conversation, you'll be prompted to enter numbers into your phone to indicate the outcome of the call. It's important to remember that you never have to hang up your phone to end a call. If you need to end a call, just press star."));
     r.addRedirect(res.locals.appUrl(`briefing?campaign_id=${campaign.id}&entry=more_info&entry_key=4&authenticated=${query.authenticated}`));
     return res.send(r.toXML());
@@ -338,9 +344,11 @@ app.post('/survey', async ({query, body}, res) => {
     timeout: 10,
     validDigits: Object.keys(questionData.answers),
   });
-  if (question === 'disposition') {
+
+  if (question === 'disposition' && !query.undo) {
     surveyResponse.addSpeakAU(campaign.custom_dialogue.call_ended || 'The call has ended.');
   }
+
   surveyResponse.addSpeakAU(`${questionData.name}`);
   res.send(r.toXML());
 });
@@ -377,7 +385,7 @@ app.post('/survey_result', async ({query, body}, res) => {
   if (next) {
     r.addRedirect(res.locals.appUrl(`survey?q=${next}&call_id=${query.call_id}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`));
   } else {
-    r.addRedirect(res.locals.appUrl(`call_again?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`));
+    r.addRedirect(res.locals.appUrl(`call_again?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&call_id=${query.call_id}`));
   }
   res.send(r.toXML());
 });
@@ -396,14 +404,29 @@ app.post('/call_again', async ({query, body}, res) => {
       return res.send(r.toXML());
     }
   }
+  const validDigits = ['1', '0'];
+
   const callAgain = r.addGetDigits({
-    action: res.locals.appUrl(`ready?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`),
+    action: res.locals.appUrl(`ready?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&call_id=${query.call_id}`),
     timeout: 10,
     retries: 10,
     numDigits: 1,
-    validDigits: ['1', '0']
+    validDigits
   });
-  callAgain.addSpeakAU(campaign.custom_dialogue.continue_calling || 'Press 1 to continue calling. To finish your calling session, press the zero key.');
+
+  let message = 'Press 1 to continue calling, or 0 to end your session. ';
+  if (query.call_id) {
+    validDigits.push('8')
+    message += 'Press 8 to correct your entry, ';
+  }
+  if (!query.tech_issue_reported) {
+    validDigits.push('9')
+    message += 'or 9 to report a technical issue.';
+  }
+
+  callAgain.addSpeakAU(campaign.custom_dialogue.continue_calling || message);
+
+
   r.addRedirect(res.locals.appUrl('disconnect'));
   res.send(r.toXML());
 });

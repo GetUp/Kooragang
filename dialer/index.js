@@ -49,7 +49,7 @@ module.exports.dial = async (appUrl, campaign) => {
 
 const recalculateRatio = async(campaign) => {
   const recalculationScheduledFor = moment().subtract(campaign.recalculate_ratio_window, 'seconds');
-  let newRatio;
+  let newRatio, drops = 0, calculatedRatio = 0;
   const dropRatio = campaign.acceptable_drop_rate;
   if (campaign.last_checked_ratio_at && recalculationScheduledFor < campaign.last_checked_ratio_at) return campaign;
   const statusCounts = await Call.knexQuery().select('dropped')
@@ -68,8 +68,9 @@ const recalculateRatio = async(campaign) => {
       if (!callsInWindow.length) return campaign;
     }
     const dropRow = _.find(statusCounts, ({dropped}) => dropped);
-    const drops = dropRow ? parseInt(dropRow.count, 10) : 0;
-    if (drops / total > dropRatio) {
+    if (dropRow) drops = parseInt(dropRow.count, 10);
+    calculatedRatio = drops / total;
+    if (calculatedRatio > dropRatio) {
       newRatio = campaign.ratio - campaign.ratio_increment * campaign.ratio_decrease_factor;
     }else {
       newRatio = campaign.ratio + campaign.ratio_increment;
@@ -81,7 +82,7 @@ const recalculateRatio = async(campaign) => {
   } else {
     return campaign;
   }
-  await Event.query().insert({campaign_id: campaign.id, name: 'ratio', value: {ratio: newRatio.toPrecision(2), old_ratio: campaign.ratio}});
+  await Event.query().insert({campaign_id: campaign.id, name: 'ratio', value: {ratio: newRatio.toPrecision(2), old_ratio: campaign.ratio, ratio_window: campaign.ratio_window, total, drops, calculatedRatio}});
   return Campaign.query().patchAndFetchById(campaign.id, {ratio: newRatio, last_checked_ratio_at: new Date()});
 }
 

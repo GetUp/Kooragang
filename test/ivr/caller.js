@@ -17,6 +17,7 @@ const {
   Caller,
   Campaign,
   Event,
+  Redirect,
   SurveyResult,
   Team,
   User
@@ -82,6 +83,7 @@ const unassociatedCallee = {
 };
 
 beforeEach(async () => {
+  await Redirect.query().delete();
   await Event.query().delete();
   await Call.query().delete();
   await Callee.query().delete();
@@ -125,6 +127,17 @@ describe('/connect', () => {
   context('with a private number', () => {
     beforeEach(async () => { await Callee.query().insert(associatedCallee) });
     const payload = { From: 'anonymous' };
+    it('directs them to enable caller id', () => {
+      return request.post(`/connect?campaign_id=${campaign.id}`)
+        .type('form')
+        .send(payload)
+        .expect(/caller ID/);
+    });
+  });
+
+  context('with a private number', () => {
+    beforeEach(async () => { await Callee.query().insert(associatedCallee) });
+    const payload = { From: 'undefined' };
     it('directs them to enable caller id', () => {
       return request.post(`/connect?campaign_id=${campaign.id}`)
         .type('form')
@@ -396,6 +409,58 @@ describe('/ready', () => {
     });
   });
 
+  context('with 9 pressed', () => {
+    let call, url, caller;
+    beforeEach(async () => {
+      call = await Call.query().insert({status: 'answered'});
+      url = `/ready?caller_id=4&campaign_id=${campaign.id}&call_id=${call.id}`
+    });
+    it('announce tech issue it noted', async () => {
+      await request.post(url)
+        .type('form').send({Digits: '9'})
+        .expect(/The technical issue has been reported/);
+    });
+    it('should redirect to call again', async () => {
+      await request.post(url)
+        .type('form').send({Digits: '9'})
+        .expect(/call_again/)
+        .expect(/tech_issue_reported=1/);
+    });
+    it('should log an event', async () => {
+      await request.post(url)
+        .type('form').send({Digits: '9'})
+        .expect(200);
+      expect(await Event.query().where({name: 'technical_issue_reported', call_id: call.id, campaign_id: campaign.id, caller_id: 4}).first()).to.be.a(Event);
+    });
+  });
+
+  context('with 8 pressed', () => {
+    let call, url, caller;
+    beforeEach(async () => {
+      call = await Call.query().insert({status: 'answered'});
+      await SurveyResult.query().delete();
+      await SurveyResult.query().insert({call_id: call.id, question: 'disposition', answer: 'answering machine'})
+      url = `/ready?caller_id=4&campaign_id=${campaign.id}&call_id=${call.id}`
+    });
+    it('should delete the survey results', async () => {
+      await request.post(url)
+        .type('form').send({Digits: '8'})
+        .expect(200);
+      expect((await SurveyResult.query()).length).to.be(0);
+    });
+    it('should redirect to survey results with disposition question', async () => {
+      await request.post(url)
+        .type('form').send({Digits: '8'})
+        .expect(new RegExp(`survey.*q=disposition.*caller_id=4.*campaign_id=${campaign.id}.*undo=1.*call_id=${call.id}`));
+    });
+    it('should log an event', async () => {
+      await request.post(url)
+        .type('form').send({Digits: '8'})
+        .expect(200);
+      expect(await Event.query().where({name: 'undo', call_id: call.id, campaign_id: campaign.id, caller_id: 4}).first()).to.be.a(Event);
+    });
+  });
+
   context('with 4 pressed', () => {
     it('should give the caller information on the dialing tool', async () => {
       return request.post(`/ready?caller_number=${caller.phone_number}&start=1&campaign_id=${campaign.id}`)
@@ -574,6 +639,15 @@ describe('/survey', () => {
     });
   });
 
+  context('after undoing a question', () => {
+    beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign));
+    it ('should return not mention that the call has ended', () => {
+      const question = 'action';
+      return request.post(`/survey?q=disposition&call_id=${call.id}&campaign_id=${campaign.id}&undo=1`)
+        .expect(/7,8"><Speak language="en-GB" voice="MAN">What was the Overall/)
+    });
+  });
+
   context('with invalid xml characters', () => {
     beforeEach(async () => campaign = await Campaign.query().insert(malformedCampaign));
     it('should be spripped out to valid xml', async () => {
@@ -734,6 +808,18 @@ describe('/call_again', () => {
       return request.post(`/call_again?campaign_id=${campaign.id}`)
         .type('form').send()
         .expect(/has been completed/);
+    });
+  });
+
+  context('with a call_id passed', async () => {
+    beforeEach(async () => { await Campaign.query().delete() });
+    beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign));
+     it ('should let the user press 8 to correct', () => {
+      return request.post(`/call_again?campaign_id=${campaign.id}&call_id=1`)
+        .type('form').send()
+        .expect(/8/)
+        .expect(/call_id=1/)
+        .expect(/Press 8 to correct your entry/i);
     });
   });
 });

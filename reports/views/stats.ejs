@@ -1,22 +1,24 @@
 <div class="jumbotron">
   <h1><%=campaign.name%> Campaign</h1>
 </div>
-  <div class="row">
-    <div id="script" class="col-md-12">
-      <h2>Validation errors: <strong><%=report.validationErrors || 'none'%></strong></h2>
-      <h2>Timestamp: <strong><%=report.timestamp%></strong></h2>
-      <h2>Campaign status: <strong><%=campaign.status%></strong></h2>
-      <h2>Callers available: <strong><%=report.available%></strong></h2>
-      <h2>Callers in-call: <strong><%=report['in-call']%></strong></h2>
-      <h2>Callers completed (last hour): <strong><%=report.completed%></strong></h2>
-      <h2>Approximate rate (last 10 minutes): <strong><%=report.rate%> calls per agent hour</strong></h2>
-      <h2>Average wait time (last 10 minutes): <strong><%=report.wait%></strong>s</h2>
-      <h2>Total calls (last 10 minutes): <strong><%=report.total%></strong></h2>
-      <h2>Drops (last 10 minutes): <strong><%=report.drops%></strong></h2>
-      <h2>Drops rate (last 10 minutes): <strong><%=report.dropRate%>%</strong> with target drop rate of <strong><%=campaign.acceptable_drop_rate * 100%>%</strong></h2>
-      <h2>Predictive ratio: <strong><%=campaign.ratio%></strong> (with max <%=campaign.max_ratio%>)</h2>
-    </div>
+
+<div class="row">
+  <div id="script" class="col-md-12">
+    <h2>Validation errors: <strong><%=report.validationErrors || 'none'%></strong></h2>
+    <h2>Timestamp: <strong><%=report.timestamp%></strong></h2>
+    <h2>Campaign status: <strong><%=campaign.status%></strong></h2>
+    <h2>Callers available: <strong><%=report.available%></strong></h2>
+    <h2>Callers in-call: <strong><%=report['in-call']%></strong></h2>
+    <h2>Callers completed (last hour): <strong><%=report.completed%></strong></h2>
+    <h2>Approximate rate (last 10 minutes): <strong><%=report.rate%> calls per agent hour</strong></h2>
+    <h2>Average wait time (last 10 minutes): <strong><%=report.wait%></strong>s</h2>
+    <h2>Total calls (last 10 minutes): <strong><%=report.total%></strong></h2>
+    <h2>Drops (last 10 minutes): <strong><%=report.drops%></strong></h2>
+    <h2>Drops rate (last 10 minutes): <strong><%=report.dropRate%>%</strong> with target drop rate of <strong><%=campaign.acceptable_drop_rate * 100%>%</strong></h2>
+    <h2>Predictive ratio: <strong><%=campaign.ratio%></strong> (with max <%=campaign.max_ratio%>)</h2>
+    <h2>Tech issue reports (24hrs): <strong><%=report.techIssueCount%></strong></h2>
   </div>
+</div>
 
 <% if(graph){ %>
   <div>
@@ -32,15 +34,75 @@
 <% if(graph){ %>
 <script>
 new Chart($("#visualisation"), {
-type: 'bar',
-data: {
-datasets: [
-  {
-    label: "Calls in Progress",
-    type: 'line',
-    data: <%- JSON.stringify(report.calls_in_progress) %>,
-    fill: false,
-    spanGaps: false
+  type: 'bar',
+  data: {
+    datasets: [
+      {
+        label: "Calls in Progress",
+        type: 'line',
+        data: <%- JSON.stringify(report.calls_in_progress) %>,
+        fill: false,
+        spanGaps: false
+      },
+      {
+        label: "Ratio",
+        type: 'line',
+        data: <%- JSON.stringify(report.ratioData) %>,
+        fill: false,
+        pointBorderColor: "rgba(63, 191, 191, 1)"
+      },
+      {
+        label: "Callers",
+        type: 'line',
+        data: <%- JSON.stringify(report.callersData) %>,
+        fill: false,
+        pointBorderColor: "rgba(63, 63, 191, 1)"
+      },
+      {
+        label: "Calls per second",
+        type: 'line',
+        data: <%- JSON.stringify(report.callsData) %>,
+        fill: false,
+        borderColor: "rgba(238, 238, 16, 0.8)"
+      },
+      {
+        label: "Drop ratio",
+        type: 'line',
+        data: <%- JSON.stringify(report.dropRatioData) %>,
+        fill: false,
+        borderColor: "rgba(74, 237, 76, 0.8)"
+      },
+      {
+        label: "Completion",
+        type: 'line',
+        data: <%- JSON.stringify(report.completedData) %>,
+        fill: false,
+        pointStyle: 'star',
+        pointRadius: 5,
+          showLine: false,
+          pointBorderColor: "rgba(238, 16, 238,1)"
+      },
+      {
+        label: "Issue",
+        type: 'line',
+        data: <%- JSON.stringify(report.techIssueData) %>,
+        fill: false,
+        pointStyle: 'star',
+        pointRadius: 10,
+          showLine: false,
+          pointBorderColor: "rgba(116, 238, 238,1)"
+      },
+      {
+        label: "Drops",
+        type: 'line',
+        data: <%- JSON.stringify(report.dropData) %>,
+        fill: false,
+        pointStyle: 'cross',
+        pointRadius: 5,
+          showLine: false,
+          pointBorderColor: "rgba(255,0,0,1)"
+      }
+    ]
   },
   {
     label: "Ratio",
