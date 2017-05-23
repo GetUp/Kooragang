@@ -3,7 +3,7 @@
     Editing '<%= campaign.name %>'
   </h1>
 </div>
-<form action="/campaigns/2" method="POST">
+<form action="/campaigns/<%= campaign.id %>" method="POST">
 
   <div class="form-block">
     <label for="name">Campaign name</label>
