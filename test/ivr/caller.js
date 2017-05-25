@@ -821,7 +821,7 @@ describe('/call_again', () => {
      it ('should let the user press 8 to correct', () => {
       return request.post(`/call_again?campaign_id=${campaign.id}&call_id=1`)
         .type('form').send()
-        .expect(/8/)
+        .expect(/validDigits="1,0,8,9"/)
         .expect(/call_id=1/)
         .expect(/Press 8 to correct your entry/i);
     });
