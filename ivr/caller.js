@@ -406,14 +406,6 @@ app.post('/call_again', async ({query, body}, res) => {
   }
   const validDigits = ['1', '0'];
 
-  const callAgain = r.addGetDigits({
-    action: res.locals.appUrl(`ready?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&call_id=${query.call_id}`),
-    timeout: 10,
-    retries: 10,
-    numDigits: 1,
-    validDigits
-  });
-
   let message = 'Press 1 to continue calling, or 0 to end your session. ';
   if (query.call_id) {
     validDigits.push('8')
@@ -423,6 +415,14 @@ app.post('/call_again', async ({query, body}, res) => {
     validDigits.push('9')
     message += 'or 9 to report a technical issue.';
   }
+
+  const callAgain = r.addGetDigits({
+    action: res.locals.appUrl(`ready?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&call_id=${query.call_id}`),
+    timeout: 10,
+    retries: 10,
+    numDigits: 1,
+    validDigits
+  });
 
   callAgain.addSpeakAU(campaign.custom_dialogue.continue_calling || message);
 
