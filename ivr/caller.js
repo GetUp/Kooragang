@@ -163,7 +163,7 @@ app.post('/briefing', async ({body, query}, res) => {
     }
   }
 
-  for (key in campaign.more_info) {
+  for (let key in campaign.more_info) {
     if (query.entry_key != key) {
       let info_item = campaign.more_info[key];
       if (validUrl.isUri(info_item.title)){
@@ -183,7 +183,6 @@ app.post('/briefing', async ({body, query}, res) => {
 
 app.post('/ready', async ({body, query}, res) => {
   const r = plivo.Response();
-  const authenticated = query.authenticated ? query.authenticated === "1" : false;
   const campaign = await Campaign.query().where({id: query.campaign_id}).first();
   let caller_id;
   if (query.start) {
@@ -194,7 +193,7 @@ app.post('/ready', async ({body, query}, res) => {
       r.addSpeakAU('Sending an sms with instructions to your number. Thank you and speak soon!')
       return res.send(r.toXML());
     }
-    caller_params = {
+    const caller_params = {
       phone_number: query.caller_number,
       call_uuid: body.CallUUID,
       campaign_id: query.campaign_id
