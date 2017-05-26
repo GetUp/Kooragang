@@ -15,6 +15,8 @@ if [[ ! $REPLY =~ ^[Yy]$ ]]; then [[ "$0" = "$BASH_SOURCE" ]] && exit 1 || retur
 
 create=$(csvsql -i postgresql "$path" 2>/dev/null | tr '[:upper:]' '[:lower:]' | sed -E 's/table /table sources./' | awk '!(NR%2){gsub(FS,"_")}1' RS=\" ORS= | sed -E 's/varchar\([[:digit:]]+\)|decimal/text/g')
 
+[ -z "$create" ] && echo "CREATE statement empty. Is the csv UTF-8 & well-formed?" && exit 1
+
 psql -c "CREATE SCHEMA IF NOT EXISTS sources" -h $host -d $database -U $user
 echo "CREATING TABLE USING:"
 echo $create
