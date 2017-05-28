@@ -7,10 +7,12 @@
       <div id="dispositions-chart-container"></div>
     </div>
   </div>
-  <div class="col-md-4">
-    <h3 id="live-container">Live <i class="glyphicon glyphicon-play-circle" style="color: red" id="live-indicator"></i></h3>
-    <div id="live-calls"></div>
-  </div>
+  <% if (campaign.status == 'active'){ %>
+    <div class="col-md-4">
+      <h3 id="live-container">Live <i class="glyphicon glyphicon-play-circle" style="color: red" id="live-indicator"></i></h3>
+      <div id="live-calls"></div>
+    </div>
+  <% } %>
 </div>
 
 <style>
@@ -102,7 +104,10 @@ function updateLiveCalls(){
 
 $(function(){
   updateStats();
-  updateLiveCalls();
-  setInterval(updateLiveCalls,5000);
+  setInterval(updateStats, 60000)
+  <% if (campaign.status == 'active'){ %>
+    updateLiveCalls();
+    setInterval(updateLiveCalls,5000);
+  <% } %>
 });
 </script>
