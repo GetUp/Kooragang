@@ -38,6 +38,7 @@ class Campaign extends Model {
       'calledEveryone'
     ];
   }
+
   isPausing() {
     return this.status === "pausing"
   }
@@ -95,6 +96,7 @@ class Campaign extends Model {
       throw new objection.ValidationError({ questions: errors.map(e => { return { message: e }}) })
     }
   }
+
 }
 
 class Call extends Model {

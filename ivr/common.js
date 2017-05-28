@@ -2,13 +2,18 @@ const app = require('express')();
 const plivo = require('plivo');
 const bodyParser = require('body-parser');
 const _ = require('lodash');
+const validUrl = require('valid-url');
 
 app.use(bodyParser.urlencoded({extended: true}));
 
 const response = Object.getPrototypeOf(plivo.Response());
 response.addSpeakAU = function(text) {
   text = text.replace(/[^\x00-\x7F]/g, "");//stripping non UTF8 chars
-  this.addSpeak(text, {language: 'en-GB', voice: 'MAN'});
+  if (validUrl.isUri(text)){
+    this.addPlay(text);
+  } else {
+    this.addSpeak(text, {language: 'en-GB', voice: 'MAN'});
+  }
 };
 
 app.use((req, res, next) => {

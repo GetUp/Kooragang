@@ -1,0 +1,113 @@
+<h1>Report for Campaign '<%= campaign.name %>'</h1>
+<div class="row">
+  <div class="col-md-8">
+    <h3>Summary</h3>
+    <div id="summary-container">
+      <div id="status-chart-container"></div>
+      <div id="dispositions-chart-container"></div>
+    </div>
+  </div>
+  <% if (campaign.status == 'active'){ %>
+    <div class="col-md-4">
+      <h3 id="live-container">Live <i class="glyphicon glyphicon-play-circle" style="color: red" id="live-indicator"></i></h3>
+      <div id="live-calls"></div>
+    </div>
+  <% } %>
+</div>
+
+<style>
+  .call {
+    font-size: 1.2em;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    padding: 7px;
+    box-shadow: 2px 2px 2px 1px rgba(0, 0, 0, 0.2);
+    
+  }
+  .call .caller {
+  }
+  .call .callee {
+  }
+  .call .status {
+    text-align: center;
+  }
+</style>
+
+<script>
+function updateStats(){
+  $.getJSON('/campaigns/<%= campaign.id %>/report_data', function(data){
+    console.log(data)
+    Highcharts.chart('status-chart-container', {
+      title: {
+        text: "Callee Status"
+      },
+      chart: {
+        type: 'pie',
+      },
+      series: [{
+        data: data.status
+      }],
+      plotOptions: {
+        pie: {
+          colors: [
+            '#99ff66',
+            '#ffff66',
+            '#e6e6e6',
+            '#ff5c33'
+          ]
+        }
+      }
+    });
+
+    Highcharts.chart('dispositions-chart-container', {
+      title: {
+        text: "Callee Dispositions"
+      },
+      chart: {
+        type: 'pie',
+      },
+      series: [{
+        data: data.dispositions
+      }]
+    });   
+  })
+}
+
+function updateLiveCalls(){
+  $.getJSON('/campaigns/<%= campaign.id %>/live_calls_data', function(data){
+    console.log(data)
+    $div = $('<div id="live-calls"></div>')
+    $.each(data, function(i, call){
+      if (!call.caller_phone) {
+        status = "Dialing..."
+        color = "#ffff66"
+      } else if (!call.status) {
+        status = "Connected"
+        color = "#99ff66"
+      } else if (call.dropped) {
+        status = "Dropped"
+        color = '#ff5c33'
+      } else {
+        status = call.status
+        color = 'e6e6e6'
+      }
+      $div.append($('<div class="row call" style="background-color: '+color+'"> \
+        <div class="col-sm-4 caller">'+(call.caller_phone || '')+'</div> \
+        <div class="col-sm-4 status">'+status+'</div> \
+        <div class="col-sm-4 callee">'+call.callee_phone+'</div> \
+      </div>'))
+    });
+    $('#live-calls').replaceWith($div);
+    $('#live-indicator').fadeOut().fadeIn();
+  });
+}
+
+$(function(){
+  updateStats();
+  setInterval(updateStats, 60000)
+  <% if (campaign.status == 'active'){ %>
+    updateLiveCalls();
+    setInterval(updateLiveCalls,5000);
+  <% } %>
+});
+</script>

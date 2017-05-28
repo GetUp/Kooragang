@@ -1,5 +1,7 @@
 const port = process.env.PORT || 8080;
 const app = require('express')();
+const bodyParser = require('body-parser');
+
 if (process.env.NODE_ENV === 'development' || process.env.IVR) {
   app.use(require('./ivr/common'));
   app.use(require('./ivr/passcode'));
@@ -9,7 +11,37 @@ if (process.env.NODE_ENV === 'development' || process.env.IVR) {
   app.use(require('./ivr/callee'));
   app.use(require('./ivr/redirect'));
 }
-if (process.env.NODE_ENV === 'development' || !process.env.IVR) {
+
+if (process.env.NODE_ENV === 'development' || !process.env.IVR || process.env.ADMIN) {
+  // Session management
+  const redis   = require("redis");
+  const session = require('express-session');
+  const redisStore = require('connect-redis')(session);
+  const redisClient  = redis.createClient(process.env.REDIS_URL || 'redis://localhost:6379');
+  const passport = require('passport');
+
+  app.use(session({
+    secret: process.env.SESSION_SECRET,
+    // create new redis store.
+    store: new redisStore({client: redisClient, ttl :  260}),
+    saveUninitialized: false,
+    resave: false,
+    signed: true
+  }));
+
+  // OAuth2
+  app.use(passport.initialize());
+  app.use(passport.session());
+  app.use(require('./auth/oauth2').router);
+  app.use(require('./auth/oauth2').template);
+
+  app.set('view engine', 'ejs');
+  app.use(require('express-ejs-layouts'))
+  app.set('layout', __dirname + '/layouts/layout');
+  app.use( bodyParser.json());
+  app.use(bodyParser.urlencoded({
+    extended: true
+  }));   
   app.use(require('./reports'));
   app.use(require('./campaigns/dashboard'));
   app.use(require('./teams/team'));
