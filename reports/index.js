@@ -2,8 +2,41 @@ const app = require('express')();
 const moment = require('moment');
 const _ = require('lodash');
 const {Call, Callee, Caller, Campaign, Event} = require('../models');
+const reports = require('./reports');
+
 app.set('view engine', 'ejs');
 app.set('views', `${__dirname}/views`);
+
+app.get('/campaigns/:id/report', async (req, res) => {
+  if (!req.user) res.redirect('/auth/login?return='+encodeURIComponent(req.url) ) 
+  res.set('Content-Type', 'text/html');
+  const campaign = await Campaign.query().where({id: req.params.id}).first();
+  if (!campaign) res.sendStatus(404);
+  return res.render('report.ejs', {campaign})
+})
+
+app.get('/campaigns/:id/report_data', async(req, res) => {
+  if (!req.user) res.redirect('/auth/login?return='+encodeURIComponent(req.url) ) 
+  res.set('Content-Type', 'text/json');
+  const campaign = await Campaign.query().where({id: req.params.id}).first();
+  if (!campaign) res.sendStatus(404);
+  const status = await reports.getCalleeStatus(req.params.id);
+  const dispositions = await reports.getCalleeDispositions(req.params.id);
+  const data = {
+    dispositions: dispositions,
+    status: status
+  }
+  return res.send(JSON.stringify(data));
+})
+
+app.get('/campaigns/:id/live_calls_data', async(req, res) => {
+  if (!req.user) res.redirect('/auth/login?return='+encodeURIComponent(req.url) ) 
+  res.set('Content-Type', 'text/json');
+  const campaign = await Campaign.query().where({id: req.params.id}).first();
+  if (!campaign) res.sendStatus(404);
+  const data = await reports.getLiveCalls(req.params.id);
+  return res.send(JSON.stringify(data));
+})
 
 app.get('/stats/:id', async ({body, params, query}, res) => {
   const graph = !!query.graph;
