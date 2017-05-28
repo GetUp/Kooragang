@@ -24,6 +24,7 @@
     "express": "^4.15.2",
     "express-ejs-layouts": "^2.3.0",
     "express-session": "^1.15.3",
+    "highcharts": "^5.0.12",
     "knex": "^0.12.9",
     "lodash": "^4.17.4",
     "moment": "^2.18.1",
