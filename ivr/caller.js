@@ -252,6 +252,7 @@ app.post('/ready', async ({body, query}, res) => {
     action: res.locals.appUrl(`survey?q=disposition&caller_id=${caller_id}&campaign_id=${query.campaign_id}`)
   }
   if (process.env.ENABLE_ANSWER_MACHINE_SHORTCUT) params.digitsMatch = ['2']
+  if (campaign.transfer_to_target && campaign.target_number) params.digitsMatch = (params.digitsMatch || []).concat('9')
   r.addConference(`conference-${caller_id}`, params);
   res.send(r.toXML());
 });
@@ -275,21 +276,32 @@ app.post('/conference_event/caller', async ({query, body}, res) => {
     }else {
       await Event.query().insert({name: 'available', campaign_id: campaign.id, caller_id: caller.id, value: {calls_in_progress, updated_calls_in_progress: campaign.calls_in_progress}})
     }
-  } else if (body.ConferenceAction === 'digits' && body.ConferenceDigitsMatch === '2') {
+  } else if (body.ConferenceAction === 'digits' && ['2', '9'].includes(body.ConferenceDigitsMatch)) {
     const call = await Call.query().where({conference_uuid: body.ConferenceUUID}).first();
     if (call) {
-      const params = {
+      const params = body.ConferenceDigitsMatch === '2' ? {
         call_uuid: body.CallUUID,
         aleg_url: res.locals.appUrl(`survey_result?q=disposition&caller_id=${query.caller_id}&call_id=${call.id}&campaign_id=${query.campaign_id}&digit=2`),
+      } : {
+        call_uuid: call.callee_call_uuid,
+        aleg_url: res.locals.appUrl(`transfer_to_target?call_id=${call.id}&campaign_id=${query.campaign_id}`)
       }
       try {
         await api('transfer_call', params);
       } catch (e) {
-        await Event.query().insert({campaign_id: query.campaign_id, name: 'failed_transfer', value: {call_id: call.id, error: e, call_uuid: body.CallUUID, conference_uuid: body.ConferenceUUID}});
+        await Event.query().insert({campaign_id: query.campaign_id, name: 'failed_transfer', value: {params, call_id: call.id, error: e, call_uuid: body.CallUUID, conference_uuid: body.ConferenceUUID}});
       }
     }
   }
   res.sendStatus(200);
+});
+
+app.post('/transfer_to_target', async ({query, body}, res) => {
+  const r = plivo.Response();
+  const campaign = await Campaign.query().where({id: query.campaign_id}).first();
+  r.addDial().addNumber(campaign.target_number);
+  await Event.query().insert({campaign_id: query.campaign_id, name: 'transfer_to_target', value: {call_uuid: body.CallUUID, target_number: campaign.target_number}});
+  return res.send(r.toXML());
 });
 
 app.post('/survey', async ({query, body}, res) => {

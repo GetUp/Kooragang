@@ -381,6 +381,14 @@ describe('/ready', () => {
   it('should use the caller number as the conference name',
     () => request.post(`/ready?caller_id=${caller.id}&campaign_id=${campaign.id}`).expect(new RegExp(caller.id)));
 
+  context('with redirect_to_target set for the campaign', () => {
+    beforeEach(async() => campaign = await campaign.$query().patchAndFetch({transfer_to_target: true, target_number: '1'}) )
+
+    it('should enable 9 as a digit to press', () => {
+      return request.post(`/ready?caller_id=${caller.id}&campaign_id=${campaign.id}`).expect(/digitsMatch="9"/i);
+    })
+  })
+
   context('with 0 pressed', () => {
     it('should redirect them to disconnect', () => {
       return request.post(`/ready?caller_id=${caller.id}&start=1&campaign_id=${campaign.id}`)
@@ -504,6 +512,23 @@ describe('/ready', () => {
   });
 });
 
+describe('/transfer_to_target', () => {
+  beforeEach(async() => campaign = await campaign.$query().patchAndFetch({transfer_to_target: true, target_number: '1234'}) )
+
+  it('should dial the target number', async () => {
+    await request.post(`/transfer_to_target?campaign_id=${campaign.id}`)
+      .type('form').send({CallUUID})
+      .expect(/Number>1234<\/Number/)
+  });
+
+  it('should record an event', async () => {
+    await request.post(`/transfer_to_target?campaign_id=${campaign.id}`)
+      .type('form').send({CallUUID})
+      .expect(200)
+    expect(await Event.query().where({name: 'transfer_to_target'}).first()).to.be.a(Event);
+  });
+});
+
 describe('/call_ended', () => {
   context('with no matching caller', () => {
     it('should record an event', async () => {
@@ -614,6 +639,28 @@ describe('/conference_event/caller', () => {
       await request.post(`/conference_event/caller?caller_id=${caller.id}`)
         .type('form')
         .send({ConferenceAction: 'digits', ConferenceDigitsMatch: '2', CallUUID, ConferenceUUID})
+        .expect(200);
+      mockedApiCall.done();
+    })
+  });
+
+  context('with 9 pressed during the conference', () => {
+    const CallUUID = '1';
+    const ConferenceUUID = '2';
+    const callee_call_uuid = '3';
+
+    it('should make a transfer api call', async () => {
+      const call = await Call.query().insert({conference_uuid: ConferenceUUID, callee_call_uuid});
+      const mockedApiCall = nock('https://api.plivo.com')
+        .post(new RegExp(`/Call/${callee_call_uuid}/`), (body) => {
+           return body.aleg_url.match(/transfer_to_target/)
+              && body.aleg_url.match(new RegExp(`campaign_id=${campaign.id}`));
+        })
+        .query(true)
+        .reply(200);
+      await request.post(`/conference_event/caller?caller_id=${caller.id}&campaign_id=${campaign.id}`)
+        .type('form')
+        .send({ConferenceAction: 'digits', ConferenceDigitsMatch: '9', CallUUID, ConferenceUUID})
         .expect(200);
       mockedApiCall.done();
     })
