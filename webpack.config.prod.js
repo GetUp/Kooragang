@@ -27,7 +27,7 @@ module.exports = {
         loader: "babel-loader",
         include: [
           path.join(__dirname, "src"),
-          path.join(__dirname, "playground"),
+          path.join(__dirname, "campaigns"),
           path.join(__dirname, "node_modules", "codemirror", "mode", "javascript"),
         ],
       },
@@ -36,7 +36,7 @@ module.exports = {
         loader: ExtractTextPlugin.extract("css-loader"),
         include: [
           path.join(__dirname, "css"),
-          path.join(__dirname, "playground"),
+          path.join(__dirname, "campaigns"),
           path.join(__dirname, "node_modules"),
         ],
       }

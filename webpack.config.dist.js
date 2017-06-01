@@ -3,7 +3,7 @@ var webpack = require("webpack");
 module.exports = {
   cache: true,
   context: __dirname + "/src",
-  entry: "./index.js",
+  entry: "./common/forms/index.js",
   output: {
     path: "./dist",
     publicPath: "/dist/",
