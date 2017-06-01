@@ -310,7 +310,7 @@ export default class CampaignForm extends Component {
 
   onFormSubmit = ({ formData }) => {
     formData = this.toJsonForApi(formData)
-    fetch('/campaigns', {
+    fetch('/api/campaigns', {
       method: 'post',
       headers: {
           'Content-Type': 'application/json;charset=UTF-8'

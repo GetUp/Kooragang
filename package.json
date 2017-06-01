@@ -16,7 +16,7 @@
     "deploy-stage": "git push kooragang-stage HEAD:master && heroku run knex migrate:latest --app kooragang-stage && git push kooragang-www-stage HEAD:master",
     "build:lib": "rimraf lib && cross-env NODE_ENV=production babel -d lib/ src/",
     "build:dist": "rimraf dist && cross-env NODE_ENV=production webpack --config webpack.config.dist.js --optimize-minimize",
-    "build:playground": "rimraf build && cross-env NODE_ENV=production webpack --config webpack.config.prod.js --optimize-minimize && cp playground/index.prod.html build/index.html",
+    "build:production": "rimraf build && cross-env NODE_ENV=production webpack --config webpack.config.prod.js --optimize-minimize",
     "dist": "npm run build:lib && npm run build:dist"
   },
   "dependencies": {

@@ -6,7 +6,7 @@ app.set('views', `${__dirname}/views`);
 
 //PAGES
 //dashboard
-app.get('/dashboard', async ({body, params}, res) => {
+app.get('/campaigns/dashboard', async (req, res) => {
   res.set('Content-Type', 'text/html');
   const campaigns = await Campaign.query();
   let campaignsArray = [];
@@ -17,60 +17,22 @@ app.get('/dashboard', async ({body, params}, res) => {
 //new
 app.get('/campaigns/new', async (req, res) => {
   res.set('Content-Type', 'text/html');
-  //if (!campaign) res.sendStatus(404);
-  return res.render('edit.ejs', {})
+  const env = process.env.NODE_ENV
+  return res.render('campaign.ejs', {env})
 })
 
 //show
 app.get('/campaigns/:id', async (req, res) => {
   res.set('Content-Type', 'text/html');
-  const campaign = await Campaign.query().where({id: req.params.id}).first();
-  if (!campaign) res.sendStatus(404);
-  return res.render('show.ejs', {campaign})
+  const env = process.env.NODE_ENV
+  return res.render('campaign.ejs', {env})
 })
 
 //edit
 app.get('/campaigns/:id/edit', async (req, res) => {
   res.set('Content-Type', 'text/html');
-  const campaign = await Campaign.query().where({id: req.params.id}).first();
-  if (!campaign) res.sendStatus(404);
-  return res.render('edit.ejs', {campaign})
-})
-
-//API ENDPOINTS
-//index
-app.get('/campaigns', async (req, res) => {
-  res.set('Content-Type', 'application/json');
-  const campaigns = await Campaign.query();
-  return res.json(campaigns);
-});
-
-//create
-app.post('/campaigns', async (req, res) => {
-  req.accepts('json')
-  try {
-    const campaign = await Campaign.query().insert(req.body)
-    return res.json({success: true});
-  } catch (e) {
-    console.log(e)
-    return res.json({error: e});
-  }
-})
-
-//update
-app.put('/campaigns/:id', async (req, res) => {
-  res.set('Content-Type', 'text/html');
-  const campaign = await Campaign.query().where({id: req.params.id}).first();
-  if (!campaign) res.sendStatus(404);
-  return res.render('edit.ejs', {campaign})
-})
-
-//delete
-app.delete('/campaigns/:id', async (req, res) => {
-  res.set('Content-Type', 'text/html');
-  const campaign = await Campaign.query().where({id: req.params.id}).first().delete();
-  if (!campaign) res.sendStatus(404);
-  return res.render('edit.ejs', {campaign})
+  const env = process.env.NODE_ENV
+  return res.render('campaign.ejs', {env})
 })
 
 module.exports = app
