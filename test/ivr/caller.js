@@ -823,7 +823,7 @@ describe('/call_again', () => {
         .type('form').send()
         .expect(/validDigits="1,0,8,9"/)
         .expect(/call_id=1/)
-        .expect(/Press 8 to correct your entry/i);
+        .expect(/8 to correct your entry/i);
     });
   });
 });
