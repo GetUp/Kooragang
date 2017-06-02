@@ -2,7 +2,7 @@ const app = require('express')();
 const moment = require('moment');
 const plivo = require('plivo');
 const _ = require('lodash');
-const api = require('../api');
+const plivo_api = require('../api/plivo');
 const dialer = require('../dialer');
 const {
   sleep,
@@ -287,7 +287,7 @@ app.post('/conference_event/caller', async ({query, body}, res) => {
         aleg_url: res.locals.appUrl(`transfer_to_target?call_id=${call.id}&campaign_id=${query.campaign_id}`)
       }
       try {
-        await api('transfer_call', params);
+        await plivo_api('transfer_call', params);
       } catch (e) {
         await Event.query().insert({campaign_id: query.campaign_id, name: 'failed_transfer', value: {params, call_id: call.id, error: e, call_uuid: body.CallUUID, conference_uuid: body.ConferenceUUID}});
       }
@@ -474,7 +474,7 @@ app.post('/call_ended', async ({body, query}, res) => {
     };
     try{
       await sleep(5000);
-      await api('make_call', params);
+      await plivo_api('make_call', params);
     }catch(e){
       await Event.query().insert({name: 'failed_callback', campaign_id: campaign.id, caller_id: caller.id, value: {error: e}})
     }
@@ -486,7 +486,7 @@ app.post('/machine_detection', async ({body, query}, res) => {
   try{
     if ( !body.CallUUID ) { throw 'no CallUUID present machine_detection' };
     await Call.query().where({ callee_call_uuid: body.CallUUID }).patch({ status: 'machine_detection' });
-    await api('hangup_call', { call_uuid: body.CallUUID });
+    await plivo_api('hangup_call', { call_uuid: body.CallUUID });
   } catch(e){
     const call = body.CallUUID && await Call.query().where({callee_call_uuid: body.CallUUID}).first();
     await Event.query().insert({

@@ -2,7 +2,7 @@ const app = require('express')();
 const plivo = require('plivo');
 const _ = require('lodash');
 const dialer = require('../dialer');
-const api = require('../api');
+const plivo_api = require('../api/plivo');
 const {Call, Callee, Caller, Campaign, Event, transaction} = require('../models');
 
 app.post('/answer', async ({body, query}, res) => {
@@ -44,7 +44,7 @@ app.post('/answer', async ({body, query}, res) => {
         language: 'en-GB', voice: 'MAN'
       }
       try{
-        if (!process.env.SPEAK_NAMES) await api('speak_conference_member', params);
+        if (!process.env.SPEAK_NAMES) await plivo_api('speak_conference_member', params);
       }catch(e){}
     }
 
