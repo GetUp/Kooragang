@@ -169,7 +169,7 @@ app.post('/ready', async ({body, query}, res) => {
   const r = plivo.Response();
   const authenticated = query.authenticated ? query.authenticated === "1" : false;
   const campaign = await Campaign.query().where({id: query.campaign_id}).first();
-  let caller_id;
+  let caller_id, caller;
   if (query.start) {
     if (body.Digits === '3') {
       r.addMessage(`Please print or download the script and disposition codes from ${_.escape(campaign.script_url)}. When you are ready, call again!`, {
@@ -189,7 +189,7 @@ app.post('/ready', async ({body, query}, res) => {
         caller_params.team_id = user.team_id
       }
     }
-    const caller = await Caller.query().insert(caller_params);
+    caller = await Caller.query().insert(caller_params);
     caller_id = caller.id;
   } else {
     caller_id = query.caller_id;
@@ -229,6 +229,32 @@ app.post('/ready', async ({body, query}, res) => {
     return res.send(r.toXML());
   }
 
+  if (query.start && !process.env.DISABLE_CALL_RESUME) {
+    const last_caller = await Caller.query()
+      .where({campaign_id: campaign.id, phone_number: caller.phone_number})
+      .whereNot({id: caller.id})
+      .orderBy('updated_at', 'desc')
+      .limit(1).first();
+    const last_call = last_caller && await Call.query().where({caller_id: last_caller.id})
+      .whereRaw("calls.created_at > now() - '30 minutes'::interval")
+      .eager('survey_results')
+      .orderBy('created_at', 'desc')
+      .limit(1).first();
+    if (last_call && !last_call.survey_results.length) {
+      r.addSpeakAU('It appears your last call ended before you could record the overall outcome.')
+      r.addSpeakAU('Press 1 to enter the overall outcome for your last call. Otherwise, press 2 to continue.')
+      r.addGetDigits({
+        action: res.locals.appUrl(`resume_survey?caller_id=${caller_id}&last_call_id=${last_call.id}&campaign_id=${query.campaign_id}`),
+        redirect: true,
+        retries: 10,
+        numDigits: 1,
+        timeout: 10,
+        validDigits: [1, 2],
+      });
+      return res.send(r.toXML());
+    }
+  }
+
   if (query.start || body.Digits === '1') {
     r.addSpeakAU('You are now in the call queue.')
   } else {
@@ -254,6 +280,22 @@ app.post('/ready', async ({body, query}, res) => {
   if (process.env.ENABLE_ANSWER_MACHINE_SHORTCUT) params.digitsMatch = ['2']
   if (campaign.transfer_to_target && campaign.target_number) params.digitsMatch = (params.digitsMatch || []).concat('9')
   r.addConference(`conference-${caller_id}`, params);
+  res.send(r.toXML());
+});
+
+app.post('/resume_survey', async ({query, body}, res) => {
+  const r = plivo.Response()
+  if (body.Digits === '1' && query.last_call_id) {
+    const call = await Call.query().where({id: query.last_call_id}).first()
+    const original_caller_id = call.caller_id
+    await call.$query().patch({caller_id: query.caller_id})
+    r.addSpeakAU('You have decided to enter the outcome for your last call.')
+    r.addRedirect(res.locals.appUrl(`survey_result?call_id=${call.id}caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&question=disposition&undo=1`));
+    await Event.query().insert({name: 'resume calling', campaign_id: query.campaign_id, caller_id: query.caller_id, call_id: call.id, value: {original_caller_id}})
+  } else {
+    r.addSpeakAU('Continuing with calling.')
+    r.addRedirect(res.locals.appUrl(`ready?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`));
+  }
   res.send(r.toXML());
 });
 
