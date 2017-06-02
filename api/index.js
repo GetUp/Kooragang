@@ -8,4 +8,5 @@ app.use(require('./campaigns'))
 app.use(require('./teams'))
 app.use(require('./redirects'))
 app.use(require('./survey_results'))
+app.use(require('./reports'))
 module.exports = app

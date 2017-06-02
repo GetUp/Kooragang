@@ -17,7 +17,7 @@ app.get('/api/campaigns', async (req, res) => {
 app.get('/api/campaigns/:id', async (req, res) => {
   try {
     const campaign = await Campaign.query().where({id: req.params.id}).first()
-  	if (!campaign) throw 'No Campagin Exists With ID: ${req.params.id}'
+    if (!campaign) throw 'No Campagin Exists With ID: ${req.params.id}'
     return res.json({data: campaign})
   } catch (e) {
     console.log(e)
