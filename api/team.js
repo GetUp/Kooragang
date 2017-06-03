@@ -1,19 +1,19 @@
 const app = require('express')()
 const { Team } = require('../models')
 const { wrap } = require('./middleware')
-const { BadRequestError } = require("./middleware/errors")
+const { BadRequestError, NotFoundError } = require("./middleware/errors")
 
 //index
 app.get('/api/teams', wrap(async (req, res, next) => {
   const team = await Team.query()
-  if (!team) return next(new BadRequestError('No Teams Exist'))
+  if (!team) return next(new NotFoundError('No Teams Exist'))
   return res.json({data: team})
 }))
 
 //show
 app.get('/api/teams/:id', wrap(async (req, res, next) => {
   const team = await Team.query().where({id: req.params.id}).first()
-  if (!team) return next(new BadRequestError('No Team Exists With ID: ' + req.params.id))
+  if (!team) return next(new NotFoundError('No Team Exists With ID: ' + req.params.id))
   return res.json({data: team})
 }))
 
@@ -27,7 +27,7 @@ app.post('/api/teams', wrap(async (req, res, next) => {
 //update
 app.put('/api/teams/:id', wrap(async (req, res, next) => {
   const team = await Team.query().where({id: req.params.id}).first()
-  if (!team) return next(new BadRequestError('No Team Exists With ID: ' + req.params.id))
+  if (!team) return next(new NotFoundError('No Team Exists With ID: ' + req.params.id))
   team.$query().patch(req.body.data)
   return res.json({data: team})
 }))
@@ -35,7 +35,7 @@ app.put('/api/teams/:id', wrap(async (req, res, next) => {
 //delete
 app.delete('/api/teams/:id', wrap(async (req, res, next) => {
   const team = await Team.query().where({id: req.params.id}).first()
-  if (!team) return next(new BadRequestError('No Team Exists With ID: ' + req.params.id))
+  if (!team) return next(new NotFoundError('No Team Exists With ID: ' + req.params.id))
   team.$query().delete()
   if (team) return next(new BadRequestError('Team Was Not Deleted'))
   return res.json({data: team})
