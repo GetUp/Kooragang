@@ -2,8 +2,8 @@ const app = require('express')()
 const { headers, authentication, log, error_handler } = require('./middleware')
 
 if (process.env.NODE_ENV !== 'development') {
-	const compression = require('compression')
-	app.use(compression())
+  const compression = require('compression')
+  app.use(compression())
 }
 
 app.use(headers)
