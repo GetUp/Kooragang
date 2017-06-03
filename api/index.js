@@ -8,10 +8,10 @@ if (process.env.NODE_ENV !== 'development') {
 
 app.use(headers)
 app.use(authentication)
+app.use(log)
 app.use(require('./campaign'))
 app.use(require('./team'))
 app.use(require('./report'))
-app.use(log)
 app.use(error_handler)
 
 module.exports = app
