@@ -1,8 +1,9 @@
 const app = require('express')()
 const { Campaign, Call, Caller, Callee, Event, Team } = require('../models')
+const { wrap } = require('./middleware')
 
 //campaign report
-app.get('/api/campaigns/:id/report', async (req, res) => {
+app.get('/api/campaigns/:id/report', wrap(async (req, res, next) => {
   const graph = !!req.query.graph;
   const campaign = await Campaign.query().where({id: req.params.id}).first();
   if (!campaign) res.sendStatus(404);
@@ -129,10 +130,10 @@ app.get('/api/campaigns/:id/report', async (req, res) => {
     data.rate = currentCallers ? Math.round(total*6 / currentCallers) : 0;
     return res.json({data: data})
   }
-})
+}))
 
 //teams report
-app.get('/api/teams/:id/report', async (req, res) => {
+app.get('/api/teams/:id/report', wrap(async (req, res, next) => {
   let team
   let data
   if (req.query.passcode) {
@@ -176,6 +177,6 @@ app.get('/api/teams/:id/report', async (req, res) => {
     }
     return res.json({data: data})
   }
-})
+}))
 
 module.exports = app
