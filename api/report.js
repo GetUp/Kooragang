@@ -1,23 +1,25 @@
 const app = require('express')()
-const env = process.env.NODE_ENV || 'development';
-const config = require('../knexfile');   
-const knex = require('knex')(config[env]);
+const env = process.env.NODE_ENV || 'development'
+const _ = require('lodash')
+const moment = require('moment')
+const config = require('../knexfile')   
+const knex = require('knex')(config[env])
 const { Campaign, Call, Caller, Callee, Event, Team } = require('../models')
 const { wrap } = require('./middleware')
 const { BadRequestError, NotFoundError } = require("./middleware/errors")
 
 //campaign report
 app.get('/api/campaigns/:id/report', wrap(async (req, res, next) => {
-  const graph = !!req.query.graph;
-  const campaign = await Campaign.query().where({id: req.params.id}).first();
+  const graph = !!req.query.graph
+  const campaign = await Campaign.query().where({id: req.params.id}).first()
   if (!campaign) return next(new NotFoundError('No Campagin Exists With ID: ' + req.params.id))
   const generateReport = async () => {
-    let validationErrors;
+    let validationErrors
     try{
       campaign.valid()
     } catch(e) {
-      validationErrors = _.map(e.data.questions, 'message').join(' and ');
-    };
+      validationErrors = _.map(e.data.questions, 'message').join(' and ')
+    }
     const callerCounts = await Caller.knexQuery().select('status')
       .count('callers.id as count')
       .whereRaw("created_at >= NOW() - INTERVAL '60 minutes'")
@@ -132,8 +134,9 @@ app.get('/api/campaigns/:id/report', wrap(async (req, res, next) => {
     }
     const currentCallers = data.available + data['in-call'];
     data.rate = currentCallers ? Math.round(total*6 / currentCallers) : 0;
-    return res.json({data: data})
   }
+  const data = await generateReport();
+  return res.json({data: data})
 }))
 
 //teams report
