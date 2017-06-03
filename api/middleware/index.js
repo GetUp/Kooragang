@@ -10,9 +10,9 @@ const {
 
 const wrap = fn => (...args) => fn(...args).catch(args[2])
 
-const log = async (err, {method, url, body, query, params, headers}, res, next) => {
+const log = async ({method, url, body, query, params, headers}, res, next) => {
   await Log.query().insert({UUID: null, url, body, query, params, headers})
-  next(err)
+  next()
 }
 
 const headers = (req, res, next) => {
@@ -34,7 +34,7 @@ const authentication = (req, res, next) => {
   }
 }
 
-const error_handler = (err, req, res, next) => {
+const error_handler = (err, req, res) => {
   console.error(err.stack)
   const returned_error = {errors: {message: err.message}}
   switch(err.constructor) {
