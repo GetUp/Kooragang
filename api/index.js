@@ -7,8 +7,8 @@ if (process.env.NODE_ENV !== 'development') {
 }
 
 app.use(headers)
-app.use(authentication)
 app.use(log)
+app.use(authentication)
 app.use(require('./campaign'))
 app.use(require('./team'))
 app.use(require('./report'))
