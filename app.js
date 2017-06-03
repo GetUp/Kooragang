@@ -6,7 +6,4 @@ if (process.env.IVR) {
 if (process.env.API) {
   app.use(require('./api'))
 }
-app.listen(port, (err) => {
-  if (err) { console.log(err); return; }
-  console.log('App running on port', port)
-});
+app.listen(port, () => console.log('App running on port', port))
