@@ -8,7 +8,7 @@ const {
 
 const wrap = fn => (...args) => fn(...args).catch(args[2])
 
-const log = async ({method, url, body, query, params, headers}, res, next) => {
+const log = async ({url, body, query, params, headers}, res, next) => {
   await Log.query().insert({UUID: null, url, body, query, params, headers})
   next()
 }
