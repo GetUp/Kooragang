@@ -41,4 +41,4 @@ app.delete('/api/teams/:id', wrap(async (req, res, next) => {
   return res.json({data: team})
 }))
 
-module.exports = app;
+module.exports = app

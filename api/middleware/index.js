@@ -3,9 +3,7 @@ const { Log } = require("../../models")
 const {
   BadRequestError,
   UnauthorizedError,
-  ForbiddenError,
-  NotFoundError,
-  MethodNotAllowedError
+  NotFoundError
 } = require("./errors")
 
 const wrap = fn => (...args) => fn(...args).catch(args[2])
@@ -34,7 +32,7 @@ const authentication = (req, res, next) => {
   }
 }
 
-const error_handler = (err, req, res) => {
+const error_handler = (err, req, res, next) => {
   console.error(err.stack)
   const returned_error = {errors: {message: err.message}}
   switch(err.constructor) {
@@ -46,17 +44,9 @@ const error_handler = (err, req, res) => {
           returned_error.errors.type = "Unauthorized"
           res.status(401)
           break
-      case ForbiddenError:
-          returned_error.errors.type = "Forbidden"
-          res.status(403)
-          break
       case NotFoundError:
           returned_error.errors.type = "Not Found"
           res.status(404)
-          break
-      case MethodNotAllowedError:
-          returned_error.errors.type = "Method Not Allowed"
-          res.status(405)
           break
       default:
           returned_error.errors.type = "Internal Server Error"

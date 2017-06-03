@@ -41,4 +41,4 @@ app.delete('/api/campaigns/:id', wrap(async (req, res, next) => {
   return res.json({data: campaign})
 }))
 
-module.exports = app;
+module.exports = app

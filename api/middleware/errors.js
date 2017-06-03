@@ -1,52 +1,17 @@
-class BadRequestError extends Error {
+class BaseError extends Error {
   constructor(message) {
-    super(message);
-    Error.captureStackTrace(this, this.constructor);
-    this.name = this.constructor.name;
-    this.message = message;
+    super(message)
+    Error.captureStackTrace(this, this.constructor)
+    this.name = this.constructor.name
+    this.message = message
   }
 }
-
-class UnauthorizedError extends Error {
-  constructor(message) {
-    super(message);
-    Error.captureStackTrace(this, this.constructor);
-    this.name = this.constructor.name;
-    this.message = message;
-  }
-}
-
-class ForbiddenError extends Error {
-  constructor(message) {
-    super(message);
-    Error.captureStackTrace(this, this.constructor);
-    this.name = this.constructor.name;
-    this.message = message;
-  }
-}
-
-class NotFoundError extends Error {
-  constructor(message) {
-    super(message);
-    Error.captureStackTrace(this, this.constructor);
-    this.name = this.constructor.name;
-    this.message = message;
-  }
-}
-
-class MethodNotAllowedError extends Error {
-  constructor(message) {
-    super(message);
-    Error.captureStackTrace(this, this.constructor);
-    this.name = this.constructor.name;
-    this.message = message;
-  }
-}
+class BadRequestError extends BaseError {}
+class UnauthorizedError extends BaseError {}
+class NotFoundError extends BaseError {}
 
 module.exports = {
   BadRequestError,
   UnauthorizedError,
-  ForbiddenError,
-  NotFoundError,
-  MethodNotAllowedError
+  NotFoundError
 }
