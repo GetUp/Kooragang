@@ -20,11 +20,7 @@ const headers = (req, res, next) => {
 }
 
 const authentication = (req, res, next) => {
-  console.log('~~~~~~~~~~~~')
-  console.log(req.body)
-  console.log(req.query)
-  console.log('~~~~~~~~~~~~')
-  const token = req.body.token || req.query.token || req.headers['x-access-token']
+  const token = req.body ? req.body.token : false || req.query.token || req.headers['x-access-token']
   if (token) { 
     if (token === api_config.hash) {
       next()
