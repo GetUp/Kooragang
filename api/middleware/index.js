@@ -1,4 +1,3 @@
-const api_config = require("../config")
 const { Log } = require("../../models")
 const {
   BadRequestError,
@@ -9,7 +8,7 @@ const {
 const wrap = fn => (...args) => fn(...args).catch(args[2])
 
 const log = async ({url, body, query, params, headers}, res, next) => {
-  await Log.query().insert({UUID: null, url, body, query, params, headers})
+  await Log.query().insert({url, body, query, params, headers})
   next()
 }
 
@@ -20,15 +19,15 @@ const headers = (req, res, next) => {
 }
 
 const authentication = (req, res, next) => {
-  const token = req.body ? req.body.token : false || req.query.token || req.headers['x-access-token']
+  const token = req.body ? req.body.token : req.query.token || req.headers['x-access-token']
   if (token) { 
-    if (token === api_config.hash) {
+    if (token === process.process.env.KOORAGANG_API_HASH) {
       next()
     } else {
-      return next(new UnauthorizedError('Failed to authenticate token.'))
+      next(new UnauthorizedError('Failed to authenticate token.'))
     }
   } else {
-    return next(new UnauthorizedError('No authentication token provided.'))
+    next(new UnauthorizedError('No authentication token provided.'))
   }
 }
 
