@@ -1,6 +1,6 @@
 -- this query will return a detailed summary the amount of callers, calls made, and outcomes of the calls, for each campaign on each date
 
-select calling_results.*, actual_calls_to_mp from (
+select calling_results.*, actual_calls_to_mp, average_seconds_waiting from (
 select c.created_at::date as date, cp.name, count(distinct ca.phone_number) as callers, count(c.id) as calls,
 sum(case when disposition !~* '(no answer|machine|meaningful)' then 1 else 0 end) as non_meaningful_conversations,
 sum(case when disposition ~* 'meaningful' then 1 else 0 end) as meaningful_conversations,
@@ -38,3 +38,10 @@ left outer join (
 	inner join campaigns on campaigns.id = redirects.campaign_id
 	group by 1,2
 ) conversions on (conversions.date - '1 day'::interval = calling_results.date) and calling_results.name = conversions.name
+left outer join (
+	select events.created_at::date as date, campaigns.name, round(avg((value::json->>'seconds_waiting')::integer)) as average_seconds_waiting
+	from callers cal
+	inner join  events on caller_id = cal.id and name in ('caller_complete', 'answered')
+	inner join campaigns on campaigns.id = cal.campaign_id
+	group by 1,2
+) time_waiting on time_waiting.date = calling_results.date and calling_results.name = time_waiting.name
