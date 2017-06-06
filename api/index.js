@@ -1,11 +1,13 @@
 const app = require('express')()
-const { headers, authentication, log, error_handler } = require('./middleware')
+const cors = require('cors')
+const { cors_options, headers, authentication, log, error_handler } = require('./middleware')
 
 if (process.env.NODE_ENV !== 'development') {
   const compression = require('compression')
   app.use(compression())
 }
 
+app.use(cors(cors_options))
 app.use(headers)
 app.use(log)
 app.use(authentication)

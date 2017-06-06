@@ -1,3 +1,4 @@
+const express_cors = require('cors')
 const { Log } = require("../../models")
 const {
   BadRequestError,
@@ -12,6 +13,10 @@ const log = async ({url, body, query, params, headers}, res, next) => {
   next()
 }
 
+const cors_options = {
+  allowedHeaders: ['Content-Type', 'authorization']
+}
+
 const headers = (req, res, next) => {
   req.accepts('json')
   res.type('json')
@@ -19,9 +24,9 @@ const headers = (req, res, next) => {
 }
 
 const authentication = (req, res, next) => {
-  const token = req.body ? req.body.token : req.query.token || req.headers['x-access-token']
+  const token = req.headers['authorization']
   if (token) { 
-    if (token === process.process.env.KOORAGANG_API_HASH) {
+    if (token === process.env.KOORAGANG_API_HASH) {
       next()
     } else {
       next(new UnauthorizedError('Failed to authenticate token.'))
@@ -58,6 +63,7 @@ const error_handler = (err, req, res, next) => {
 module.exports = {
   wrap,
   log,
+  cors_options,
   headers,
   authentication,
   error_handler
