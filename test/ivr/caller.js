@@ -628,7 +628,7 @@ describe('/resume_survey', () => {
       await request.post(`/resume_survey?last_call_id=${call.id}&caller_id=${caller.id}&campaign_id=${campaign.id}`)
         .type('form')
         .send({Digits: '1'})
-        .expect(new RegExp(`survey_result.*call_id=${call.id}.*caller_id=${caller.id}.*campaign_id=${campaign.id}.*question=disposition.*undo=1`))
+        .expect(new RegExp(`survey.*call_id=${call.id}.*caller_id=${caller.id}.*campaign_id=${campaign.id}.*q=disposition.*undo=1`))
     })
 
     it('should record an event', async () => {

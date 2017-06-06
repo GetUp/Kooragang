@@ -241,9 +241,7 @@ app.post('/ready', async ({body, query}, res) => {
       .orderBy('created_at', 'desc')
       .limit(1).first();
     if (last_call && !last_call.survey_results.length) {
-      r.addSpeakAU('It appears your last call ended before you could record the overall outcome.')
-      r.addSpeakAU('Press 1 to enter the overall outcome for your last call. Otherwise, press 2 to continue.')
-      r.addGetDigits({
+      const resumeIVR = r.addGetDigits({
         action: res.locals.appUrl(`resume_survey?caller_id=${caller_id}&last_call_id=${last_call.id}&campaign_id=${query.campaign_id}`),
         redirect: true,
         retries: 10,
@@ -251,6 +249,8 @@ app.post('/ready', async ({body, query}, res) => {
         timeout: 10,
         validDigits: [1, 2],
       });
+      resumeIVR.addSpeakAU('It appears your last call ended before you could record the overall outcome.')
+      resumeIVR.addSpeakAU('Press 1 to enter the overall outcome for your last call. Otherwise, press 2 to continue.')
       return res.send(r.toXML());
     }
   }
@@ -290,7 +290,7 @@ app.post('/resume_survey', async ({query, body}, res) => {
     const original_caller_id = call.caller_id
     await call.$query().patch({caller_id: query.caller_id})
     r.addSpeakAU('You have decided to enter the outcome for your last call.')
-    r.addRedirect(res.locals.appUrl(`survey_result?call_id=${call.id}caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&question=disposition&undo=1`));
+    r.addRedirect(res.locals.appUrl(`survey?call_id=${call.id}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&q=disposition&undo=1`));
     await Event.query().insert({name: 'resume calling', campaign_id: query.campaign_id, caller_id: query.caller_id, call_id: call.id, value: {original_caller_id}})
   } else {
     r.addSpeakAU('Continuing with calling.')
