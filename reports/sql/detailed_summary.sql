@@ -3,6 +3,7 @@
 select calling_results.*, actual_calls_to_mp, average_seconds_waiting from (
 select c.created_at::date as date, cp.name, count(distinct ca.phone_number) as callers, count(c.id) as calls,
 sum(case when disposition !~* '(no answer|machine|meaningful)' then 1 else 0 end) as non_meaningful_conversations,
+sum(case when disposition ~* 'not interested' then 1 else 0 end) as not_interested,
 sum(case when disposition ~* 'meaningful' then 1 else 0 end) as meaningful_conversations,
 sum(case when action !~* 'not' then 1 else 0 end) as actions,
 sum(case when loan_support ~* 'supports' then 1 else 0 end) as supports_loan,
