@@ -36,9 +36,8 @@ app.put('/api/teams/:id', wrap(async (req, res, next) => {
 app.delete('/api/teams/:id', wrap(async (req, res, next) => {
   const team = await Team.query().where({id: req.params.id}).first()
   if (!team) return next(new NotFoundError('No Team Exists With ID: ' + req.params.id))
-  await team.$query().delete()
-  if (team) return next(new BadRequestError('Team Was Not Deleted'))
-  return res.json({data: team})
+  if (await team.$query().delete()) return res.json({data: team})
+  return next(new BadRequestError('Team Was Not Deleted'))
 }))
 
 module.exports = app
