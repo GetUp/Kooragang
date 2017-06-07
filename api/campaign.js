@@ -28,7 +28,7 @@ app.post('/api/campaigns', wrap(async (req, res, next) => {
 app.put('/api/campaigns/:id', wrap(async (req, res, next) => {
   const campaign = await Campaign.query().where({id: req.params.id}).first()
   if (!campaign) return next(new NotFoundError('No Campagin Exists With ID: ' + req.params.id))
-  campaign.$query().patch(req.body.data)
+  await campaign.$query().patch(req.body.data)
   return res.json({data: campaign})
 }))
 
@@ -36,7 +36,7 @@ app.put('/api/campaigns/:id', wrap(async (req, res, next) => {
 app.delete('/api/campaigns/:id', wrap(async (req, res, next) => {
   const campaign = await Campaign.query().where({id: req.params.id}).first()
   if (!campaign) return next(new NotFoundError('No Campagin Exists With ID: ' + req.params.id))
-  campaign.$query().delete()
+  await campaign.$query().delete()
   if (campaign) return next(new BadRequestError('Campagin Was Not Deleted'))
   return res.json({data: campaign})
 }))

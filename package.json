@@ -16,7 +16,7 @@
     "deploy-stage": "git push kooragang-stage HEAD:master && heroku run knex migrate:latest --app kooragang-stage && git push kooragang-api-stage HEAD:master"
   },
   "dependencies": {
-    "body-parser": "^1.17.1",
+    "body-parser": "^1.17.2",
     "compression": "^1.6.2",
     "cors": "^2.8.3",
     "ejs": "^2.5.6",

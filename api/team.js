@@ -28,7 +28,7 @@ app.post('/api/teams', wrap(async (req, res, next) => {
 app.put('/api/teams/:id', wrap(async (req, res, next) => {
   const team = await Team.query().where({id: req.params.id}).first()
   if (!team) return next(new NotFoundError('No Team Exists With ID: ' + req.params.id))
-  team.$query().patch(req.body.data)
+  await team.$query().patch(req.body.data)
   return res.json({data: team})
 }))
 
@@ -36,7 +36,7 @@ app.put('/api/teams/:id', wrap(async (req, res, next) => {
 app.delete('/api/teams/:id', wrap(async (req, res, next) => {
   const team = await Team.query().where({id: req.params.id}).first()
   if (!team) return next(new NotFoundError('No Team Exists With ID: ' + req.params.id))
-  team.$query().delete()
+  await team.$query().delete()
   if (team) return next(new BadRequestError('Team Was Not Deleted'))
   return res.json({data: team})
 }))
