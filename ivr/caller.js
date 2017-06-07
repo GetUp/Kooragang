@@ -413,6 +413,7 @@ app.post('/survey_result', async ({query, body}, res) => {
     answer: disposition,
   }
   await SurveyResult.query().insert(data);
+  await Call.query().where({id: query.call_id}).patch({updated_at: new Date()})
 
   if (next) {
     r.addRedirect(res.locals.appUrl(`survey?q=${next}&call_id=${query.call_id}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`));

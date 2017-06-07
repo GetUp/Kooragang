@@ -806,21 +806,32 @@ describe('/survey', () => {
 describe('/survey_result', () => {
   beforeEach(async () => await SurveyResult.query().delete());
   const payload = { Digits: '2', To: '614000100'};
+  let call;
+  beforeEach(async() => call = await Call.query().insert({status: 'answered', updated_at: new Date()}) )
+
   it('stores the result', () => {
-    return request.post('/survey_result?q=disposition&campaign_id=1')
+    return request.post(`/survey_result?q=disposition&campaign_id=1&call_id=${call.id}`)
       .type('form').send(payload)
       .then(async () => {
         const result = await SurveyResult.query()
-          .where({question: 'disposition'})
+          .where({question: 'disposition', call_id: call.id})
           .first();
         expect(result.answer).to.be('answering machine');
       });
   });
 
+  it('updates the updated_at on the call', async () => {
+    await request.post(`/survey_result?q=disposition&campaign_id=1&call_id=${call.id}`)
+      .type('form').send(payload)
+      .expect(200)
+    const updated_call = await call.$query()
+    expect(updated_call.updated_at).to.not.eql(call.updated_at);
+  })
+
   context('with a non-meaningful disposition', () => {
     const payload = { Digits: '2', To: '614000100'};
     it ('should announce the result & redirect to call_again', () => {
-      return request.post('/survey_result?q=disposition&campaign_id=1')
+      return request.post(`/survey_result?q=disposition&campaign_id=1&call_id=${call.id}`)
         .type('form').send(payload)
         .expect(/answering machine/)
         .expect(/call_again/);
@@ -830,7 +841,7 @@ describe('/survey_result', () => {
   context('with a meaningful disposition', () => {
     const payload = { Digits: '4', To: '614000100'};
     it ('should announce the result & redirect to the next question', () => {
-      return request.post('/survey_result?q=disposition&campaign_id=1')
+      return request.post(`/survey_result?q=disposition&campaign_id=1&call_id=${call.id}`)
         .type('form').send(payload)
         .expect(/meaningful/)
         .expect(/survey\?q=/);
@@ -845,7 +856,7 @@ describe('/survey_result', () => {
     const payload = { Digits: '2', To: '614000100'};
     it('should be spripped out to valid xml', async () => {
       const question = 'disposition';
-      return request.post(`/survey_result?q=disposition&campaign_id=${campaign.id}`)
+      return request.post(`/survey_result?q=disposition&campaign_id=${campaign.id}&call_id=${call.id}`)
         .type('form').send(payload)
         .expect(new RegExp('answering &amp; machine', 'i'));
     });
