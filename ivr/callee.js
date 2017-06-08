@@ -44,7 +44,7 @@ app.post('/answer', async ({body, query}, res) => {
         language: 'en-GB', voice: 'MAN'
       }
       try{
-        if (!process.env.SPEAK_NAMES) await api('speak_conference_member', params);
+        if (process.env.SPEAK_NAMES) await api('speak_conference_member', params);
       }catch(e){}
     }
 
