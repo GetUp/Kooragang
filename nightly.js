@@ -1,2 +1,4 @@
-const {knex} = require('./models');
-require('./dialer/recycle')().then(async() => knex.destroy());
+const { knex } = require('./models');
+const { recycle_all } = require('./dialer/recycle')
+
+recycle_all().then(async() => knex.destroy());
