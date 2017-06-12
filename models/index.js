@@ -108,6 +108,14 @@ class Call extends Model {
           from: 'calls.callee_id',
           to: 'callees.id'
         }
+      },
+      survey_results: {
+        relation: Model.HasManyRelation,
+        modelClass: SurveyResult,
+        join: {
+          from: 'calls.id',
+          to: 'survey_results.call_id'
+        }
       }
     }
   }

@@ -332,7 +332,7 @@ describe('/connect', () => {
 describe('/ready', () => {
   beforeEach(async () => { await Callee.query().insert(associatedCallee) });
 
-  context('with an starting path', () => {
+  context('with a starting path', () => {
     let startPath;
     beforeEach(() => startPath = `/ready?campaign_id=${campaign.id}&caller_number=${caller.phone_number}&start=1`);
 
@@ -372,7 +372,20 @@ describe('/ready', () => {
     });
 
     it('should give extra instructions',
-      () => request.post(`/ready?caller_id=${caller.id}&start=1&campaign_id=${campaign.id}`).expect(/press star/i));
+      () => request.post(`/ready?caller_number=12333&start=1&campaign_id=${campaign.id}`).expect(/press star/i));
+
+    context('with a call that on the same campaign and phone number that has no survey result', () => {
+      let previous_caller, previous_call;
+      beforeEach(async () => {
+        previous_caller = await Caller.query().insert({phone_number: '1234', campaign_id: campaign.id});
+        previous_call = await Call.query().insert({status: 'answered', caller_id: previous_caller.id});
+      })
+
+      it ('should ask if they want to resume', async () => {
+        await request.post(`/ready?caller_number=${previous_caller.phone_number}&campaign_id=${campaign.id}&start=1`)
+          .expect(new RegExp(`resume_survey.*caller_id=.*last_call_id=${previous_call.id}.*campaign_id=${campaign.id}`));
+      })
+    })
   });
 
   it('should put them in a conference',
@@ -593,6 +606,52 @@ describe('/call_ended', () => {
   });
 });
 
+describe('/resume_survey', () => {
+  let call, caller;
+  beforeEach(async () => {
+    const original_caller = await Caller.query().insert({campaign_id: campaign.id})
+    caller = await Caller.query().insert({campaign_id: campaign.id})
+    call = await Call.query().insert({caller_id: original_caller.id})
+  })
+
+  context('with 1 pressed', () => {
+    it('update the callee on the record', async () => {
+      await request.post(`/resume_survey?last_call_id=${call.id}&caller_id=${caller.id}&campaign_id=${campaign.id}`)
+        .type('form')
+        .send({Digits: '1'})
+        .expect(200)
+      const updated_call = await call.$query();
+      expect(updated_call.caller_id).to.be(caller.id)
+    })
+
+    it('redirect to survey with undo set', async () => {
+      await request.post(`/resume_survey?last_call_id=${call.id}&caller_id=${caller.id}&campaign_id=${campaign.id}`)
+        .type('form')
+        .send({Digits: '1'})
+        .expect(new RegExp(`survey.*call_id=${call.id}.*caller_id=${caller.id}.*campaign_id=${campaign.id}.*q=disposition.*undo=1`))
+    })
+
+    it('should record an event', async () => {
+      await request.post(`/resume_survey?last_call_id=${call.id}&caller_id=${caller.id}&campaign_id=${campaign.id}`)
+        .type('form')
+        .send({Digits: '1'})
+        .expect(200)
+      const updated_call = await call.$query();
+      const event = await Event.query().where({name: 'resume calling', campaign_id: campaign.id, call_id: call.id, caller_id: caller.id}).first();
+      expect(event).to.be.an(Event);
+    })
+  })
+
+  context('with 2 pressed', () => {
+    it('should redirect back to call que', async () => {
+      await request.post(`/resume_survey?last_call_id=${call.id}&caller_id=${caller.id}&campaign_id=${campaign.id}`)
+        .type('form')
+        .send({Digits: '2'})
+        .expect(new RegExp(`ready.*caller_id=${caller.id}.*campaign_id=${campaign.id}`))
+    })
+  })
+})
+
 describe('/hold_music', () => {
   it('should return a list of mp3', () => {
     return request.post('/hold_music').expect(/cloudfront.*welcome-pack-2.mp3/i);
@@ -747,21 +806,32 @@ describe('/survey', () => {
 describe('/survey_result', () => {
   beforeEach(async () => await SurveyResult.query().delete());
   const payload = { Digits: '2', To: '614000100'};
+  let call;
+  beforeEach(async() => call = await Call.query().insert({status: 'answered', updated_at: new Date()}) )
+
   it('stores the result', () => {
-    return request.post('/survey_result?q=disposition&campaign_id=1')
+    return request.post(`/survey_result?q=disposition&campaign_id=1&call_id=${call.id}`)
       .type('form').send(payload)
       .then(async () => {
         const result = await SurveyResult.query()
-          .where({question: 'disposition'})
+          .where({question: 'disposition', call_id: call.id})
           .first();
         expect(result.answer).to.be('answering machine');
       });
   });
 
+  it('updates the updated_at on the call', async () => {
+    await request.post(`/survey_result?q=disposition&campaign_id=1&call_id=${call.id}`)
+      .type('form').send(payload)
+      .expect(200)
+    const updated_call = await call.$query()
+    expect(updated_call.updated_at).to.not.eql(call.updated_at);
+  })
+
   context('with a non-meaningful disposition', () => {
     const payload = { Digits: '2', To: '614000100'};
     it ('should announce the result & redirect to call_again', () => {
-      return request.post('/survey_result?q=disposition&campaign_id=1')
+      return request.post(`/survey_result?q=disposition&campaign_id=1&call_id=${call.id}`)
         .type('form').send(payload)
         .expect(/answering machine/)
         .expect(/call_again/);
@@ -771,7 +841,7 @@ describe('/survey_result', () => {
   context('with a meaningful disposition', () => {
     const payload = { Digits: '4', To: '614000100'};
     it ('should announce the result & redirect to the next question', () => {
-      return request.post('/survey_result?q=disposition&campaign_id=1')
+      return request.post(`/survey_result?q=disposition&campaign_id=1&call_id=${call.id}`)
         .type('form').send(payload)
         .expect(/meaningful/)
         .expect(/survey\?q=/);
@@ -786,7 +856,7 @@ describe('/survey_result', () => {
     const payload = { Digits: '2', To: '614000100'};
     it('should be spripped out to valid xml', async () => {
       const question = 'disposition';
-      return request.post(`/survey_result?q=disposition&campaign_id=${campaign.id}`)
+      return request.post(`/survey_result?q=disposition&campaign_id=${campaign.id}&call_id=${call.id}`)
         .type('form').send(payload)
         .expect(new RegExp('answering &amp; machine', 'i'));
     });

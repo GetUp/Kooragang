@@ -163,10 +163,12 @@ describe('/answer', () => {
             .expect(new RegExp(caller.id))
         });
 
-        it('should speak the callee\'s name in the conference', () => {
-          return request.post(`/answer?name=Bridger&callee_id=${callee.id}&campaign_id=${campaign.id}`)
+        it('should speak the callee\'s name in the conference', async () => {
+          process.env.SPEAK_NAMES = 'true'
+          await request.post(`/answer?name=Bridger&callee_id=${callee.id}&campaign_id=${campaign.id}`)
             .type('form').send({CallStatus, CallUUID: call_uuid})
             .then(() => mockedApiCall.done() );
+          delete process.env.SPEAK_NAMES
         });
 
         it('should create a call record', () => {
