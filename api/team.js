@@ -5,7 +5,7 @@ const { BadRequestError, NotFoundError } = require("./middleware/errors")
 
 //index
 app.get('/api/teams', wrap(async (req, res, next) => {
-  const team = await Team.query()
+  const team = await Team.query().orderBy('created_at', 'desc')
   if (!team) return next(new NotFoundError('No Teams Exist'))
   return res.json({data: team})
 }))
