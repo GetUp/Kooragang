@@ -25,7 +25,7 @@ const recycle_all = async() => {
 }
 
 const recycle = async(campaign) => {
-  campaign.$query().patch(max_call_attempts: campaign.max_call_attempts+1)
+  await campaign.$query().patch(max_call_attempts: campaign.max_call_attempts+1)
   await Callee.raw(
     `update callees
      set last_called_at = null, last_recycled_at = now()
