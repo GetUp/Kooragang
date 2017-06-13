@@ -180,6 +180,26 @@ describe('/answer', () => {
             });
         });
       });
+      context('with the speak api mocked to fail', () => {
+        beforeEach(() => {
+          mockedApiCall = nock('https://api.plivo.com')
+            .post(`/v1/Account/test/Conference/conference-${caller.id}/Member/1111/Speak/`, (body) => {
+               return body.text === 'Bridger';
+            })
+            .query(true)
+            .reply(500, 'fake error');
+        });
+
+        it('should record an event if speak names fails', async () => {
+          process.env.SPEAK_NAMES = 'true'
+          await request.post(`/answer?name=Bridger&callee_id=${callee.id}&campaign_id=${campaign.id}`)
+            .type('form').send({CallStatus, CallUUID: call_uuid})
+            .then(() => mockedApiCall.done() );
+          delete process.env.SPEAK_NAMES
+          const event = await Event.query().where({campaign_id: 1, name: 'failed_speak_name'}).first()
+          expect(event.value).to.match(/500/)
+        });
+      });
 
       context('when the callee has no name set', () => {
         it('should not say anything', () => {

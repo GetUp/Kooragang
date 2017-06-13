@@ -45,7 +45,9 @@ app.post('/answer', async ({body, query}, res) => {
       }
       try{
         if (process.env.SPEAK_NAMES) await api('speak_conference_member', params);
-      }catch(e){}
+      }catch(e){
+        await Event.query().insert({name: 'failed_speak_name', campaign_id: campaign.id, call_id: call.id, caller_id: caller.id, value: {error: e} })
+      }
     }
 
     await Event.query().insert({name: 'answered', campaign_id: campaign.id, call_id: call.id, caller_id: caller.id, value: {calls_in_progress, updated_calls_in_progress: campaign.calls_in_progress, seconds_waiting} })
