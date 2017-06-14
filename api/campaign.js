@@ -3,7 +3,7 @@ const { Campaign } = require('../models')
 const { wrap } = require('./middleware')
 const { BadRequestError, NotFoundError } = require("./middleware/errors")
 const { setup_inbound, setup_redirect } = require("../campaigns/plivo_setup")
-const { recycle } = require("../dailer/recycle")
+const { recycle } = require("../dialer/recycle")
 
 //index
 app.get('/api/campaigns', wrap(async (req, res, next) => {
@@ -21,7 +21,6 @@ app.get('/api/campaigns/:id', wrap(async (req, res, next) => {
 
 //create
 app.post('/api/campaigns', wrap(async (req, res, next) => {
-  console.log(req.body.data)
   let campaign = await Campaign.query().insert(req.body.data)
   if (!campaign) return next(new BadRequestError('No Campaign Created'))
   if (!campaign.phone_number) campaign = await setup_inbound(campaign)

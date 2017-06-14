@@ -26,7 +26,7 @@ const setup_redirect = async (campaign, region) => {
 }
 
 const create_app_and_buy_number = async (payload, region='Sydney') => {
-  const number_options = { type: 'fixed', country_iso: 'AU', region}
+  const number_options = { type: 'fixed', country_iso: process.env.PLIVO_COUNTRY_ISO, region}
   const [create_code, create_response] = await plivo_api('create_application', payload, {multiArgs: true})
   const app_id = create_response.app_id
   const [search_code, search_response] = await plivo_api('search_phone_numbers', number_options, {multiArgs: true})
