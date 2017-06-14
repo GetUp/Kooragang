@@ -1,16 +1,15 @@
 const expect = require('expect.js')
 const nock = require('nock')
-const setup = require('../../campaigns/setup')
+const { setup_inbound, setup_redirect } = require('../../campaigns/plivo_setup')
 
-const {Campaign, Redirect} = require('../../models');
+const { Campaign, Redirect } = require('../../models');
 
 describe('setup', () => {
   let createApiCall, searchApiCall, rentApiCall;
   let campaign;
   let numbers = [{number: '61212121212'}, {number: '6131311313'}];
   const app_id = '12121'
-  const fields = {name: 'Test App', acceptable_drop_rate: 0.01}
-  const area = {country_iso: 'AU', type: 'local', region: 'Sydney'}
+  const fieldsForInboundCampaign = {name: 'Test App', number_region: 'Sydney'}
   beforeEach(require('../util').dropFixtures);
   beforeEach(() => {
     createApiCall = nock('https://api.plivo.com')
@@ -31,31 +30,25 @@ describe('setup', () => {
       .query(true)
       .reply(200);
   })
-
-  it ('should create a campaign using the name and fields', async() => {
-    const campaign = await setup(fields, area)
-    expect(campaign.name).to.be(fields.name)
-    expect(campaign.acceptable_drop_rate).to.be(fields.acceptable_drop_rate)
-  })
+  beforeEach(async () => { campaign = await Campaign.query().insert(fieldsForInboundCampaign) })
 
   it ('should create a plivo app with the name and environment and callbacks', async() => {
-    const campaign = await setup(fields, area)
+    await setup_inbound(campaign)
     createApiCall.done()
   })
 
-
   it ('should rent the first number', async () => {
-    await setup(fields, area)
+    await setup_inbound(campaign)
     rentApiCall.done()
   })
 
   it ('should update the campaign with the number', async () => {
-    const campaign = await setup(fields, area)
+    await setup_inbound(campaign)
     expect(campaign.phone_number).to.be(numbers[0].number)
   })
 
   context('with a redirect', () => {
-    let fieldsForRedirectCampaign = Object.assign({target_number: '6147676767676'}, fields);
+    let fieldsForRedirectCampaign = Object.assign({target_number: '6147676767676'}, fieldsForInboundCampaign);
     const redirect_app_id = '89989'
     beforeEach( async () => {
       createRedirectApi = nock('https://api.plivo.com')
@@ -68,24 +61,28 @@ describe('setup', () => {
         .query(true)
         .reply(200, {app_id: redirect_app_id});
       rentRedirectApiCall = nock('https://api.plivo.com')
-        .post(/PhoneNumber\/6131311313/, body => body.app_id === redirect_app_id)
+        .post(/PhoneNumber\/61212121212/, body => body.app_id === redirect_app_id)
         .query(true)
         .reply(200);
     })
+    beforeEach(async () => {
+      await Campaign.query().delete()
+      campaign = await Campaign.query().insert(fieldsForRedirectCampaign)
+    })
 
     it ('should create a redirect app', async () => {
-      await setup(fieldsForRedirectCampaign, area)
+      await setup_redirect(campaign)
       createRedirectApi.done()
     })
 
     it ('should buy a number', async () => {
-      await setup(fieldsForRedirectCampaign, area)
+      await setup_redirect(campaign)
       rentRedirectApiCall.done()
     })
 
     it ('should update the redirect number', async () => {
-      const campaign = await setup(fieldsForRedirectCampaign, area)
-      expect(campaign.phone_number).to.be(numbers[0].number)
+      await setup_redirect(campaign)
+      expect(campaign.redirect_number).to.be(numbers[0].number)
     })
   })
 
@@ -93,7 +90,7 @@ describe('setup', () => {
     beforeEach(() => numbers = [])
     it ('should throw an error', async() => {
       try {
-        await setup(fields, area)
+        await setup_inbound(campaign)
         throw 'should not reach'
       } catch(error) {
         expect(error).to.match(/No numbers available/)
