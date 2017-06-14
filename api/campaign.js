@@ -3,7 +3,6 @@ const { Campaign } = require('../models')
 const { wrap } = require('./middleware')
 const { BadRequestError, NotFoundError } = require("./middleware/errors")
 const { setup_inbound, setup_redirect } = require("../campaigns/plivo_setup")
-const { recycle } = require("../dialer/recycle")
 
 //index
 app.get('/api/campaigns', wrap(async (req, res, next) => {
@@ -42,14 +41,6 @@ app.delete('/api/campaigns/:id', wrap(async (req, res, next) => {
   if (!campaign) return next(new NotFoundError('No Campaign Exists With ID: ' + req.params.id))
   if (await campaign.$query().delete()) return res.json({data: campaign})
   return next(new BadRequestError('Campaign Was Not Deleted'))
-}))
-
-//recycle
-app.post('/api/campaigns/:id/recycle', wrap(async (req, res, next) => {
-  const campaign = await Campaign.query().where({id: req.params.id}).first()
-  if (!campaign) return next(new NotFoundError('No Campaign Exists With ID: ' + req.params.id))
-  if (await recycle(campaign)) return res.json({data: campaign})
-  return next(new BadRequestError('Campaign Was Not Recycled'))
 }))
 
 module.exports = app
