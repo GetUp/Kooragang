@@ -14,7 +14,6 @@ const {
   Event
 } = require('../models');
 
-
 module.exports.dial = async (appUrl, campaign) => {
   const timer = new Date();
   campaign = await recalculateRatio(campaign);
