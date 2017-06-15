@@ -6,7 +6,6 @@ const config = require('../knexfile')
 const knex = require('knex')(config[env])
 const objection = require('objection')
 const Model = objection.Model
-const transaction = objection.transaction
 const _ = require('lodash')
 const Base = require('./base')
 
@@ -228,7 +227,5 @@ module.exports = {
   Event,
   Team,
   User,
-  Redirect,
-  //transaction,
-  //knex
+  Redirect
 }

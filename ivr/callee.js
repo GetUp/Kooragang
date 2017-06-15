@@ -1,9 +1,12 @@
-const app = require('express')();
-const plivo = require('plivo');
-const _ = require('lodash');
-const dialer = require('../dialer');
-const plivo_api = require('../api/plivo');
-const {Call, Callee, Caller, Campaign, Event, transaction} = require('../models');
+const app = require('express')()
+const plivo = require('plivo')
+const _ = require('lodash')
+const dialer = require('../dialer')
+const plivo_api = require('../api/plivo')
+const objection = require('objection')
+const Model = objection.Model
+const transaction = objection.transaction
+const { Call, Callee, Caller, Campaign, Event } = require('../models')
 
 app.post('/answer', async ({body, query}, res) => {
   const r = plivo.Response();

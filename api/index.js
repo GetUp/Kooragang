@@ -16,7 +16,6 @@ app.use(authentication)
 app.use(require('./campaign'))
 app.use(require('./team'))
 app.use(require('./statistic'))
-app.use(require('./report'))
 app.use(error_handler)
 
 module.exports = app
