@@ -28,4 +28,4 @@ module.exports.isValidCallerNumber = (caller_number) => {
   return !_.isEmpty(caller_number) && caller_number !== 'anonymous' && caller_number !== 'undefined'
 };
 
-module.exports.modelsBoundReadOnly = models =>  _.mapValues(models, m => m.bindReadOnly() )
+module.exports.modelsBoundReadOnly = _.partialRight(_.mapValues, m => m.bindReadOnly() )
