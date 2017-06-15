@@ -2,9 +2,8 @@ const app = require('express')()
 const env = process.env.NODE_ENV || 'development'
 const _ = require('lodash')
 const moment = require('moment')
-const config = require('../knexfile')   
-const knex = require('knex')(config['read_only'][env])
-const { Campaign, Call, Caller, Callee, Event, Team } = require('../models')
+const { modelsBoundReadOnly } = require('../utils')
+const { Campaign, Call, Caller, Callee, Event, Team } = modelsBoundReadOnly(require('../models'))
 const { wrap } = require('./middleware')
 const { BadRequestError, NotFoundError } = require("./middleware/errors")
 
