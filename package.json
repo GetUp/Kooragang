@@ -12,8 +12,8 @@
     "nightly": "node ./nightly.js",
     "debug": "node debug ./app.js",
     "test": "find . -name '*.js' -not -path './node_modules/*' | NODE_ENV=test entr -c mocha --full-trace test/**",
-    "deploy-production": "git push kooragang HEAD:master && heroku run knex migrate:latest --app kooragang && git push kooragang-api HEAD:master",
-    "deploy-stage": "git push kooragang-stage HEAD:master && heroku run knex migrate:latest --app kooragang-stage && git push kooragang-api-stage HEAD:master"
+    "deploy-production": "git push kooragang HEAD:master && heroku run knex migrate:latest --app kooragang && git push kooragang-api HEAD:master && heroku run knex migrate:latest --app kooragang-api",
+    "deploy-stage": "git push kooragang-stage HEAD:master && heroku run knex migrate:latest --app kooragang-stage && git push kooragang-api-stage HEAD:master && heroku run knex migrate:latest --app kooragang-api-stage"
   },
   "dependencies": {
     "body-parser": "^1.17.2",
