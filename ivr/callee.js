@@ -4,7 +4,6 @@ const _ = require('lodash')
 const dialer = require('../dialer')
 const plivo_api = require('../api/plivo')
 const objection = require('objection')
-const Model = objection.Model
 const transaction = objection.transaction
 const { Call, Callee, Caller, Campaign, Event } = require('../models')
 

@@ -3,7 +3,6 @@ const plivo_api = require('../api/plivo')
 const moment = require('moment');
 const _ = require('lodash');
 const objection = require('objection')
-const Model = objection.Model
 const transaction = objection.transaction
 
 const {
