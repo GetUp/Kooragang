@@ -5,9 +5,9 @@ const moment = require('moment');
 const bodyParser = require('body-parser');
 const app = express();
 const _ = require('lodash');
-const api = plivo.RestAPI({ authId: process.env.API_ID, authToken: process.env.API_TOKEN});
+const plivo_api = plivo.RestAPI({ authId: process.env.PLIVO_API_ID, authToken: process.env.PLIVO_API_TOKEN});
 const readline = require('readline');
-const knex = require('knex')({client: 'pg', connection: process.env.DATABASE_URL});
+const knex = require('knex')({client: 'pg', connection: process.env.LOADTEST_DATABASE_URL});
 const objection = require('objection');
 const Model = objection.Model;
 const promisfy = require('es6-promisify');
@@ -115,7 +115,7 @@ const addAgent = async (count) => {
       time_limit: 60 * 120
     };
     try{
-      await promisfy(api.make_call.bind(api))(params);
+      await promisfy(plivo_api.make_call.bind(plivo_api))(params);
     } catch (e) {
       console.error(`Agent ${agents} could not connect - `, e)
     }

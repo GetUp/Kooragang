@@ -1,9 +1,11 @@
-const app = require('express')();
-const plivo = require('plivo');
-const _ = require('lodash');
-const dialer = require('../dialer');
-const api = require('../api');
-const {Call, Callee, Caller, Campaign, Event, transaction} = require('../models');
+const app = require('express')()
+const plivo = require('plivo')
+const _ = require('lodash')
+const dialer = require('../dialer')
+const plivo_api = require('../api/plivo')
+const objection = require('objection')
+const transaction = objection.transaction
+const { Call, Callee, Caller, Campaign, Event } = require('../models')
 
 app.post('/answer', async ({body, query}, res) => {
   const r = plivo.Response();
@@ -44,7 +46,7 @@ app.post('/answer', async ({body, query}, res) => {
         language: 'en-GB', voice: 'MAN'
       }
       try{
-        if (process.env.SPEAK_NAMES) await api('speak_conference_member', params);
+        if (process.env.SPEAK_NAMES) await plivo_api('speak_conference_member', params);
       }catch(e){
         await Event.query().insert({name: 'failed_speak_name', campaign_id: campaign.id, call_id: call.id, caller_id: caller.id, value: {error: e} })
       }

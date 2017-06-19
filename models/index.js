@@ -1,18 +1,15 @@
-const env = process.env.NODE_ENV || 'development';
-
-const moment = require('moment');
-const pg = require('pg');
+const env = process.env.NODE_ENV || 'development'
+const moment = require('moment')
+const pg = require('pg')
 pg.types.setTypeParser(1700, 'text', parseFloat)
-const config = require('../knexfile');
-const knex = require('knex')(config[env]);
-const objection = require('objection');
-const Model = objection.Model;
-const transaction = objection.transaction;
-const _ = require('lodash');
+const config = require('../knexfile')
+const knex = require('knex')(config[env])
+const objection = require('objection')
+const Model = objection.Model
+const _ = require('lodash')
+const Base = require('./base')
 
-Model.knex(knex);
-
-class Campaign extends Model {
+class Campaign extends Base {
   static get tableName() { return 'campaigns' }
   static get relationMappings() {
     return {
@@ -36,7 +33,7 @@ class Campaign extends Model {
       'dailyTimeOfOperationInWords',
       'areCallsInProgress',
       'calledEveryone'
-    ];
+    ]
   }
   isPausing() {
     return this.status === "pausing"
@@ -64,11 +61,11 @@ class Campaign extends Model {
     return this.calls_in_progress > 0
   }
   async calledEveryone() {
-    if (this.areCallsInProgress()) return false;
+    if (this.areCallsInProgress()) return false
     const {count} = await Callee.query().count('id as count')
       .where({campaign_id: this.id})
-      .whereNull('last_called_at').first();
-    return parseInt(count, 10) === 0;
+      .whereNull('last_called_at').first()
+    return parseInt(count, 10) === 0
   }
 
   valid() {
@@ -81,7 +78,7 @@ class Campaign extends Model {
         if (!questionData[field]) errors.push(`${question} question requires ${field}`)
       }
       for (let answer in questionData.answers) {
-        const answerData = questionData.answers[answer];
+        const answerData = questionData.answers[answer]
         if (!answer.match(/^[2-9]$/)) errors.push(`answer ${answer} for ${question} question is not valid`)
         if (!answerData.value) errors.push(`answer ${answer} for ${question} question is missing value`)
           if (answerData.next){
@@ -97,7 +94,7 @@ class Campaign extends Model {
   }
 }
 
-class Call extends Model {
+class Call extends Base {
   static get tableName() { return 'calls' }
   static get relationMappings() {
     return {
@@ -121,7 +118,7 @@ class Call extends Model {
   }
 }
 
-class Callee extends Model {
+class Callee extends Base {
   static get tableName() { return 'callees' }
 
   static get relationMappings() {
@@ -146,7 +143,7 @@ class Callee extends Model {
   }
 }
 
-class Caller extends Model {
+class Caller extends Base {
   static get tableName() { return 'callers' }
 
   static get relationMappings() {
@@ -171,19 +168,19 @@ class Caller extends Model {
   }
 }
 
-class Log extends Model {
+class Log extends Base {
   static get tableName() { return 'logs' }
 }
 
-class SurveyResult extends Model {
+class SurveyResult extends Base {
   static get tableName() { return 'survey_results' }
 }
 
-class Event extends Model {
+class Event extends Base {
   static get tableName() { return 'events' }
 }
 
-class Team extends Model {
+class Team extends Base {
   static get tableName() { return 'teams' }
 
   static get relationMappings() {
@@ -200,7 +197,7 @@ class Team extends Model {
   }
 }
 
-class User extends Model {
+class User extends Base {
   static get tableName() { return 'users' }
   static get relationMappings() {
     return {
@@ -216,7 +213,7 @@ class User extends Model {
   }
 }
 
-class Redirect extends Model {
+class Redirect extends Base {
   static get tableName() { return 'redirects' }
 }
 
@@ -230,7 +227,5 @@ module.exports = {
   Event,
   Team,
   User,
-  Redirect,
-  transaction,
-  knex
-};
+  Redirect
+}

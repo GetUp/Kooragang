@@ -1,15 +1,16 @@
 const plivo = require('plivo');
-const api = require('../api')
+const plivo_api = require('../api/plivo')
 const moment = require('moment');
 const _ = require('lodash');
+const objection = require('objection')
+const transaction = objection.transaction
 
 const {
   Call,
   Callee,
   Caller,
   Campaign,
-  Event,
-  transaction
+  Event
 } = require('../models');
 
 module.exports.dial = async (appUrl, campaign) => {
@@ -103,7 +104,7 @@ const updateAndCall = async (campaign, callee, appUrl) => {
   }
   if (process.env.NODE_ENV === 'development') console.error('CALLING', params)
   try{
-    await api('make_call', params);
+    await plivo_api('make_call', params);
   }catch(e){
     await decrementCallsInProgress(campaign);
     await Event.query().insert({campaign_id: campaign.id, name: 'api_error', value: {calls_in_progress: campaign.calls_in_progress, callee_id: callee.id, error: e}});
@@ -125,7 +126,7 @@ module.exports.notifyAgents = async (campaign) => {
   const availableCallers = await Caller.query().where({status: 'available', campaign_id: campaign.id});
   for (let caller of availableCallers) {
     try{
-      await api('speak_conference_member', {
+      await plivo_api('speak_conference_member', {
         conference_id: `conference-${caller.id}`,
         member_id: caller.conference_member_id,
         text: 'Campaign ended. Press star to exit',

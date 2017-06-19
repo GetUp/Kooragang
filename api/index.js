@@ -1,7 +1,21 @@
-const plivo = require('plivo');
-const promisify = require('es6-promisify');
-const api = plivo.RestAPI({ authId: process.env.API_ID || 'test', authToken: process.env.API_TOKEN || 'test'});
+const app = require('express')()
+const cors = require('cors')
+const body_parser = require('body-parser')
+const { cors_options, headers, authentication, log, error_handler } = require('./middleware')
 
-module.exports = (endpoint, params, options) => {
-  return promisify(api[endpoint].bind(api), options)(params);
-};
+if (process.env.NODE_ENV !== 'development') {
+  const compression = require('compression')
+  app.use(compression())
+}
+
+app.use(body_parser.json())
+app.use(cors(cors_options))
+app.use(headers)
+app.use(log)
+app.use(authentication)
+app.use(require('./campaign'))
+app.use(require('./team'))
+app.use(require('./statistic'))
+app.use(error_handler)
+
+module.exports = app
