@@ -1,7 +1,7 @@
 module.exports = {
   development: {
     client: 'pg',
-    connection: process.env.READ_ONLY_DATABASE_URL || 'postgres://readonly@localhost:5432/kooragang'
+    connection: process.env.READ_ONLY_DATABASE_URL || 'postgres://localhost:5432/kooragang'
   },
   test: {
     client: 'pg',
