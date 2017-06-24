@@ -5,7 +5,7 @@
     "node": "7.6"
   },
   "scripts": {
-    "start": "npm run local-tunnel &! npm run local",
+    "start": "npm run local-tunnel | npm run local",
     "local": "heroku local",
     "local-tunnel": "node ./tunnel.js",
     "nodemon": "nodemon --exec npm run app",

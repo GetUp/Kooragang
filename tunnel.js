@@ -2,7 +2,7 @@ require('dotenv').config()
 const ngrok = require('ngrok')
 ngrok.connect({
   proto: 'http',
-  addr: 5001,
+  addr: 5000,
   subdomain: process.env.NGROK_SUBDOMAIN,
   authtoken: process.env.NGROK_AUTH_TOKEN
 }, function (err, url) {
