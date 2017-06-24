@@ -6,8 +6,8 @@ ngrok.connect({
   subdomain: process.env.NGROK_SUBDOMAIN,
   authtoken: process.env.NGROK_AUTH_TOKEN
 }, function (err, url) {
-  console.error(url)
+  console.log(err, url)
 });
-ngrok.once('connect', function () {console.error("~ local tunnel connected")})
-ngrok.once('disconnect', function () {console.error("~ local tunnel disconnected")})
+ngrok.once('connect', function () {console.log("~ local tunnel connected")})
+ngrok.once('disconnect', function () {console.log("~ local tunnel disconnected")})
 ngrok.once('error', function () {console.error("~ local tunnel errored")})
