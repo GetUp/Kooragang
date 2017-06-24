@@ -5,7 +5,9 @@
     "node": "7.6"
   },
   "scripts": {
-    "start": "heroku local",
+    "start": "npm run local-tunnel | npm run local",
+    "local": "heroku local",
+    "local-tunnel": "node ./tunnel.js",
     "nodemon": "nodemon --exec npm run app",
     "web": "node ./app.js",
     "worker": "node ./worker.js",
@@ -32,6 +34,7 @@
   "devDependencies": {
     "expect.js": "^0.3.1",
     "mocha": "^3.2.0",
+    "ngrok": "^2.2.11",
     "nock": "^9.0.13",
     "proxyquire": "^1.7.11",
     "sinon": "^2.1.0",
