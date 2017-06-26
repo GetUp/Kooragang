@@ -195,4 +195,95 @@ app.get('/api/teams/:passcode/statistics', wrap(async (req, res, next) => {
   return res.json({data: data.rows})
 }))
 
+//teams report
+app.get('/api/callees/statistics', wrap(async (req, res, next) => {
+  data = await knex.raw(`
+    select calls_made.phone_number, calls_made.call_count, calling_sessions.calling_minutes, participation.campaign_participation, meaningful.survey_count , non_meaningful.survey_count , actions.action_count , redirections.responsible_redirects
+    from (
+      -- calls
+      select callers.phone_number as phone_number, count(calls.id) as call_count
+      from calls
+      inner join callers on callers.id = calls.caller_id
+      where callers.phone_number like '61%'
+      and char_length(callers.phone_number) = 11
+      group by callers.phone_number
+    ) calls_made
+    left outer join (
+      --minutes in calling sessions
+      select readys.phone_number as phone_number, sum(EXTRACT(second FROM (call_endeds.created_at - readys.created_at)) / 60) as calling_minutes
+      from (
+        select (body::json)->>'From' as phone_number, created_at, (body::json)->>'CallUUID' as call_uuid
+        from logs
+        where url ~* '/ready'
+       ) readys
+       inner join (
+        select (body::json)->>'From' as phone_number, created_at, (body::json)->>'CallUUID' as call_uuid
+        from logs
+        where url ~* '/call_ended'
+       ) call_endeds
+       on call_endeds.call_uuid = readys.call_uuid
+       group by readys.phone_number
+    ) calling_sessions
+    on calling_sessions.phone_number = calls_made.phone_number
+    left outer join (
+      --campagins participated in
+      select phone_number, count(phone_number) as campaign_participation
+      from (
+        select (body::json)->>'From' as phone_number, SUBSTRING(url from '=([^&]+)') as campaign_id
+        from logs
+        where true
+        and (body::json)->>'From' like '61%'
+        and url ~* '/connect'
+        group by campaign_id, phone_number
+      ) campaign_participation
+      group by phone_number
+    ) participation
+    on participation.phone_number = calls_made.phone_number
+    left outer join (
+      --meaningful surveys
+      select callers.phone_number as phone_number, count(survey_results.id) as survey_count
+      from calls
+      inner join callers on callers.id = calls.caller_id
+      inner join survey_results on survey_results.call_id = calls.id
+      and survey_results.question = 'disposition'
+      and survey_results.answer = 'meaningful conversation'
+      group by callers.phone_number
+    ) meaningful
+    on meaningful.phone_number = calls_made.phone_number
+    left outer join (
+      --non meaningful surveys
+      select callers.phone_number as phone_number, count(survey_results.id) as survey_count
+      from calls
+      inner join callers on callers.id = calls.caller_id
+      inner join survey_results on survey_results.call_id = calls.id
+      and survey_results.question = 'disposition'
+      and survey_results.answer != 'meaningful conversation'
+      group by callers.phone_number
+    ) non_meaningful
+    on non_meaningful.phone_number = calls_made.phone_number
+    left outer join (
+      --actioned surveys
+      select callers.phone_number as phone_number, count(survey_results.id) as action_count
+      from calls
+      inner join callers on callers.id = calls.caller_id
+      inner join survey_results on survey_results.call_id = calls.id
+      and survey_results.question = 'action'
+      and (survey_results.answer = 'will call member of parliament' or survey_results.answer = 'may call member of parliament')
+      group by callers.phone_number
+    ) actions
+    on actions.phone_number = calls_made.phone_number
+    left outer join (
+      --redirects
+      select callers.phone_number as phone_number, count(callers.phone_number) responsible_redirects
+      from calls
+      inner join callers on callers.id = calls.caller_id
+      inner join callees on callees.id = calls.callee_id
+      inner join redirects on redirects.phone_number = callees.phone_number
+      group by callers.phone_number
+    ) redirections
+    on redirections.phone_number = calls_made.phone_number;
+  `)
+  return res.json({data: data.rows.map(event => { return event })})
+}))
+
 module.exports = app
