@@ -3,6 +3,7 @@ const moment = require('moment');
 const plivo = require('plivo');
 const _ = require('lodash');
 const plivo_api = require('../api/plivo');
+const plivo_validation = require('./middleware/plivo_validation')
 const dialer = require('../dialer');
 const {
   sleep,
@@ -12,7 +13,7 @@ const {
 } = require('../utils');
 const {Call, Callee, Caller, Campaign, SurveyResult, Event, User, Team} = require('../models');
 
-app.post('/connect', async ({body, query}, res) => {
+app.post('/connect', plivo_validation, async ({body, query}, res) => {
   if (body.CallStatus === 'completed') return res.sendStatus(200);
   const r = plivo.Response();
   const campaign = await Campaign.query().where({id: (query.campaign_id || null)}).first();
@@ -305,7 +306,7 @@ app.all('/hold_music', (req, res) => {
   res.send(r.toXML());
 });
 
-app.post('/conference_event/caller', async ({query, body}, res) => {
+app.post('/conference_event/caller', plivo_validation, async ({query, body}, res) => {
   const conference_member_id = body.ConferenceMemberID;
   if (body.ConferenceAction === 'enter') {
     const caller = await Caller.query().where({id: query.caller_id})
