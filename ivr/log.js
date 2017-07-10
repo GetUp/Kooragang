@@ -1,7 +1,7 @@
 const express = require('express');
 const app = express();
 const {Log} = require('../models');
-
+const plivo_validation = require('./middleware/plivo_validation')
 const bodyParser = require('body-parser');
 app.use(bodyParser.urlencoded({extended: true}));
 
@@ -14,6 +14,6 @@ app.use(async ({method, url, body, query, params, headers}, res, next) => {
   next();
 });
 
-app.post('/log', (req, res) => res.sendStatus(200));
+app.post('/log', plivo_validation, (req, res) => res.sendStatus(200));
 
 module.exports = app;

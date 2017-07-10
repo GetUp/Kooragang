@@ -5,9 +5,10 @@ const dialer = require('../dialer')
 const plivo_api = require('../api/plivo')
 const objection = require('objection')
 const transaction = objection.transaction
+const plivo_validation = require('./middleware/plivo_validation')
 const { Call, Callee, Caller, Campaign, Event } = require('../models')
 
-app.post('/answer', async ({body, query}, res) => {
+app.post('/answer', plivo_validation, async ({body, query}, res) => {
   const r = plivo.Response();
   const name = query.name;
   let errorFindingCaller, caller, seconds_waiting;
@@ -73,7 +74,7 @@ app.post('/answer', async ({body, query}, res) => {
   res.send(r.toXML());
 });
 
-app.post('/hangup', async ({body, query}, res) => {
+app.post('/hangup', plivo_validation, async ({body, query}, res) => {
   let call = await Call.query().where({callee_call_uuid: body.CallUUID}).first();
   const status = body.Machine === 'true' ? 'machine_detection' : body.CallStatus;
   if (call){
@@ -94,7 +95,7 @@ app.post('/hangup', async ({body, query}, res) => {
 });
 
 
-app.post('/conference_event/callee', async ({query, body}, res) => {
+app.post('/conference_event/callee', plivo_validation, async ({query, body}, res) => {
   if (body.ConferenceAction === 'enter'){
     const call = await Call.query().where({callee_call_uuid: body.CallUUID}).first();
     const data = {
