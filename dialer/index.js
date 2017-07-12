@@ -34,14 +34,13 @@ module.exports.dial = async (appUrl, campaign) => {
         .forUpdate()
         .where({campaign_id: campaign.id})
         .whereRaw(`last_called_at < NOW() - INTERVAL '${campaign.no_call_window} minutes'`)
-        .andWhere('id', 'in', callees_within_max_call_attempts)
+        .whereIn('id', callees_within_max_call_attempts)
         .orderByRaw(sortOrder)
         .limit(callsToMakeExcludingCurrentCalls);
       if (callees.length) {
-      await Call.query().where(callees.id = calls.callee_id).count('*')
-      where callees.id = calls.callee_id
         await Callee.bindTransaction(trans).query()
-          .patch({last_called_at: new Date(), call_attempts: })
+          .patch({last_called_at: new Date()})
+          .increment('call_attempts')
           .whereIn('id', _.map(callees, (callee) => callee.id))
       }
       await trans.commit();
