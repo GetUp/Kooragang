@@ -19,19 +19,30 @@ module.exports.dial = async (appUrl, campaign) => {
   const callers = await Caller.query().where({status: 'available', campaign_id: campaign.id});
   const callsToMake = Math.floor(callers.length * campaign.ratio);
   const callsToMakeExcludingCurrentCalls = callsToMake - campaign.calls_in_progress;
-  const sortOrder = campaign.exhaust_callees_before_recycling ? 'call_attempts, id' : 'id';
+  const sortOrder = campaign.exhaust_callees_before_recycling ? 'call_attempts, last_called_at, id' : 'id';
   let callees = [];
   if (callsToMakeExcludingCurrentCalls > 0) {
     try{
+      const callees_within_max_call_attempts = await Call.query()
+        .groupByRaw(`
+          1 having sum(case when status in ('busy', 'no-answer') then 1 else 0 end) < ${campaign.max_call_attempts}
+          and sum(case when status not in ('busy', 'no-answer') then 1 else 0 end) = 0
+        `)
+        .select('callee_id');
       const trans = await transaction.start(Callee.knex());
       callees = await Callee.bindTransaction(trans).query()
         .forUpdate()
         .where({campaign_id: campaign.id})
-        .whereNull('last_called_at')
+        .whereRaw(`last_called_at < NOW() - INTERVAL '${campaign.no_call_window} minutes'`)
+        .andWhere('id', 'in', callees_within_max_call_attempts)
         .orderByRaw(sortOrder)
         .limit(callsToMakeExcludingCurrentCalls);
       if (callees.length) {
-        await Callee.bindTransaction(trans).query().patch({last_called_at: new Date()}).whereIn('id', _.map(callees, (callee) => callee.id));
+      await Call.query().where(callees.id = calls.callee_id).count('*')
+      where callees.id = calls.callee_id
+        await Callee.bindTransaction(trans).query()
+          .patch({last_called_at: new Date(), call_attempts: })
+          .whereIn('id', _.map(callees, (callee) => callee.id))
       }
       await trans.commit();
     } catch (e) {
