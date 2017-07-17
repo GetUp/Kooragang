@@ -8,7 +8,9 @@ const defaultCampaign = {
   id: 1,
   name: 'test1',
   phone_number: '1111',
-  redirect_number: '2222'
+  redirect_number: '2222',
+  max_call_attempts: 1,
+  no_call_window: 120
 }
 const secondaryCampaign = Object.assign({}, defaultCampaign, {name: 'test2'})
 process.env.KOORAGANG_API_HASH = 'xxxxxxxxxx'
