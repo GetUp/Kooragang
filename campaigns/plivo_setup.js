@@ -1,4 +1,4 @@
-const plivo_api = require('../api/plivo')
+const { plivo_api } = require('../api/plivo')
 const { Campaign } = require('../models')
 
 const setup_inbound = async (campaign) => {

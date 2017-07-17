@@ -2,6 +2,7 @@ const app = require('express')();
 const plivo = require('plivo');
 const bodyParser = require('body-parser');
 const _ = require('lodash');
+const { plivo_signature } = require('../../api/plivo')
 
 app.use(bodyParser.urlencoded({extended: true}));
 
@@ -19,5 +20,7 @@ app.use((req, res, next) => {
 });
 
 app.get('/', (req, res) => res.send('<_-.-_>I\'m awake.</_-.-_>'));
+
+app.use(plivo_signature)
 
 module.exports = app;

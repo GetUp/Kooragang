@@ -1,5 +1,5 @@
 const plivo = require('plivo');
-const plivo_api = require('../api/plivo')
+const { plivo_api } = require('../api/plivo')
 const moment = require('moment');
 const _ = require('lodash');
 const objection = require('objection')
