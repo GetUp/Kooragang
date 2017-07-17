@@ -389,4 +389,34 @@ describe('.calledEveryone', () => {
     beforeEach(async () => Callee.query().insert({phone_number: '123456789', campaign_id: campaign.id}));
     it('should return false', async () => expect(await campaign.calledEveryone()).to.be(false));
   });
+
+  context('with a campaign with max_call_attempts set to 1 (no recycle)', () => {
+    beforeEach(async() => campaign = await Campaign.query().insert({name: 'test', max_call_attempts: 1}));
+
+    context('with a callee called over 4 hours ago', () => {
+      beforeEach(async() => callee = await Callee.query().insert({campaign_id: campaign.id, last_called_at: moment().subtract(5, 'hours').toDate()}));
+
+      context('with the call busy or no-answer', () => {
+        beforeEach(() => Call.query().insert({callee_id: callee.id, status: 'no-answer'}));
+        it ('should be true', async() => {
+          expect(await campaign.calledEveryone()).to.be(true)
+        });
+      });
+    });
+  });
+
+  context('with a campaign with max_call_attempts set to greater than 1 (recycle)', () => {
+    beforeEach(async() => campaign = await Campaign.query().insert({name: 'test', max_call_attempts: 2}));
+
+    context('with a callee called over 4 hours ago', () => {
+      beforeEach(async() => callee = await Callee.query().insert({campaign_id: campaign.id, last_called_at: moment().subtract(5, 'hours').toDate()}));
+
+      context('with the call busy or no-answer', () => {
+        beforeEach(() => Call.query().insert({callee_id: callee.id, status: 'no-answer'}));
+        it ('should be false', async() => {
+          expect(await campaign.calledEveryone()).to.be(false)
+        });
+      });
+    });
+  });
 });
