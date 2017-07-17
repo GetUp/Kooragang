@@ -2,7 +2,7 @@ const app = require('express')();
 const moment = require('moment');
 const plivo = require('plivo');
 const _ = require('lodash');
-const plivo_api = require('../api/plivo');
+const { plivo_api } = require('../api/plivo');
 const dialer = require('../dialer');
 const {
   sleep,
