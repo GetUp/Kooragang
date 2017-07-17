@@ -367,13 +367,13 @@ describe('.calledEveryone', () => {
   let campaign;
   beforeEach(dropAll);
   beforeEach(async () => {
-    campaign = await Campaign.query().insert({name: 'test'});
+    campaign = await Campaign.query().insert({name: 'test'}).returning('*');
   });
 
   context('with no available callees on the current campaign', () => {
     beforeEach(async () => Callee.query().insert({phone_number: '123456789', last_called_at: new Date(), campaign_id: campaign.id}));
     beforeEach(async () => {
-      const anotherCampaign = await Campaign.query().insert({name: 'another'});
+      const anotherCampaign = await Campaign.query().insert({name: 'another'}).returning('*');
       Callee.query().insert({phone_number: '123456789', campaign_id: anotherCampaign.id});
     });
     it('should return true', async () => expect(await campaign.calledEveryone()).to.be(true));
@@ -391,7 +391,7 @@ describe('.calledEveryone', () => {
   });
 
   context('with a campaign with max_call_attempts set to 1 (no recycle)', () => {
-    beforeEach(async() => campaign = await Campaign.query().insert({name: 'test', max_call_attempts: 1}));
+    beforeEach(async() => campaign = await Campaign.query().insert({name: 'test', max_call_attempts: 1}).returning('*'));
 
     context('with a callee called over 4 hours ago', () => {
       beforeEach(async() => callee = await Callee.query().insert({campaign_id: campaign.id, last_called_at: moment().subtract(5, 'hours').toDate()}));
@@ -406,15 +406,38 @@ describe('.calledEveryone', () => {
   });
 
   context('with a campaign with max_call_attempts set to greater than 1 (recycle)', () => {
-    beforeEach(async() => campaign = await Campaign.query().insert({name: 'test', max_call_attempts: 2}));
+    beforeEach(async() => campaign = await Campaign.query().insert({name: 'test', max_call_attempts: 2}).returning('*'));
 
     context('with a callee called over 4 hours ago', () => {
+      let callee;
       beforeEach(async() => callee = await Callee.query().insert({campaign_id: campaign.id, last_called_at: moment().subtract(5, 'hours').toDate()}));
 
       context('with the call busy or no-answer', () => {
         beforeEach(() => Call.query().insert({callee_id: callee.id, status: 'no-answer'}));
         it ('should be false', async() => {
           expect(await campaign.calledEveryone()).to.be(false)
+        });
+      });
+
+      context('with the call completed', () => {
+        beforeEach(() => Call.query().insert({callee_id: callee.id, status: 'completed'}));
+        it ('should be true', async() => {
+          expect(await campaign.calledEveryone()).to.be(true)
+        });
+
+        context('with a prexisting call', () => {
+          beforeEach(() => Call.query().insert({callee_id: callee.id, status: 'busy'}));
+          it ('should NOT reset the last_called_at', async() => {
+            expect(await campaign.calledEveryone()).to.be(true)
+          });
+        });
+      });
+
+      context('with max_call_attempts already made with status', () => {
+        beforeEach(() => Call.query().insert({callee_id: callee.id, status: 'busy'}));
+        beforeEach(() => Call.query().insert({callee_id: callee.id, status: 'busy'}));
+        it ('should NOT reset the last_called_at', async() => {
+            expect(await campaign.calledEveryone()).to.be(true)
         });
       });
     });
