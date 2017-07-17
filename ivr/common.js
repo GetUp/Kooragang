@@ -2,7 +2,7 @@ const app = require('express')();
 const plivo = require('plivo');
 const bodyParser = require('body-parser');
 const _ = require('lodash');
-const { plivo_signature } = require('../../api/plivo')
+const { plivo_signature } = require('../api/plivo')
 
 app.use(bodyParser.urlencoded({extended: true}));
 
