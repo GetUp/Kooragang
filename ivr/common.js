@@ -21,6 +21,6 @@ app.use((req, res, next) => {
 
 app.get('/', (req, res) => res.send('<_-.-_>I\'m awake.</_-.-_>'));
 
-app.use(plivo_signature)
+if (!process.env.DISABLE_PLIVO_SECURITY) app.use(plivo_signature)
 
 module.exports = app;
