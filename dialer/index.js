@@ -115,7 +115,7 @@ const updateAndCall = async (campaign, callee, appUrl) => {
   }
   if (process.env.NODE_ENV === 'development') console.error('CALLING', params)
   try{
-    await callee.$query().increment('call_attempts', 1)
+    await Callee.query().where({id: callee.id}).patch({call_attempts: callee.call_attempts+1})
     await plivo_api('make_call', params);
   }catch(e){
     await decrementCallsInProgress(campaign);
