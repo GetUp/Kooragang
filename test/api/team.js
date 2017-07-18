@@ -1,5 +1,4 @@
 const expect = require('expect.js')
-const fetch = require('isomorphic-fetch')
 const app = require('../../api/index')
 const request = require('supertest')(app)
 const { Team, User } = require('../../models')
