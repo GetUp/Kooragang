@@ -23,7 +23,6 @@ module.exports.dial = async (appUrl, campaign) => {
   let callees = [];
   if (callsToMakeExcludingCurrentCalls > 0) {
     try{
-      const trans = await transaction.start(Callee.knex())
       const callees_within_max_call_attempts = Call.query()
         .innerJoin('callees', 'callee_id', 'callees.id')
         .where('campaign_id', campaign.id)
@@ -31,7 +30,8 @@ module.exports.dial = async (appUrl, campaign) => {
           1 having sum(case when status in ('busy', 'no-answer') then 1 else 0 end) < ${campaign.max_call_attempts}
           and sum(case when status not in ('busy', 'no-answer') then 1 else 0 end) = 0
         `)
-        .select('callee_id');
+        .select('callee_id')
+      const trans = await transaction.start(Callee.knex())
       callees = await Callee.bindTransaction(trans).query()
         .forUpdate()
         .where({campaign_id: campaign.id})
@@ -42,7 +42,6 @@ module.exports.dial = async (appUrl, campaign) => {
       if (callees.length) {
         await Callee.bindTransaction(trans).query()
           .patch({last_called_at: new Date()})
-          .increment('call_attempts')
           .whereIn('id', _.map(callees, (callee) => callee.id))
       }
       await trans.commit();
@@ -116,6 +115,7 @@ const updateAndCall = async (campaign, callee, appUrl) => {
   }
   if (process.env.NODE_ENV === 'development') console.error('CALLING', params)
   try{
+    await callee.$query().increment('call_attempts', 1)
     await plivo_api('make_call', params);
   }catch(e){
     await decrementCallsInProgress(campaign);
