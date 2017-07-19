@@ -61,12 +61,22 @@ class Campaign extends Base {
   }
   async calledEveryone() {
     if (this.areCallsInProgress()) return false
+    const callees_within_max_call_attempts = Call.query()
+      .innerJoin('callees', 'callee_id', 'callees.id')
+      .where('campaign_id', this.id)
+      .groupByRaw(`
+        1 having sum(case when status in ('busy', 'no-answer') then 1 else 0 end) < ${this.max_call_attempts}
+        and sum(case when status not in ('busy', 'no-answer') then 1 else 0 end) = 0
+      `)
+      .select('callee_id');
+
     const {count} = await Callee.query().count('id as count')
       .where({campaign_id: this.id})
-      .whereNull('last_called_at').first()
+      .whereRaw(`last_called_at is null or last_called_at < NOW() - INTERVAL '${this.no_call_window} minutes'`)
+      .whereIn('id', callees_within_max_call_attempts)
+      .first();
     return parseInt(count, 10) === 0
   }
-
   valid() {
     const errors = []
     const questionsNotReferenced = _.omit(this.questions, 'disposition')
