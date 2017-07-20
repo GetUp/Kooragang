@@ -211,9 +211,6 @@ describe('.dial', () => {
       })
 
       context('with exhaust_callees_before_recycling == false', () => {
-        beforeEach(async () => {
-          campaign = await campaign.$query().patchAndFetchById(campaign.id, {exhaust_callees_before_recycling: false, })
-        })
 
         context('with the max_call_attempts number more than calls made', () => {
           beforeEach(async () => {
