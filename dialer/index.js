@@ -19,7 +19,7 @@ module.exports.dial = async (appUrl, campaign) => {
   const callers = await Caller.query().where({status: 'available', campaign_id: campaign.id});
   const callsToMake = Math.floor(callers.length * campaign.ratio);
   const callsToMakeExcludingCurrentCalls = callsToMake - campaign.calls_in_progress;
-  const sortOrder = campaign.exhaust_callees_before_recycling ? 'count(*), max(last_called_at), 1' : '1';
+  const sortOrder = campaign.exhaust_callees_before_recycling ? 'count(calls.id), max(last_called_at), 1' : '1';
   let callees = [];
   let trans
   if (callsToMakeExcludingCurrentCalls > 0) {
