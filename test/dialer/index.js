@@ -262,15 +262,30 @@ describe('.dial', () => {
             await Callee.query().delete()
             pastDate = moment().subtract(6, 'hour').toDate()
             recentDate = moment().toDate()
-            pastCalledCallee   = await Callee.query().insert({id: 1, campaign_id: campaign.id, phone_number: 1, last_called_at: pastDate}).returning('*')
-            recentlyCalledCallee = await Callee.query().insert({id: 2, campaign_id: campaign.id, phone_number: 1, last_called_at: recentDate}).returning('*')
+            recentlyCalledCallee = await Callee.query().insert({id: 1, campaign_id: campaign.id, phone_number: 1, last_called_at: recentDate}).returning('*')
+            pastCalledCallee   = await Callee.query().insert({id: 2, campaign_id: campaign.id, phone_number: 1, last_called_at: pastDate}).returning('*')
             await Call.query().insert({callee_id: 1, status: 'busy'})
             await Call.query().insert({callee_id: 2, status: 'no-answer'})
           })
-          it('should call callees prioritised by last_called_at', async () => {
-            await dialer.dial(testUrl, campaign)
-            expect(moment((await recentlyCalledCallee.$query()).last_called_at).format()).to.be(moment(recentDate).format())
-            expect(moment((await pastCalledCallee.$query()).last_called_at).format()).to.not.be(moment(pastDate).format())
+
+          context('with dissimilar last_called_at', () => {
+            it('should call callees prioritised by last_called_at', async () => {
+              await dialer.dial(testUrl, campaign)
+              expect(moment((await recentlyCalledCallee.$query()).last_called_at).format()).to.be(moment(recentDate).format())
+              expect(moment((await pastCalledCallee.$query()).last_called_at).format()).to.not.be(moment(pastDate).format())
+            })
+          })
+
+          context('with the same last_called_at', () => {
+            beforeEach(async () => {
+              await recentlyCalledCallee.$query().patch({last_called_at: pastDate})
+            })
+
+            it('should call callees prioritised by id', async () => {
+              await dialer.dial(testUrl, campaign)
+              expect(moment((await recentlyCalledCallee.$query()).last_called_at).format()).to.not.be(moment(pastDate).format())
+              expect(moment((await pastCalledCallee.$query()).last_called_at).format()).to.be(moment(pastDate).format())
+            })
           })
         })
       })
