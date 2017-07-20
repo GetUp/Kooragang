@@ -19,26 +19,26 @@ module.exports.dial = async (appUrl, campaign) => {
   const callers = await Caller.query().where({status: 'available', campaign_id: campaign.id});
   const callsToMake = Math.floor(callers.length * campaign.ratio);
   const callsToMakeExcludingCurrentCalls = callsToMake - campaign.calls_in_progress;
-  const sortOrder = campaign.exhaust_callees_before_recycling ? 'call_attempts, last_called_at, id' : 'id';
+  const sortOrder = campaign.exhaust_callees_before_recycling ? 'count(*), max(last_called_at), 1' : '1';
   let callees = [];
+  let trans
   if (callsToMakeExcludingCurrentCalls > 0) {
     try{
-      const callees_within_max_call_attempts = Call.query()
-        .innerJoin('callees', 'callee_id', 'callees.id')
+      const callees_callable_ids = Callee.query()
+        .leftOuterJoin('calls', 'callee_id', 'callees.id')
         .where('campaign_id', campaign.id)
+        .whereRaw(`last_called_at is null or last_called_at < NOW() - INTERVAL '${campaign.no_call_window} minutes'`)
         .groupByRaw(`
           1 having sum(case when status in ('busy', 'no-answer') then 1 else 0 end) < ${campaign.max_call_attempts}
           and sum(case when status not in ('busy', 'no-answer') then 1 else 0 end) = 0
         `)
-        .select('callee_id')
-      const trans = await transaction.start(Callee.knex())
-      callees = await Callee.bindTransaction(trans).query()
-        .forUpdate()
-        .where({campaign_id: campaign.id})
-        .whereRaw(`last_called_at is null or last_called_at < NOW() - INTERVAL '${campaign.no_call_window} minutes'`)
-        .whereIn('id', callees_within_max_call_attempts)
         .orderByRaw(sortOrder)
         .limit(callsToMakeExcludingCurrentCalls)
+        .select('callee_id')
+      trans = await transaction.start(Callee.knex())
+      callees = await Callee.bindTransaction(trans).query()
+        .forUpdate()
+        .whereIn('id', callees_callable_ids)
       if (callees.length) {
         await Callee.bindTransaction(trans).query()
           .patch({last_called_at: new Date()})
@@ -46,6 +46,7 @@ module.exports.dial = async (appUrl, campaign) => {
       }
       await trans.commit();
     } catch (e) {
+      console.error(e)
       await trans.rollback();
       await Event.query().insert({campaign_id: campaign.id, name: 'callee_error', value: {error: e}});
     }
