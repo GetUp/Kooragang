@@ -36,7 +36,6 @@ module.exports.dial = async (appUrl, campaign) => {
       }
       await trans.commit();
     } catch (e) {
-      console.error(e)
       await trans.rollback();
       await Event.query().insert({campaign_id: campaign.id, name: 'callee_error', value: {error: e}});
     }
