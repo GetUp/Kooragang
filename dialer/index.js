@@ -24,17 +24,7 @@ module.exports.dial = async (appUrl, campaign) => {
   let trans
   if (callsToMakeExcludingCurrentCalls > 0) {
     try{
-      const callees_callable_ids = Callee.query()
-        .leftOuterJoin('calls', 'callee_id', 'callees.id')
-        .where('campaign_id', campaign.id)
-        .whereRaw(`last_called_at is null or last_called_at < NOW() - INTERVAL '${campaign.no_call_window} minutes'`)
-        .groupByRaw(`
-          1 having sum(case when status in ('busy', 'no-answer') then 1 else 0 end) < ${campaign.max_call_attempts}
-          and sum(case when status not in ('busy', 'no-answer') then 1 else 0 end) = 0
-        `)
-        .orderByRaw(sortOrder)
-        .limit(callsToMakeExcludingCurrentCalls)
-        .select('callee_id')
+      const callees_callable_ids = campaign.callableCallees(sortOrder, callsToMakeExcludingCurrentCalls)
       trans = await transaction.start(Callee.knex())
       callees = await Callee.bindTransaction(trans).query()
         .forUpdate()
@@ -42,7 +32,7 @@ module.exports.dial = async (appUrl, campaign) => {
       if (callees.length) {
         await Callee.bindTransaction(trans).query()
           .patch({last_called_at: new Date()})
-          .whereIn('id', _.map(callees, (callee) => callee.id))
+          .whereIn('id', callees_callable_ids)
       }
       await trans.commit();
     } catch (e) {
