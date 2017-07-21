@@ -64,7 +64,7 @@ class Campaign extends Base {
     const {count} = await Callee.query().count('id as count').whereIn('id', this.callableCallees()).first()
     return parseInt(count, 10) === 0
   }
-  callableCallees(sortOrder='1', callsToMakeExcludingCurrentCalls='1') {
+  callableCallees(callsToMakeExcludingCurrentCalls=1) {
     return Callee.query()
       .leftOuterJoin('calls', 'callee_id', 'callees.id')
       .where('campaign_id', this.id)
@@ -73,7 +73,7 @@ class Campaign extends Base {
         1 having sum(case when status in ('busy', 'no-answer') then 1 else 0 end) < ${this.max_call_attempts}
         and sum(case when status not in ('busy', 'no-answer') then 1 else 0 end) = 0
       `)
-      .orderByRaw(sortOrder)
+      .orderByRaw(this.exhaust_callees_before_recycling ? 'count(calls.id), max(last_called_at), 1' : '1')
       .limit(callsToMakeExcludingCurrentCalls)
       .select('callees.id')
   }
