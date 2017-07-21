@@ -29,7 +29,7 @@
     "moment": "^2.18.1",
     "objection": "^0.7.12",
     "pg": "^6.1.5",
-    "plivo": "GetUp/plivo-node#node-style-callbacks"
+    "plivo": "GetUp/plivo-node#production"
   },
   "devDependencies": {
     "expect.js": "^0.3.1",
