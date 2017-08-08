@@ -928,6 +928,19 @@ describe('/call_again', () => {
     });
   });
 
+  context('with no call_id passed', async () => {
+    beforeEach(async () => { await Campaign.query().delete() });
+    beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign));
+
+    it ('should let the user press 9 to report an issue', () => {
+     return request.post(`/call_again?caller_id=1&campaign_id=${campaign.id}`)
+       .type('form').send()
+       .expect(/9/)
+       .expect(/campaign_id=\d+"/)
+       .expect(/or 9 to report a technical issue/i);
+    });
+  });
+
   context('with a call_id passed', async () => {
     beforeEach(async () => { await Campaign.query().delete() });
     beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign));

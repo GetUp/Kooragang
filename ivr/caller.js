@@ -448,8 +448,10 @@ app.post('/call_again', async ({query, body}, res) => {
     message += 'or 9 to report a technical issue.';
   }
 
+  let readyUrl = `ready?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`
+  if (query.call_id) readyUrl += `&call_id=${query.call_id}`
   const callAgain = r.addGetDigits({
-    action: res.locals.appUrl(`ready?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&call_id=${query.call_id}`),
+    action: res.locals.appUrl(readyUrl),
     timeout: 10,
     retries: 10,
     numDigits: 1,
