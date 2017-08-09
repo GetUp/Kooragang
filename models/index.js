@@ -101,6 +101,9 @@ class Campaign extends Base {
       throw new objection.ValidationError({ questions: errors.map(e => { return { message: e }}) })
     }
   }
+  async callee_total() {
+    return await Callee.query().where('campaign_id', this.id).count('*')
+  }
 }
 
 class Call extends Base {

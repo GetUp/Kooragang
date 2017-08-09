@@ -41,6 +41,7 @@ app.get('/api/campaigns/:id/statistics', wrap(async (req, res, next) => {
       .whereIn('name', ['caller_complete', 'answered'])
       .where({campaign_id: campaign.id})
       .whereRaw("created_at >= NOW() - INTERVAL '10 minutes'");
+    const callee_total = await campaign.callee_total();
     const callee_remaining = await campaign.callableCallees(999999);
     const callee_called = await Callee.knexQuery()
       .count('callees.id as count')
@@ -56,6 +57,7 @@ app.get('/api/campaigns/:id/statistics', wrap(async (req, res, next) => {
       const record = _.find(caller_counts, (record) => record.status === status);
       return record ? parseInt(record.count, 10) : 0;
     }
+    const callee_total_count = callee_total ? parseInt(callee_total[0].count, 10) : 0;
     const callee_remaining_count = callee_remaining.length;
     const callee_called_count = parseInt(callee_called[0].count);
     const data = {
@@ -69,6 +71,7 @@ app.get('/api/campaigns/:id/statistics', wrap(async (req, res, next) => {
       callers_complete: getCountForStatus('complete'),
       tech_issues_reported,
       validation_errors,
+      callee_total_count,
       callee_remaining_count,
       callee_called_count
     };
