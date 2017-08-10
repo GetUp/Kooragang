@@ -255,6 +255,17 @@ app.post('/ready', async ({body, query}, res) => {
     }
   }
 
+  if (query.start && campaign.hud) {
+    r.addSpeakAU(`If you are using a computer to preview the callees details, your session code is ${caller_id}.`)
+    const sessionCodePause = r.addGetDigits({
+      retries: 4,
+      numDigits: 1,
+      timeout: 30,
+      validDigits: [1],
+    })
+    sessionCodePause.addSpeakAU('Press 1 when you are ready to continue')
+  }
+
   if (query.start || body.Digits === '1') {
     r.addSpeakAU('You are now in the call queue.')
   } else {

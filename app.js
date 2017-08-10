@@ -6,4 +6,8 @@ if (process.env.IVR) {
 if (process.env.API) {
   app.use(require('./api'))
 }
-app.listen(port, () => console.log('App running on port', port))
+const server = app.listen(port, () => console.log('App running on port', port))
+
+if (process.env.HUD) {
+  require('./hud')(server)
+}

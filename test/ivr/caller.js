@@ -402,6 +402,15 @@ describe('/ready', () => {
     })
   })
 
+  context('with 1 pressed and a campaign with hud enabled', () => {
+    beforeEach(async() => campaign = await campaign.$query().patchAndFetch({hud: true}) )
+
+    it('should let them know their session id', async() => {
+      await request.post(`/ready?caller_number=1111&campaign_id=${campaign.id}&start=1`)
+         .expect(/session code is \d+/)
+    })
+  })
+
   context('with 0 pressed', () => {
     it('should redirect them to disconnect', () => {
       return request.post(`/ready?caller_id=${caller.id}&start=1&campaign_id=${campaign.id}`)
