@@ -5,9 +5,9 @@ const { setup_inbound, setup_redirect } = require('../../campaigns/plivo_setup')
 const { Campaign, Redirect } = require('../../models');
 
 describe('setup', () => {
-  let createApiCall, searchApiCall, rentApiCall;
+  let createApiCall, searchApiCall, linkApiCall;
   let campaign;
-  let numbers = [{number: '61212121212'}, {number: '6131311313'}];
+  let numbers = [{region: 'SYDNEY, AUSTRALIA', application: null, number: '61212121212'}, {region: 'SYDNEY, AUSTRALIA', application: null, number: '6131311313'}];
   const app_id = '12121'
   const fieldsForInboundCampaign = {name: 'Test App', number_region: 'Sydney'}
   beforeEach(require('../util').dropFixtures);
@@ -22,11 +22,11 @@ describe('setup', () => {
       .query(true)
       .reply(200, {app_id});
     searchApiCall = nock('https://api.plivo.com')
-      .get(/PhoneNumber/)
+      .get(/Number/)
       .query(true)
-      .reply(200, () => { return { objects: numbers} });
-    rentApiCall = nock('https://api.plivo.com')
-      .post(/PhoneNumber\/61212121212/, body => body.app_id === app_id)
+      .reply(200, () => { return { objects: numbers, meta: {next: null}} });
+    linkApiCall = nock('https://api.plivo.com')
+      .post(/Number\/61212121212/, body => body.app_id === app_id)
       .query(true)
       .reply(200);
   })
@@ -37,9 +37,9 @@ describe('setup', () => {
     createApiCall.done()
   })
 
-  it ('should rent the first number', async () => {
+  it ('should link the first number', async () => {
     await setup_inbound(campaign)
-    rentApiCall.done()
+    linkApiCall.done()
   })
 
   it ('should update the campaign with the number', async () => {
@@ -60,8 +60,8 @@ describe('setup', () => {
         })
         .query(true)
         .reply(200, {app_id: redirect_app_id});
-      rentRedirectApiCall = nock('https://api.plivo.com')
-        .post(/PhoneNumber\/61212121212/, body => body.app_id === redirect_app_id)
+      linkRedirectApiCall = nock('https://api.plivo.com')
+        .post(/Number\/61212121212/, body => body.app_id === redirect_app_id)
         .query(true)
         .reply(200);
     })
@@ -75,9 +75,9 @@ describe('setup', () => {
       createRedirectApi.done()
     })
 
-    it ('should buy a number', async () => {
+    it ('should link a number', async () => {
       await setup_redirect(campaign)
-      rentRedirectApiCall.done()
+      linkRedirectApiCall.done()
     })
 
     it ('should update the redirect number', async () => {
@@ -87,7 +87,8 @@ describe('setup', () => {
   })
 
   context('with no numbers available', () => {
-    beforeEach(() => numbers = [])
+    beforeEach(() => numbers = [{region: 'MELBOURNE, AUSTRALIA', application: null, number: '6131311313'}, {region: 'SYDNEY, AUSTRALIA', application: '/app/exists', number: '61212121212'}])
+
     it ('should throw an error', async() => {
       try {
         await setup_inbound(campaign)
