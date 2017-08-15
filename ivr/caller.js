@@ -256,7 +256,8 @@ app.post('/ready', async ({body, query}, res) => {
   }
 
   if (query.start && campaign.hud) {
-    r.addSpeakAU(`If you are using a computer to preview the callees details, your session code is ${caller_id}.`)
+    const code = caller_id.toString().split('').join(' ');
+    r.addSpeakAU(`If you are using a computer to preview the callees details, your session code is ${code}. I repeat ${code}`)
     const sessionCodePause = r.addGetDigits({
       retries: 4,
       numDigits: 1,
