@@ -1,5 +1,5 @@
 const env = process.env.NODE_ENV || 'development'
-const config = require('../knexfile_read_only')
+const config = require('../knexfile')
 const pg = require ('pg')
 
 module.exports = async (server) => {
