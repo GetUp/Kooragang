@@ -15,7 +15,7 @@ const {Call, Callee, Caller, Campaign, SurveyResult, Event, User, Team} = requir
 app.post('/connect', async ({body, query}, res) => {
   if (body.CallStatus === 'completed') return res.sendStatus(200);
   const r = plivo.Response();
-  const campaign = await Campaign.query().where({id: (query.campaign_id || null)}).first();
+  const campaign = await Campaign.query().where({id: (query.campaign_id || "")}).first();
 
   if (process.env.RECORD_CALLS === 'true') {
     r.addRecord({
@@ -30,7 +30,7 @@ app.post('/connect', async ({body, query}, res) => {
     r.addWait({length: 2});
     r.addSpeakAU('An error has occurred. The number is not associated with a campaign');
     r.addWait({length: 1});
-    r.addSpeakAU('GetUp technical staff have been notified. Hanging up now.');
+    r.addSpeakAU(`${process.env.ORG_NAME || ""} technical staff have been notified. Hanging up now.`);
     return res.send(r.toXML());
   }
 
@@ -40,7 +40,7 @@ app.post('/connect', async ({body, query}, res) => {
 
   if (campaign.isPaused()){
     r.addWait({length: 2});
-    r.addSpeakAU('Hi! Welcome to the GetUp Dialer tool.');
+    r.addSpeakAU(`Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool.`);
     r.addWait({length: 1});
     r.addSpeakAU('The campaign is currently paused! Please contact the campaign coordinator for further instructions. Thank you and have a great day!');
     return res.send(r.toXML());
@@ -48,7 +48,7 @@ app.post('/connect', async ({body, query}, res) => {
 
   if (!campaign.isWithinDailyTimeOfOperation()) {
     r.addWait({length: 2});
-    r.addSpeakAU(`Hi! Welcome to the GetUp Dialer tool.`);
+    r.addSpeakAU(`Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool.`);
     r.addWait({length: 1});
     r.addSpeakAU(`The campaign is currently outside of it\'s daily times of operation! ${campaign.dailyTimeOfOperationInWords()} Thank you and have a great day!`);
     return res.send(r.toXML());
@@ -63,7 +63,7 @@ app.post('/connect', async ({body, query}, res) => {
 
   if (await campaign.isComplete()) {
     r.addWait({length: 2});
-    r.addSpeakAU(`Hi! Welcome to the GetUp Dialer tool.`);
+    r.addSpeakAU(`Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool.`);
     r.addWait({length: 1});
     r.addSpeakAU('The campaign has been completed! Please contact the campaign coordinator for further instructions. Thank you and have a great day!');
     return res.send(r.toXML());
@@ -113,7 +113,7 @@ app.post('/connect', async ({body, query}, res) => {
 
 app.post('/briefing', async ({body, query}, res) => {
   const r = plivo.Response();
-  const campaign = await Campaign.query().where({id: (query.campaign_id || null)}).first();
+  const campaign = await Campaign.query().where({id: (query.campaign_id || "")}).first();
   let valid_briefing_digits = ['1', '2', '3', '4'];
 
   if(Object.keys(campaign.more_info).length > 0) {
@@ -135,7 +135,7 @@ app.post('/briefing', async ({body, query}, res) => {
     if (query.callback === '1') {
       briefing.addSpeakAU(`Hi! Welcome back.`);
     } else {
-      briefing.addSpeakAU(`Hi! Welcome to the GetUp Dialer tool. Today you will be making calls for the ${campaign.name} campaign.`);
+      briefing.addSpeakAU(`Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool. Today you will be making calls for the ${campaign.name} campaign.`);
       briefing.addWait({length: 1});
       briefing.addSpeakAU('If you cannot afford long phone calls and would like to be called back instead, please press the 2 key');
     }
@@ -369,7 +369,7 @@ app.post('/survey', async ({query, body}, res) => {
   if (query.call_id) {
     call = await Call.query().where({id: query.call_id}).first();
   } else {
-    call = await Call.query().where({conference_uuid: (body.ConferenceUUID || null)}).first();
+    call = await Call.query().where({conference_uuid: (body.ConferenceUUID || "")}).first();
   }
   if (!call) {
     r.addSpeakAU('You have left the call queue.')
