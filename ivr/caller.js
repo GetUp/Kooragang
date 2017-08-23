@@ -255,7 +255,7 @@ app.post('/ready', async ({body, query}, res) => {
     }
   }
 
-  if (query.start && campaign.hud) {
+  if ((query.start || query.resumed) && campaign.hud) {
     const code = caller_id.toString().split('').join(' ');
     r.addSpeakAU(`If you are using a computer to preview the callees details, your session code is ${code}. I repeat ${code}`)
     const sessionCodePause = r.addGetDigits({
@@ -306,7 +306,7 @@ app.post('/resume_survey', async ({query, body}, res) => {
     await Event.query().insert({name: 'resume calling', campaign_id: query.campaign_id, caller_id: query.caller_id, call_id: call.id, value: {original_caller_id}})
   } else {
     r.addSpeakAU('Continuing with calling.')
-    r.addRedirect(res.locals.appUrl(`ready?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`));
+    r.addRedirect(res.locals.appUrl(`ready?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&resumed=1`));
   }
   res.send(r.toXML());
 });
