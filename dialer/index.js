@@ -60,7 +60,8 @@ const recalculateRatio = async(campaign) => {
     .where({campaign_id: campaign.id})
     .groupBy('dropped');
   const total = _.sumBy(statusCounts, ({count}) => parseInt(count, 10));
-  if (total !== 0) {
+  const callers = await Caller.knexQuery().where({campaign_id: campaign.id}).whereIn('status', ['available', 'in-call']).count().first();
+  if (total !== 0 && callers.count >= campaign.min_callers_for_ratio) {
     if (campaign.last_checked_ratio_at) {
       const callsInWindow = await Call.query()
         .innerJoin('callees', 'calls.callee_id', 'callees.id')

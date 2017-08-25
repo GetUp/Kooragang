@@ -24,6 +24,12 @@ const dropAll = async () => {
   await Campaign.query().delete();
 }
 
+const insertMinNumberOfCallers = async (campaign) => {
+  for (let i of Array(campaign.min_callers_for_ratio)) {
+    await Caller.query().insert({campaign_id: campaign.id, status: 'in-call'})
+  }
+}
+
 describe('.dial', () => {
   let callee, campaign;
   const testUrl = 'http://test'
@@ -113,14 +119,27 @@ describe('.dial', () => {
         await Call.query().insert({callee_id: callee.id, ended_at: moment().subtract(5, 'minutes').toDate()})
         campaign = await Campaign.query().patchAndFetchById(campaign.id, {last_checked_ratio_at: moment().subtract(4, 'minutes').toDate()});
       });
-      it('should not recalculate the ratio', async () => {
+      it('should reset the ratio to 1', async () => {
         await dialer.dial(testUrl, campaign)
         const updatedCampaign = await Campaign.query().where({id: campaign.id}).first();
         expect(updatedCampaign.ratio).to.be(1.0);
       });
     });
 
-    context('with no drops in the last 10 minutes', () => {
+    context('with the number of callers less than the campaigns predictive minimum', () => {
+      beforeEach(async () => {
+        await Call.query().insert({callee_id: callee.id, ended_at: moment().subtract(5, 'minutes').toDate()})
+        campaign = await Campaign.query().patchAndFetchById(campaign.id, {min_callers_for_ratio: 5});
+      });
+      it('should reset the ratio to 1', async () => {
+        await dialer.dial(testUrl, campaign)
+        const updatedCampaign = await Campaign.query().where({id: campaign.id}).first();
+        expect(updatedCampaign.ratio).to.be(1.0);
+      });
+    });
+
+    context('with no drops in the last 10 minutes and enough callers', () => {
+      beforeEach(() => insertMinNumberOfCallers(campaign))
       beforeEach(async () => await Call.query().insert({callee_id: callee.id, ended_at: new Date()}))
       it('should increase the calling ratio by the campaign ratio_increment', async () => {
         await dialer.dial(testUrl, campaign)
@@ -149,6 +168,7 @@ describe('.dial', () => {
       beforeEach(async () => {
         await Call.query().insert({callee_id: callee.id, dropped: true, ended_at: new Date()})
       });
+      beforeEach(() => insertMinNumberOfCallers(campaign))
       it('should decrease the calling ratio using the ratio_decrease_factor', async () => {
         await dialer.dial(testUrl, campaign)
         const updatedCampaign = await Campaign.query().where({id: campaign.id}).first();
@@ -169,6 +189,7 @@ describe('.dial', () => {
         const inserts = _.range(100).map(() => Call.query().insert({callee_id: callee.id, status: 'completed', ended_at: new Date()}));
         await Promise.all(inserts);
       });
+      beforeEach(() => insertMinNumberOfCallers(campaign))
       it('should increase the calling ratio', async () => {
         await dialer.dial(testUrl, campaign)
         const updatedCampaign = await Campaign.query().where({id: campaign.id}).first();

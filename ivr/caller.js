@@ -15,7 +15,7 @@ const {Call, Callee, Caller, Campaign, SurveyResult, Event, User, Team} = requir
 app.post('/connect', async ({body, query}, res) => {
   if (body.CallStatus === 'completed') return res.sendStatus(200);
   const r = plivo.Response();
-  const campaign = await Campaign.query().where({id: (query.campaign_id || "")}).first();
+  const campaign = query.campaign_id && await Campaign.query().where({id: query.campaign_id}).first();
 
   if (process.env.RECORD_CALLS === 'true') {
     r.addRecord({
