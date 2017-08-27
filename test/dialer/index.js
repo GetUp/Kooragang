@@ -64,6 +64,32 @@ describe('.dial', () => {
       })
     });
 
+    context('with no outgoing_number set on the campaign', () => {
+      it('should use the value in the NUMBER environment variable', async () => {
+        process.env.NUMBER = '123'
+        const mockedApiCall = nock('https://api.plivo.com')
+          .post(/Call/, body => body.from === process.env.NUMBER)
+          .query(true)
+          .reply(200);
+        await dialer.dial(testUrl, campaign);
+        mockedApiCall.done();
+      })
+    });
+
+    context('with an outgoing_number set on the campaign', () => {
+      beforeEach(async () => {
+        campaign = await Campaign.query().patchAndFetchById(campaign.id, {outgoing_number: '909090'});
+      });
+      it('should use the campaign\'s outgoing_number', async () => {
+        const mockedApiCall = nock('https://api.plivo.com')
+          .post(/Call/, body => body.from === campaign.outgoing_number)
+          .query(true)
+          .reply(200);
+        await dialer.dial(testUrl, campaign);
+        mockedApiCall.done();
+      })
+    });
+
     context('with error with an api call', () => {
       it ('should remove decrement the calls_in_progress', async () => {
         const mockedApiCall = nock('https://api.plivo.com')

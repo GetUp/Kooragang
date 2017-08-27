@@ -91,7 +91,7 @@ const recalculateRatio = async(campaign) => {
 const updateAndCall = async (campaign, callee, appUrl) => {
   const params = {
     to: callee.phone_number,
-    from : process.env.NUMBER || '1111111111',
+    from : campaign.outgoing_number || process.env.NUMBER || '1111111111',
     answer_url : `${appUrl}/answer?name=${callee.first_name || ''}&callee_id=${callee.id}&campaign_id=${callee.campaign_id}`,
     hangup_url : `${appUrl}/hangup?callee_id=${callee.id}&campaign_id=${callee.campaign_id}`,
     fallback_url : `${appUrl}/callee_fallback?callee_id=${callee.id}&campaign_id=${callee.campaign_id}`,
