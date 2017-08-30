@@ -46,7 +46,7 @@ module.exports.dial = async (appUrl, campaign) => {
     await Promise.all(callees.map(callee => updateAndCall(campaign, callee, appUrl)))
     const value = {ratio: campaign.ratio, incall: incall.length, callers: callers.length, callsToMake, callees: callees.length, callsToMakeExcludingCurrentCalls, calls_in_progress: campaign.calls_in_progress, updated_calls_in_progress, time: new Date() - timer}
     await Event.query().insert({campaign_id: campaign.id, name: 'calling', value});
-  } else if (campaign.log_no_calls && (incall.length || callers.length)) {
+  } else if (campaign.log_no_calls && callers.length) {
     const value = {ratio: campaign.ratio, incall: incall.length, callers: callers.length, calls_in_progress: campaign.calls_in_progress, time: new Date() - timer}
     await Event.query().insert({campaign_id: campaign.id, name: 'no-calling', value});
   }
