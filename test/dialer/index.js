@@ -344,6 +344,7 @@ describe('.dial', () => {
           ratio: 3, max_ratio: 4, last_checked_ratio_at: new Date()
         });
         await Promise.all(_.range(2).map(() => Caller.query().insert({phone_number: '1', status: 'available', campaign_id: campaign.id})));
+        await Caller.query().insert({phone_number: '132', status: 'in-call', campaign_id: campaign.id});
       });
       beforeEach(async () => {
         const inserts = _.range(4).map(() => Callee.query().insert({phone_number: '61411111111', campaign_id: campaign.id}));
@@ -369,6 +370,7 @@ describe('.dial', () => {
         const event = await Event.query().where({campaign_id: campaign.id, name: 'calling'}).first();
         expect(event).to.be.an(Event);
         expect(event.value).to.match(/callsToMake/);
+        expect(JSON.parse(event.value).incall).to.be(1);
       });
     });
 
@@ -411,6 +413,25 @@ describe('.dial', () => {
         await Caller.query().insert({phone_number: '2', status: 'available', campaign_id: campaign.id});
         await dialer.dial(testUrl, campaign);
       });
+
+      context('with log_no_calls set', () => {
+        beforeEach(async () => {
+          campaign = await Campaign.query().patchAndFetchById(campaign.id, {log_no_calls: true});
+        })
+        it('should record an event', async () => {
+          await Caller.query().insert({phone_number: '1', status: 'available', campaign_id: campaign.id});
+          await Caller.query().insert({phone_number: '2', status: 'in-call', campaign_id: campaign.id});
+          await dialer.dial(testUrl, campaign);
+          const event = await Event.query().where({campaign_id: campaign.id, name: 'no-calling'}).first();
+          expect(event).to.be.an(Event);
+          const {incall, calls_in_progress, callers, ratio} = JSON.parse(event.value)
+          expect(callers).to.be(1)
+          expect(incall).to.be(1)
+          expect(ratio).to.be(1)
+          expect(calls_in_progress).to.be(6)
+        });
+
+      })
     });
 
     context('with calls in progress', () => {
