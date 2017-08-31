@@ -23,6 +23,8 @@ const {
   User
 } = require('../../models');
 
+const hours_of_operation_null = require('../../seeds/hours_of_operation_null.example.json');
+
 const questions = require('../../seeds/questions.example.json');
 const malformedQuestion = {
   "disposition": {
@@ -56,7 +58,7 @@ const pausedCampaign = Object.assign({status: 'paused'}, defaultCampaign)
 const inactiveCampaign = Object.assign({status: 'inactive'}, defaultCampaign)
 const statuslessCampaign = Object.assign({status: null}, defaultCampaign)
 const amdCampaign = Object.assign({status: 'active', detect_answering_machine: true}, defaultCampaign)
-const operationalWindowCampaign = Object.assign({daily_start_operation: '00:00:00', daily_stop_operation: '00:00:00'}, activeCampaign)
+const operationalWindowCampaign = Object.assign({hours_of_operation: hours_of_operation_null}, activeCampaign)
 const teamsCampaign = Object.assign({status: 'active', teams: true}, defaultCampaign)
 const authCampaign = Object.assign({status: 'active', passcode: '1234'}, defaultCampaign)
 
@@ -203,7 +205,7 @@ describe('/connect', () => {
       return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
         .type('form')
         .send(payload)
-        .expect(/times of operation/);
+        .expect(/hours of operation/);
     });
   });
 

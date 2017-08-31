@@ -50,7 +50,7 @@ app.post('/connect', async ({body, query}, res) => {
     r.addWait({length: 2});
     r.addSpeakAU(`Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool.`);
     r.addWait({length: 1});
-    r.addSpeakAU(`The campaign is currently outside of it\'s daily times of operation! ${campaign.dailyTimeOfOperationInWords()} Thank you and have a great day!`);
+    r.addSpeakAU(`The campaign is currently outside of it\'s hours of operation! ${campaign.dailyTimeOfOperationInWords()} Thank you and have a great day!`);
     return res.send(r.toXML());
   }
 

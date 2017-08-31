@@ -2,6 +2,7 @@ const expect = require('expect.js')
 const app = require('../../api/index')
 const request = require('supertest')(app)
 const { Campaign } = require('../../models')
+const hours_of_operation_full = require('../../seeds/hours_of_operation_full.example.json')
 
 const defaultCampaign = {
   id: 1,
@@ -9,7 +10,8 @@ const defaultCampaign = {
   phone_number: '1111',
   redirect_number: '2222',
   max_call_attempts: 1,
-  no_call_window: 120
+  no_call_window: 120,
+  hours_of_operation: hours_of_operation_full
 }
 const secondaryCampaign = Object.assign({}, defaultCampaign, {name: 'test2'})
 process.env.KOORAGANG_API_HASH = 'xxxxxxxxxx'
