@@ -47,7 +47,9 @@ class Campaign extends Base {
     return this.isInactive() || (await this.calledEveryone())
   }
   isWithinDailyTimeOfOperation() {
-    if (this.hours_of_operation_timezone) moment.tz.setDefault(this.hours_of_operation_timezone)
+    if (this.hours_of_operation_timezone && moment.tz.zone(this.hours_of_operation_timezone)) {
+      moment.tz.setDefault(this.hours_of_operation_timezone)
+    }
     const todays_hours = this.hours_of_operation[_.lowerCase(moment().format('dddd'))]
     if (_.isNull(todays_hours)) return false
     const start = moment(todays_hours['start'], 'HHmm')
