@@ -59,6 +59,7 @@ const amdCampaign = Object.assign({status: 'active', detect_answering_machine: t
 const operationalWindowCampaign = Object.assign({daily_start_operation: '00:00:00', daily_stop_operation: '00:00:00'}, activeCampaign)
 const teamsCampaign = Object.assign({status: 'active', teams: true}, defaultCampaign)
 const authCampaign = Object.assign({status: 'active', passcode: '1234'}, defaultCampaign)
+const holdMusicCampaign = Object.assign({}, activeCampaign, {hold_music: '{"stevie_wonder_classic.mp3"}'})
 
 const CallUUID = '111';
 let campaign
@@ -662,9 +663,17 @@ describe('/resume_survey', () => {
 })
 
 describe('/hold_music', () => {
-  it('should return a list of mp3', () => {
-    return request.post('/hold_music').expect(/cloudfront.*welcome-pack-2.mp3/i);
-  });
+  describe('without a specified hold music array against the campaign', () => {
+    it('should return a default list of mp3', () => {
+      return request.post('/hold_music').expect(/cloudfront.*welcome-pack-2.mp3/i);
+    });
+  })
+  describe('with a specified hold music array against the campaign', () => {
+    it('should return a list of mp3', () => {
+      beforeEach(async () => campaign = await Campaign.query().insert(holdMusicCampaign));
+      return request.post(`hold_music?campaign_id=${campaign.id}`).expect(/cloudfront.*stevie_wonder_classic.mp3/i);
+    });
+  })
 });
 
 describe('/conference_event/caller', () => {
