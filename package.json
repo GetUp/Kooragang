@@ -11,6 +11,7 @@
     "nodemon": "nodemon --exec npm run app",
     "web": "node ./app.js",
     "worker": "node ./worker.js",
+    "audit": "node ./audit.js",
     "nightly": "node ./nightly.js",
     "debug": "node debug ./app.js",
     "test": "find . -name '*.js' -not -path './node_modules/*' | NODE_ENV=test entr -c mocha --full-trace test/**",
@@ -18,6 +19,7 @@
     "deploy-stage": "git push kooragang-stage HEAD:master && heroku run knex migrate:latest --app kooragang-stage && git push kooragang-api-stage HEAD:master"
   },
   "dependencies": {
+    "@slack/client": "^3.12.0",
     "body-parser": "^1.17.2",
     "compression": "^1.6.2",
     "cors": "^2.8.3",

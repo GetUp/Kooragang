@@ -15,7 +15,7 @@ const {Call, Callee, Caller, Campaign, SurveyResult, Event, User, Team} = requir
 app.post('/connect', async ({body, query}, res) => {
   if (body.CallStatus === 'completed') return res.sendStatus(200);
   const r = plivo.Response();
-  const campaign = await Campaign.query().where({id: (query.campaign_id || 0)}).first();
+  const campaign = query.campaign_id && await Campaign.query().where({id: query.campaign_id}).first();
 
   if (process.env.RECORD_CALLS === 'true') {
     r.addRecord({
@@ -57,7 +57,7 @@ app.post('/connect', async ({body, query}, res) => {
   const caller_number = extractCallerNumber(query, body);
   if (!isValidCallerNumber(caller_number)){
     r.addWait({length: 2});
-    r.addSpeakAU('It appears you do not have caller ID enabled. Please enable it and call back. Don\'t worry even when your caller ID is enabled the people you\'re talking to see your number. Thank you.');
+    r.addSpeakAU('It appears you do not have caller ID enabled. Please enable it and call back. Don\'t worry, even when your caller ID is enabled the people you\'re talking to do not see your number. Thank you.');
     return res.send(r.toXML());
   }
 

@@ -17,6 +17,7 @@ module.exports.dial = async (appUrl, campaign) => {
   const timer = new Date();
   campaign = await recalculateRatio(campaign);
   const callers = await Caller.query().where({status: 'available', campaign_id: campaign.id});
+  const incall = await Caller.query().where({status: 'in-call', campaign_id: campaign.id})
   const callsToMake = Math.floor(callers.length * campaign.ratio);
   const callsToMakeExcludingCurrentCalls = callsToMake - campaign.calls_in_progress;
   let callees = [];
@@ -43,8 +44,11 @@ module.exports.dial = async (appUrl, campaign) => {
   if (callees.length) {
     await campaign.$query().increment('calls_in_progress', callees.length);
     await Promise.all(callees.map(callee => updateAndCall(campaign, callee, appUrl)))
-    const value = {ratio: campaign.ratio, callers: callers.length, callsToMake, callees: callees.length, callsToMakeExcludingCurrentCalls, calls_in_progress: campaign.calls_in_progress, updated_calls_in_progress, time: new Date() - timer}
+    const value = {ratio: campaign.ratio, incall: incall.length, callers: callers.length, callsToMake, callees: callees.length, callsToMakeExcludingCurrentCalls, calls_in_progress: campaign.calls_in_progress, updated_calls_in_progress, time: new Date() - timer}
     await Event.query().insert({campaign_id: campaign.id, name: 'calling', value});
+  } else if (campaign.log_no_calls && callers.length) {
+    const value = {ratio: campaign.ratio, incall: incall.length, callers: callers.length, calls_in_progress: campaign.calls_in_progress, time: new Date() - timer}
+    await Event.query().insert({campaign_id: campaign.id, name: 'no-calling', value});
   }
 };
 
@@ -60,7 +64,8 @@ const recalculateRatio = async(campaign) => {
     .where({campaign_id: campaign.id})
     .groupBy('dropped');
   const total = _.sumBy(statusCounts, ({count}) => parseInt(count, 10));
-  if (total !== 0) {
+  const callers = await Caller.knexQuery().where({campaign_id: campaign.id}).whereIn('status', ['available', 'in-call']).count().first();
+  if (total !== 0 && callers.count >= campaign.min_callers_for_ratio) {
     if (campaign.last_checked_ratio_at) {
       const callsInWindow = await Call.query()
         .innerJoin('callees', 'calls.callee_id', 'callees.id')
@@ -90,7 +95,7 @@ const recalculateRatio = async(campaign) => {
 const updateAndCall = async (campaign, callee, appUrl) => {
   const params = {
     to: callee.phone_number,
-    from : process.env.NUMBER || '1111111111',
+    from : campaign.outgoing_number || process.env.NUMBER || '1111111111',
     answer_url : `${appUrl}/answer?name=${callee.first_name || ''}&callee_id=${callee.id}&campaign_id=${callee.campaign_id}`,
     hangup_url : `${appUrl}/hangup?callee_id=${callee.id}&campaign_id=${callee.campaign_id}`,
     fallback_url : `${appUrl}/callee_fallback?callee_id=${callee.id}&campaign_id=${callee.campaign_id}`,
