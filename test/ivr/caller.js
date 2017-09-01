@@ -663,15 +663,19 @@ describe('/resume_survey', () => {
 })
 
 describe('/hold_music', () => {
+  beforeEach( async () => {
+    await Campaign.query().delete();
+  });
   describe('without a specified hold music array against the campaign', () => {
+    beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign))
     it('should return a default list of mp3', () => {
-      return request.post('/hold_music').expect(/cloudfront.*welcome-pack-2.mp3/i);
+      return request.post(`/hold_music?campaign_id=${campaign.id}`).expect(/cloudfront.*welcome-pack-2.mp3/i)
     });
   })
   describe('with a specified hold music array against the campaign', () => {
+    beforeEach(async () => campaign = await Campaign.query().insert(holdMusicCampaign))
     it('should return a list of mp3', () => {
-      beforeEach(async () => campaign = await Campaign.query().insert(holdMusicCampaign));
-      return request.post(`hold_music?campaign_id=${campaign.id}`).expect(/cloudfront.*stevie_wonder_classic.mp3/i);
+      return request.post(`/hold_music?campaign_id=${campaign.id}`).expect(/cloudfront.*stevie_wonder_classic.mp3/i)
     });
   })
 });

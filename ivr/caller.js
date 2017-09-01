@@ -15,7 +15,7 @@ const {Call, Callee, Caller, Campaign, SurveyResult, Event, User, Team} = requir
 app.post('/connect', async ({body, query}, res) => {
   if (body.CallStatus === 'completed') return res.sendStatus(200);
   const r = plivo.Response();
-  const campaign = await Campaign.query().where({id: (query.campaign_id || "")}).first();
+  const campaign = await Campaign.query().where({id: (query.campaign_id || 0)}).first();
 
   if (process.env.RECORD_CALLS === 'true') {
     r.addRecord({
@@ -313,8 +313,8 @@ app.post('/resume_survey', async ({query, body}, res) => {
 
 app.all('/hold_music', async ({query, body}, res) => {
   const r = plivo.Response();
-  const campaign = await Campaign.query().where({id: query.campaign_id}).first();
-  if (campaign.hold_music) {
+  const campaign = await Campaign.query().where({id: query.campaign_id}).first()
+  if (campaign && campaign.hold_music) {
     _.shuffle(campaign.hold_music).forEach(filename => r.addPlay(`http://d1bm7er3ouf1yi.cloudfront.net/kooragang-hold-music/${filename}`) )
   } else {
     [1, 2].forEach(i => r.addPlay(`http://d1bm7er3ouf1yi.cloudfront.net/kooragang-hold-music/welcome-pack-${i}.mp3`) )    
