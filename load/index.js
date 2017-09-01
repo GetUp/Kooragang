@@ -47,11 +47,9 @@ app.all('/answer', async (req, res, next) => {
   if (debug) console.error(`Agent ${req.query.agent} connected.`)
   state[req.query.agent] = 'joining';
   const r = plivo.Response();
-  r.addWait({length: 8});
-  r.addDTMF('*');
-  r.addWait({length: 8});
+  r.addWait({length: 10});
   r.addDTMF(1);
-  r.addWait({length: 25});
+  r.addWait({length: 15});
   r.addRedirect(appUrl(`cycle?agent=${req.query.agent}`));
   return res.send(r.toXML());
 });
@@ -104,22 +102,24 @@ const report = async () => {
 };
 
 const addAgent = async (count) => {
-  console.log(`Adding ${count} agents`);
-  _.times(count, async() => {
-    agents++;
+  console.log(`Adding ${count} agents; wait until all added before adding more`);
+  const range = _.range(count)
+  for (let step of range) {
+    const agent = 1 + agents++
     const params = {
       to: target,
-      from : agents,
-      answer_url : appUrl(`answer?agent=${agents}`),
-      hangup_url : appUrl(`hangup?agent=${agents}`),
+      from : agent,
+      answer_url : appUrl(`answer?agent=${agent}`),
+      hangup_url : appUrl(`hangup?agent=${agent}`),
       time_limit: 60 * 120
     };
     try{
       await promisfy(plivo_api.make_call.bind(plivo_api))(params);
     } catch (e) {
-      console.error(`Agent ${agents} could not connect - `, e)
+      console.error(`Agent ${agent} could not connect - `, e)
     }
-  })
+  }
+  console.log('All agents added, you may add more')
 }
 
 app.listen(port, () => {
@@ -137,6 +137,8 @@ app.listen(port, () => {
     } else if (key.name === 'p') {
       wrap = !wrap;
       console.error(wrap ? 'Hanging up all agents' : 'OK to resume');
+    } else if (key.sequence === '*'){
+      await addAgent(100);
     } else if (key.name.match(/[1-9]/)){
       await addAgent(parseInt(key.name, 10));
     }

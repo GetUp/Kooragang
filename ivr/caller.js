@@ -282,7 +282,7 @@ app.post('/ready', async ({body, query}, res) => {
   }
 
   let params = {
-    waitSound: res.locals.appUrl('hold_music'),
+    waitSound: res.locals.appUrl(`hold_music?campaign_id=${query.campaign_id}`),
     maxMembers: 2,
     timeLimit: 60 * 120,
     callbackUrl: res.locals.appUrl(callbackUrl),
@@ -311,9 +311,14 @@ app.post('/resume_survey', async ({query, body}, res) => {
   res.send(r.toXML());
 });
 
-app.all('/hold_music', (req, res) => {
+app.all('/hold_music', async ({query, body}, res) => {
   const r = plivo.Response();
-  [1, 2].forEach(i => r.addPlay(`http://d1bm7er3ouf1yi.cloudfront.net/kooragang-hold-music/welcome-pack-${i}.mp3`) )
+  const campaign = await Campaign.query().where({id: query.campaign_id}).first()
+  if (campaign && campaign.hold_music) {
+    _.shuffle(campaign.hold_music).forEach(filename => r.addPlay(`http://d1bm7er3ouf1yi.cloudfront.net/kooragang-hold-music/${filename}`) )
+  } else {
+    [1, 2].forEach(i => r.addPlay(`http://d1bm7er3ouf1yi.cloudfront.net/kooragang-hold-music/welcome-pack-${i}.mp3`) )    
+  }
   res.send(r.toXML());
 });
 
