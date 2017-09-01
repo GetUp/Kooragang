@@ -13,7 +13,7 @@ const query = `select ca.id, ca.phone_number, cam.name as campaign, cam.ratio, c
       from callers ca
       inner join campaigns cam on cam.id = ca.campaign_id
       where ca.status = 'available'
-      and now() - ca.created_at > '${alert_window} seconds'::interval
+      and now() - ca.updated_at > '${alert_window} seconds'::interval
       order by 5 desc`
 let time_since_last_alert
 
