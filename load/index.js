@@ -139,6 +139,8 @@ app.listen(port, () => {
     } else if (key.name === 'p') {
       wrap = !wrap;
       console.error(wrap ? 'Hanging up all agents' : 'OK to resume');
+    } else if (key.sequence === '*'){
+      await addAgent(100);
     } else if (key.name.match(/[1-9]/)){
       await addAgent(parseInt(key.name, 10));
     }
