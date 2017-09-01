@@ -47,11 +47,9 @@ app.all('/answer', async (req, res, next) => {
   if (debug) console.error(`Agent ${req.query.agent} connected.`)
   state[req.query.agent] = 'joining';
   const r = plivo.Response();
-  r.addWait({length: 8});
-  r.addDTMF('*');
-  r.addWait({length: 8});
+  r.addWait({length: 10});
   r.addDTMF(1);
-  r.addWait({length: 25});
+  r.addWait({length: 15});
   r.addRedirect(appUrl(`cycle?agent=${req.query.agent}`));
   return res.send(r.toXML());
 });
