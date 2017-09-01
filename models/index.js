@@ -46,18 +46,20 @@ class Campaign extends Base {
   async isComplete() {
     return this.isInactive() || (await this.calledEveryone())
   }
-  isWithinDailyTimeOfOperation() {
+  timezone() {
     if (this.hours_of_operation_timezone && moment.tz.zone(this.hours_of_operation_timezone)) {
-      moment.tz.setDefault(this.hours_of_operation_timezone)
+      return this.hours_of_operation_timezone
     }
-    const todays_hours = this.hours_of_operation[_.lowerCase(moment().format('dddd'))]
+    return process.env.TZ || 'Australia/Sydney'
+  }
+  isWithinDailyTimeOfOperation() {
+    const todays_hours = this.hours_of_operation[_.lowerCase(moment().tz(this.timezone()).format('dddd'))]
     if (_.isNull(todays_hours)) return false
-    const start = moment(todays_hours['start'], 'HHmm')
-    const stop = moment(todays_hours['stop'], 'HHmm')
-    return moment().isBetween(start, stop, null, '[]')
+    const start = moment(todays_hours['start'], 'HHmm').tz(this.timezone())
+    const stop = moment(todays_hours['stop'], 'HHmm').tz(this.timezone())
+    return moment().tz(this.timezone()).isBetween(start, stop, null, '[]')
   }
   dailyTimeOfOperationInWords() {
-    if (!_.isNull(this.hours_of_operation_timezone)) moment.tz.setDefault(this.hours_of_operation_timezone)
     let operating_hours_in_words = 'Please call back within the hours of '
     let running_days = [], start, stop, tomorrow_index, tomorrow_hours
     const daysOfWeek = _.keys(this.hours_of_operation)
@@ -67,8 +69,8 @@ class Campaign extends Base {
       tomorrow_index = (_.indexOf(_.keys(this.hours_of_operation), day) + 1)
       tomorrow_hours = this.hours_of_operation[daysOfWeek[tomorrow_index]]     
       if (_.isNil(tomorrow_hours) || hours.start != tomorrow_hours.start || hours.stop != tomorrow_hours.stop) {
-        start = moment(hours['start'], 'HHmm').format('h mm a').replace(/00\s/,'')
-        stop = moment(hours['stop'], 'HHmm').format('h mm a').replace(/00\s/,'')
+        start = moment(hours['start'], 'HHmm').tz(this.timezone()).format('h mm a').replace(/00\s/,'')
+        stop = moment(hours['stop'], 'HHmm').tz(this.timezone()).format('h mm a').replace(/00\s/,'')
         operating_hours_in_words += `${start}, and ${stop}, `
         if (running_days.length == 2) {
           operating_hours_in_words += `${_.first(running_days)} and ${_.last(running_days)}. `
@@ -81,7 +83,7 @@ class Campaign extends Base {
         running_days = []
       }
     });
-    if (!_.isNull(moment().zoneName())) operating_hours_in_words += `${moment().zoneName()}. `
+    if (!_.isNull(moment().tz(this.timezone()).zoneName())) operating_hours_in_words += `${moment().tz(this.timezone()).zoneName()}. `
     return operating_hours_in_words
   }
   areCallsInProgress() {

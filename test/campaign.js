@@ -63,7 +63,7 @@ describe('dailyTimeOfOperationInWords', () => {
         hours_of_operation_timezone: 'Australia/Perth'
       })
     })
-    it('returns AEST in words', () => {
+    it('returns AWST in words', () => {
       const string = campaign.dailyTimeOfOperationInWords()
       expect(string).to.match(/Australian Western Standard Time/)
     })
