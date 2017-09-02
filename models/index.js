@@ -53,11 +53,11 @@ class Campaign extends Base {
     return process.env.TZ || 'Australia/Sydney'
   }
   isWithinDailyTimeOfOperation() {
-    const todays_hours = this.hours_of_operation[_.lowerCase(moment().tz(this.timezone()).format('dddd'))]
+    const todays_hours = this.hours_of_operation[_.lowerCase(moment.tz(this.timezone()).format('dddd'))]
     if (_.isNull(todays_hours)) return false
-    const start = moment(todays_hours['start'], 'HHmm').tz(this.timezone())
-    const stop = moment(todays_hours['stop'], 'HHmm').tz(this.timezone())
-    return moment().tz(this.timezone()).isBetween(start, stop, null, '[]')
+    const start = moment.tz(todays_hours['start'], 'HHmm', this.timezone())
+    const stop = moment.tz(todays_hours['stop'], 'HHmm', this.timezone())
+    return moment.tz(this.timezone()).isBetween(start, stop, null, '[]')
   }
   dailyTimeOfOperationInWords() {
     let operating_hours_in_words = 'Please call back within the hours of '
@@ -69,8 +69,8 @@ class Campaign extends Base {
       tomorrow_index = (_.indexOf(_.keys(this.hours_of_operation), day) + 1)
       tomorrow_hours = this.hours_of_operation[daysOfWeek[tomorrow_index]]     
       if (_.isNil(tomorrow_hours) || hours.start != tomorrow_hours.start || hours.stop != tomorrow_hours.stop) {
-        start = moment(hours['start'], 'HHmm').tz(this.timezone()).format('h mm a').replace(/00\s/,'')
-        stop = moment(hours['stop'], 'HHmm').tz(this.timezone()).format('h mm a').replace(/00\s/,'')
+        start = moment.tz(hours['start'], 'HHmm', this.timezone()).format('h mm a').replace(/00\s/,'')
+        stop = moment.tz(hours['stop'], 'HHmm', this.timezone()).format('h mm a').replace(/00\s/,'')
         operating_hours_in_words += `${start}, and ${stop}, `
         if (running_days.length == 2) {
           operating_hours_in_words += `${_.first(running_days)} and ${_.last(running_days)}. `
@@ -83,7 +83,7 @@ class Campaign extends Base {
         running_days = []
       }
     });
-    if (!_.isNull(moment().tz(this.timezone()).zoneName())) operating_hours_in_words += `${moment().tz(this.timezone()).zoneName()}. `
+    if (!_.isNull(moment.tz(this.timezone()).zoneName())) operating_hours_in_words += `${moment.tz(this.timezone()).zoneName()}. `
     return operating_hours_in_words
   }
   areCallsInProgress() {
