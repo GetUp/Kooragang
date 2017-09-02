@@ -1,5 +1,5 @@
 const env = process.env.NODE_ENV || 'development'
-const moment = require('moment')
+const moment = require('../api/moment')
 const pg = require('pg')
 pg.types.setTypeParser(1700, 'text', parseFloat)
 const config = require('../knexfile')
@@ -46,15 +46,45 @@ class Campaign extends Base {
   async isComplete() {
     return this.isInactive() || (await this.calledEveryone())
   }
+  timezone() {
+    if (this.hours_of_operation_timezone && moment.tz.zone(this.hours_of_operation_timezone)) {
+      return this.hours_of_operation_timezone
+    }
+    return process.env.TZ || 'Australia/Sydney'
+  }
   isWithinDailyTimeOfOperation() {
-    const start = moment(this.daily_start_operation, 'HHmm')
-    const stop = moment(this.daily_stop_operation, 'HHmm')
-    return moment().isBetween(start, stop, null, '[]')
+    const todays_hours = this.hours_of_operation[_.lowerCase(moment.tz(this.timezone()).format('dddd'))]
+    if (_.isNull(todays_hours)) return false
+    const start = moment.tz(todays_hours['start'], 'HHmm', this.timezone())
+    const stop = moment.tz(todays_hours['stop'], 'HHmm', this.timezone())
+    return moment.tz(this.timezone()).isBetween(start, stop, null, '[]')
   }
   dailyTimeOfOperationInWords() {
-    const start = moment(this.daily_start_operation, 'HHmm').format('h mm a').replace(/00\s/,'')
-    const stop = moment(this.daily_stop_operation, 'HHmm').format('h mm a').replace(/00\s/,'')
-    return `Please call back within the hours of ${start}, and ${stop}.`
+    let operating_hours_in_words = 'Please call back within the hours of '
+    let running_days = [], start, stop, tomorrow_index, tomorrow_hours
+    const daysOfWeek = _.keys(this.hours_of_operation)
+    _.forEach(this.hours_of_operation, (hours, day) => {
+      if (_.isNull(hours)) return
+      running_days.push(day)
+      tomorrow_index = (_.indexOf(_.keys(this.hours_of_operation), day) + 1)
+      tomorrow_hours = this.hours_of_operation[daysOfWeek[tomorrow_index]]     
+      if (_.isNil(tomorrow_hours) || hours.start != tomorrow_hours.start || hours.stop != tomorrow_hours.stop) {
+        start = moment.tz(hours['start'], 'HHmm', this.timezone()).format('h mm a').replace(/00\s/,'')
+        stop = moment.tz(hours['stop'], 'HHmm', this.timezone()).format('h mm a').replace(/00\s/,'')
+        operating_hours_in_words += `${start}, and ${stop}, `
+        if (running_days.length == 2) {
+          operating_hours_in_words += `${_.first(running_days)} and ${_.last(running_days)}. `
+        }
+        else if (running_days.length > 1) {
+          operating_hours_in_words += `${_.first(running_days)} to ${_.last(running_days)}. `
+        } else {
+          operating_hours_in_words += `on ${day}. `
+        }
+        running_days = []
+      }
+    });
+    if (!_.isNull(moment.tz(this.timezone()).zoneName())) operating_hours_in_words += `${moment.tz(this.timezone()).zoneName()}. `
+    return operating_hours_in_words
   }
   areCallsInProgress() {
     return this.calls_in_progress > 0
