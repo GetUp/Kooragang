@@ -977,7 +977,7 @@ describe('/call_again', () => {
         .type('form').send()
         .expect(/8/)
         .expect(/call_id=1/)
-        .expect(/Press 8 to correct your entry/i);
+        .expect(/Press, 8 to correct your entry/i);
     });
   });
 });
