@@ -197,6 +197,16 @@ app.get('/api/teams/:passcode/statistics', wrap(async (req, res, next) => {
 
 //callees report
 app.get('/api/callees/statistics', wrap(async (req, res, next) => {
+  const period = req.params.period
+  if (!period) {
+    period_in_words = '99 years'
+  } else if (period == 'hour') {
+    period_in_words = '1 hours'
+  } else if (period == 'day') {
+    period_in_words = '1 days'
+  } else {
+    period_in_words = '1 weeks'
+  }
   data = await knex.raw(`
     select calls_made.phone_number, calls_made.call_count as call_count, calling_sessions.calling_minutes as calling_minutes, participation.campaign_participation as participation, meaningful.survey_count as meaningful, non_meaningful.survey_count as non_meaningful, actions.action_count as actions, redirections.responsible_redirects as redirects
     from (
@@ -206,6 +216,7 @@ app.get('/api/callees/statistics', wrap(async (req, res, next) => {
       inner join callers on callers.id = calls.caller_id
       where callers.phone_number like '61%'
       and char_length(callers.phone_number) = 11
+      and (calls.created_at < NOW() - INTERVAL '${period_in_words}')
       group by callers.phone_number
     ) calls_made
     left outer join (
