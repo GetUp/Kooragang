@@ -221,7 +221,7 @@ app.get('/api/callees/statistics', wrap(async (req, res, next) => {
     ) calls_made
     left outer join (
       --minutes in calling sessions
-      select readys.phone_number as phone_number, sum(EXTRACT(second FROM (call_endeds.created_at - readys.created_at)) / 60) as calling_minutes
+      select readys.phone_number as phone_number, sum(EXTRACT(minutes FROM (call_endeds.created_at - readys.created_at))) as calling_minutes
       from (
         select (CASE WHEN (body::json)->>'Direction' = 'inbound' THEN (body::json)->>'From' ELSE (body::json)->>'To' END) as phone_number, created_at, (body::json)->>'CallUUID' as call_uuid
         from logs
