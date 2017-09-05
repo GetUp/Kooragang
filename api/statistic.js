@@ -197,7 +197,7 @@ app.get('/api/teams/:passcode/statistics', wrap(async (req, res, next) => {
 
 //callees report
 app.get('/api/callees/statistics', wrap(async (req, res, next) => {
-  const period = req.params.period
+  const period = req.query.period
   if (!period) {
     period_in_words = '99 years'
   } else if (period == 'hour') {
