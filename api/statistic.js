@@ -254,7 +254,7 @@ app.get('/api/callees/statistics', wrap(async (req, res, next) => {
         where true
         and (CASE WHEN (body::json)->>'Direction' = 'inbound' THEN (body::json)->>'From' ELSE (body::json)->>'To' END) like '61%'
         and url ~* '/connect'
-        where (created_at > NOW() - INTERVAL '${period_in_words}')
+        and (created_at > NOW() - INTERVAL '${period_in_words}')
         group by campaign_id, phone_number
       ) campaign_participation
       group by phone_number
