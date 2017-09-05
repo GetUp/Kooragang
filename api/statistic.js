@@ -208,7 +208,15 @@ app.get('/api/callees/statistics', wrap(async (req, res, next) => {
     period_in_words = '1 weeks'
   }
   data = await knex.raw(`
-    select calls_made.phone_number, calls_made.call_count as call_count, calling_sessions.calling_minutes as calling_minutes, participation.campaign_participation as participation, meaningful.survey_count as meaningful, non_meaningful.survey_count as non_meaningful, actions.action_count as actions, redirections.responsible_redirects as redirects
+    select
+      calls_made.phone_number,
+      (CASE WHEN calls_made.call_count is not null THEN calls_made.call_count::integer ELSE 0 END) as call_count,
+      (CASE WHEN calling_sessions.calling_minutes is not null THEN calling_sessions.calling_minutes::integer ELSE 0 END) as calling_minutes,
+      (CASE WHEN participation.campaign_participation is not null THEN participation.campaign_participation::integer ELSE 0 END) as participation,
+      (CASE WHEN meaningful.survey_count is not null THEN meaningful.survey_count::integer ELSE 0 END) as meaningful,
+      (CASE WHEN non_meaningful.survey_count is not null THEN non_meaningful.survey_count::integer ELSE 0 END) as non_meaningful,
+      (CASE WHEN actions.action_count is not null THEN actions.action_count::integer ELSE 0 END) as actions,
+      (CASE WHEN redirections.responsible_redirects is not null THEN redirections.responsible_redirects::integer ELSE 0 END) as redirects
     from (
       -- calls
       select callers.phone_number as phone_number, count(calls.id) as call_count
