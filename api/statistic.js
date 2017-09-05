@@ -195,10 +195,10 @@ app.get('/api/teams/:passcode/statistics', wrap(async (req, res, next) => {
   return res.json({data: data.rows})
 }))
 
-//teams report
+//callees report
 app.get('/api/callees/statistics', wrap(async (req, res, next) => {
   data = await knex.raw(`
-    select calls_made.phone_number, calls_made.call_count, calling_sessions.calling_minutes, participation.campaign_participation, meaningful.survey_count , non_meaningful.survey_count , actions.action_count , redirections.responsible_redirects
+    select calls_made.phone_number, calls_made.call_count as call_count, calling_sessions.calling_minutes as calling_minutes, participation.campaign_participation as participation, meaningful.survey_count as meaningful, non_meaningful.survey_count as non_meaningful, actions.action_count as actions, redirections.responsible_redirects as redirects
     from (
       -- calls
       select callers.phone_number as phone_number, count(calls.id) as call_count
@@ -212,12 +212,12 @@ app.get('/api/callees/statistics', wrap(async (req, res, next) => {
       --minutes in calling sessions
       select readys.phone_number as phone_number, sum(EXTRACT(second FROM (call_endeds.created_at - readys.created_at)) / 60) as calling_minutes
       from (
-        select (body::json)->>'From' as phone_number, created_at, (body::json)->>'CallUUID' as call_uuid
+        select (CASE WHEN (body::json)->>'Direction' = 'inbound' THEN (body::json)->>'From' ELSE (body::json)->>'To' END) as phone_number, created_at, (body::json)->>'CallUUID' as call_uuid
         from logs
         where url ~* '/ready'
        ) readys
        inner join (
-        select (body::json)->>'From' as phone_number, created_at, (body::json)->>'CallUUID' as call_uuid
+        select (CASE WHEN (body::json)->>'Direction' = 'inbound' THEN (body::json)->>'From' ELSE (body::json)->>'To' END) as phone_number, created_at, (body::json)->>'CallUUID' as call_uuid
         from logs
         where url ~* '/call_ended'
        ) call_endeds
@@ -229,10 +229,10 @@ app.get('/api/callees/statistics', wrap(async (req, res, next) => {
       --campagins participated in
       select phone_number, count(phone_number) as campaign_participation
       from (
-        select (body::json)->>'From' as phone_number, SUBSTRING(url from '=([^&]+)') as campaign_id
+        select (CASE WHEN (body::json)->>'Direction' = 'inbound' THEN (body::json)->>'From' ELSE (body::json)->>'To' END) as phone_number, SUBSTRING(url from '=([^&]+)') as campaign_id
         from logs
         where true
-        and (body::json)->>'From' like '61%'
+        and (CASE WHEN (body::json)->>'Direction' = 'inbound' THEN (body::json)->>'From' ELSE (body::json)->>'To' END) like '61%'
         and url ~* '/connect'
         group by campaign_id, phone_number
       ) campaign_participation
@@ -281,7 +281,8 @@ app.get('/api/callees/statistics', wrap(async (req, res, next) => {
       inner join redirects on redirects.phone_number = callees.phone_number
       group by callers.phone_number
     ) redirections
-    on redirections.phone_number = calls_made.phone_number;
+    on redirections.phone_number = calls_made.phone_number
+    where calling_minutes > 1;
   `)
   return res.json({data: data.rows.map(event => { return event })})
 }))
