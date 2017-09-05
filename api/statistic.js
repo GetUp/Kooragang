@@ -234,14 +234,15 @@ app.get('/api/callees/statistics', wrap(async (req, res, next) => {
         select (CASE WHEN (body::json)->>'Direction' = 'inbound' THEN (body::json)->>'From' ELSE (body::json)->>'To' END) as phone_number, created_at, (body::json)->>'CallUUID' as call_uuid
         from logs
         where url ~* '/ready'
-       ) readys
-       inner join (
+      ) readys
+      inner join (
         select (CASE WHEN (body::json)->>'Direction' = 'inbound' THEN (body::json)->>'From' ELSE (body::json)->>'To' END) as phone_number, created_at, (body::json)->>'CallUUID' as call_uuid
         from logs
         where url ~* '/call_ended'
-       ) call_endeds
-       on call_endeds.call_uuid = readys.call_uuid
-       group by readys.phone_number
+      ) call_endeds
+      on call_endeds.call_uuid = readys.call_uuid
+      where (readys.created_at > NOW() - INTERVAL '${period_in_words}')
+      group by readys.phone_number
     ) calling_sessions
     on calling_sessions.phone_number = calls_made.phone_number
     left outer join (
@@ -253,6 +254,7 @@ app.get('/api/callees/statistics', wrap(async (req, res, next) => {
         where true
         and (CASE WHEN (body::json)->>'Direction' = 'inbound' THEN (body::json)->>'From' ELSE (body::json)->>'To' END) like '61%'
         and url ~* '/connect'
+        where (created_at > NOW() - INTERVAL '${period_in_words}')
         group by campaign_id, phone_number
       ) campaign_participation
       group by phone_number
@@ -266,6 +268,7 @@ app.get('/api/callees/statistics', wrap(async (req, res, next) => {
       inner join survey_results on survey_results.call_id = calls.id
       and survey_results.question = 'disposition'
       and survey_results.answer = 'meaningful conversation'
+      where (survey_results.created_at > NOW() - INTERVAL '${period_in_words}')
       group by callers.phone_number
     ) meaningful
     on meaningful.phone_number = calls_made.phone_number
@@ -277,6 +280,7 @@ app.get('/api/callees/statistics', wrap(async (req, res, next) => {
       inner join survey_results on survey_results.call_id = calls.id
       and survey_results.question = 'disposition'
       and survey_results.answer != 'meaningful conversation'
+      where (survey_results.created_at > NOW() - INTERVAL '${period_in_words}')
       group by callers.phone_number
     ) non_meaningful
     on non_meaningful.phone_number = calls_made.phone_number
@@ -288,6 +292,7 @@ app.get('/api/callees/statistics', wrap(async (req, res, next) => {
       inner join survey_results on survey_results.call_id = calls.id
       and survey_results.question = 'action'
       and (survey_results.answer = 'will call member of parliament' or survey_results.answer = 'may call member of parliament')
+      where (survey_results.created_at > NOW() - INTERVAL '${period_in_words}')
       group by callers.phone_number
     ) actions
     on actions.phone_number = calls_made.phone_number
@@ -298,6 +303,7 @@ app.get('/api/callees/statistics', wrap(async (req, res, next) => {
       inner join callers on callers.id = calls.caller_id
       inner join callees on callees.id = calls.callee_id
       inner join redirects on redirects.phone_number = callees.phone_number
+      where (redirects.created_at > NOW() - INTERVAL '${period_in_words}')
       group by callers.phone_number
     ) redirections
     on redirections.phone_number = calls_made.phone_number
