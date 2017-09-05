@@ -216,7 +216,7 @@ app.get('/api/callees/statistics', wrap(async (req, res, next) => {
       inner join callers on callers.id = calls.caller_id
       where callers.phone_number like '61%'
       and char_length(callers.phone_number) = 11
-      and (calls.created_at < NOW() - INTERVAL '${period_in_words}')
+      and (calls.created_at > NOW() - INTERVAL '${period_in_words}')
       group by callers.phone_number
     ) calls_made
     left outer join (
