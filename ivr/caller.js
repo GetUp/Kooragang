@@ -136,6 +136,13 @@ app.post('/briefing', async ({body, query}, res) => {
       briefing.addSpeakAU(`Hi! Welcome back.`);
     } else {
       briefing.addSpeakAU(`Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool. Today you will be making calls for the ${campaign.name} campaign.`);
+      if (!campaign.isWithinOptimalCallingTimes()) {
+        briefing.addWait({length: 1});
+        briefing.addSpeakAU('You may experience longer than normal wait times between calls as you\'re dialing during the day');
+      } else if (await !campaign.isRatioDialing()) {
+        briefing.addWait({length: 1});
+        briefing.addSpeakAU('You may experience longer than normal wait times between calls as you\'re dialing with only a few other volunteers at the moment.');
+      }
       briefing.addWait({length: 1});
       briefing.addSpeakAU('If you cannot afford long phone calls and would like to be called back instead, please press the 2 key');
     }
