@@ -25,8 +25,8 @@ const headers = (req, res, next) => {
 
 const authentication = (req, res, next) => {
   const token = req.headers['authorization']
-  if (token) { 
-    if (token === process.env.KOORAGANG_API_HASH) {
+  if (token) {
+    if (token === process.env.KOORAGANG_API_HASH || (req.method == 'GET' && token === process.env.KOORAGANG_READONLY_API_HASH)) {
       next()
     } else {
       next(new UnauthorizedError('Failed to authenticate token.'))
