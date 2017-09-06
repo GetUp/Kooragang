@@ -170,7 +170,7 @@ app.post('/ready', async ({body, query}, res) => {
   const authenticated = query.authenticated ? query.authenticated === "1" : false;
   const campaign = await Campaign.query().where({id: query.campaign_id}).first();
   let caller_id, caller;
-  if (query.start) {
+  if (query.start && !query.caller_id) {
     if (body.Digits === '3') {
       r.addMessage(`Please print or download the script and disposition codes from ${_.escape(campaign.script_url)}. When you are ready, call again!`, {
         src: process.env.NUMBER || '1111111111', dst: query.caller_number
@@ -219,13 +219,13 @@ app.post('/ready', async ({body, query}, res) => {
     return res.send(r.toXML());
   } else if (body.Digits === '4') {
     r.addSpeakAU("Welcome to the Get Up dialer tool! This system works by dialing a number of people and patching them through to you when they pick up. Until they pick up, you'll hear music playing. When the music stops, that's your queue to start talking. Then you can attempt to have a conversation with them. At the end of the conversation, you'll be prompted to enter numbers into your phone to indicate the outcome of the call. It's important to remember that you never have to hang up your phone to end a call. If you need to end a call, just press star.");
-    r.addRedirect(res.locals.appUrl(`briefing?campaign_id=${campaign.id}&entry=more_info&entry_key=4&authenticated=${query.authenticated}`));
+    r.addRedirect(res.locals.appUrl(`briefing?campaign_id=${campaign.id}&caller_id=${caller_id}&entry=more_info&entry_key=4&authenticated=${query.authenticated}`));
     return res.send(r.toXML());
   }
 
   if(Object.keys(campaign.more_info).length > 0 && Object.keys(campaign.more_info).includes(body.Digits)) {
     r.addSpeakAU(campaign.more_info[body.Digits].content);
-    r.addRedirect(res.locals.appUrl(`briefing?campaign_id=${campaign.id}&entry=more_info&entry_key=${body.Digits}&authenticated=${query.authenticated}`));
+    r.addRedirect(res.locals.appUrl(`briefing?campaign_id=${campaign.id}&caller_id=${caller_id}&entry=more_info&entry_key=${body.Digits}&authenticated=${query.authenticated}`));
     return res.send(r.toXML());
   }
 
