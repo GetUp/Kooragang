@@ -121,8 +121,11 @@ app.post('/briefing', async ({body, query}, res) => {
     valid_briefing_digits = valid_briefing_digits.concat(more_info_digits);
   }
 
+  let readyUrl =`ready?campaign_id=${campaign.id}&start=1&authenticated=${query.authenticated ? '1' : '0'}`
+  if (query.caller_number) readyUrl += `&caller_number=${query.caller_number}`
+  if (query.caller_id) readyUrl += `&caller_id=${query.caller_id}`
   const briefing = r.addGetDigits({
-    action: res.locals.appUrl(`ready?campaign_id=${campaign.id}&caller_number=${query.caller_number}&caller_id=${query.caller_id}&start=1&authenticated=${query.authenticated ? '1' : '0'}`),
+    action: res.locals.appUrl(readyUrl),
     method: 'POST',
     timeout: 5,
     numDigits: 1,
