@@ -362,7 +362,7 @@ app.post('/transfer_to_target', async ({query, body}, res) => {
   const callee = await Callee.query().where({id: call.callee_id}).first();
   const target_number = callee.target_number ? callee.target_number : campaign.target_number
   r.addDial().addNumber(target_number);
-  await Event.query().insert({campaign_id: query.campaign_id, name: 'transfer_to_target', value: {call_uuid: body.CallUUID, target_number: target_number, target_origin: callee.target_number ? 'callee' : 'campaign'}});
+  await Event.query().insert({campaign_id: query.campaign_id, call_id: call.id, caller_id: call.caller_id, name: 'transfer_to_target', value: {callee_id: callee.id, call_uuid: body.CallUUID, target_number: target_number, target_origin: (callee.target_number ? 'callee' : 'campaign')}});
   return res.send(r.toXML());
 });
 
