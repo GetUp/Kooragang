@@ -31,7 +31,9 @@ class Campaign extends Base {
       'isWithinDailyTimeOfOperation',
       'dailyTimeOfOperationInWords',
       'areCallsInProgress',
-      'calledEveryone'
+      'calledEveryone',
+      'isRatioDialing',
+      'isWithinOptimalCallingTimes'
     ]
   }
   isPausing() {
@@ -85,6 +87,17 @@ class Campaign extends Base {
     });
     if (!_.isNull(moment.tz(this.timezone()).zoneName())) operating_hours_in_words += `${moment.tz(this.timezone()).zoneName()}. `
     return operating_hours_in_words
+  }
+  isWithinOptimalCallingTimes() {
+    const today = _.lowerCase(moment.tz(this.timezone()).format('dddd'))
+    if (_.includes(['saturday', 'sunday'], today)) return true
+    const start = moment.tz('00:00:00', 'HHmm', this.timezone())
+    const stop = moment.tz('17:00:00', 'HHmm', this.timezone())
+    return !moment.tz(this.timezone()).isBetween(start, stop, null, '[]')
+  }
+  async isRatioDialing() {
+    const callers = await Caller.knexQuery().where({campaign_id: this.id}).whereIn('status', ['available', 'in-call']).count().first();
+    return callers.count >= this.min_callers_for_ratio
   }
   areCallsInProgress() {
     return this.calls_in_progress > 0
