@@ -87,6 +87,8 @@ const unassociatedCallee = {
   location: 'drummoyne',
   campaign_id: 1
 };
+const associatedTargetedCallee = Object.assign({}, associatedCallee, {target_number: '098765'})
+const associatedCaller = Object.assign({}, caller)
 
 beforeEach(async () => {
   await Redirect.query().delete();
@@ -543,18 +545,43 @@ describe('/ready', () => {
 
 describe('/transfer_to_target', () => {
   beforeEach(async() => campaign = await campaign.$query().patchAndFetch({transfer_to_target: true, target_number: '1234'}) )
-
-  it('should dial the target number', async () => {
-    await request.post(`/transfer_to_target?campaign_id=${campaign.id}`)
-      .type('form').send({CallUUID})
-      .expect(/Number>1234<\/Number/)
+  describe('with a callee that has a target number', () => {
+    let call
+    beforeEach(async () => {
+      const callee = await Callee.query().insert(associatedTargetedCallee);
+      const caller = await Caller.query().insert(associatedCaller);
+      call = await Call.query().insert({status: 'answered', caller_id: caller.id, callee_id: callee.id});
+    });
+    it('should dial the callee target number', async () => {
+      await request.post(`/transfer_to_target?campaign_id=${campaign.id}&call_id=${call.id}`)
+        .type('form').send({CallUUID})
+        .expect(/Number>098765<\/Number/)
+    });
+    it('should record an event', async () => {
+      await request.post(`/transfer_to_target?campaign_id=${campaign.id}&call_id=${call.id}`)
+        .type('form').send({CallUUID})
+        .expect(200)
+      expect(await Event.query().where({name: 'transfer_to_target'}).first()).to.be.a(Event);
+    });
   });
-
-  it('should record an event', async () => {
-    await request.post(`/transfer_to_target?campaign_id=${campaign.id}`)
-      .type('form').send({CallUUID})
-      .expect(200)
-    expect(await Event.query().where({name: 'transfer_to_target'}).first()).to.be.a(Event);
+  describe('with a callee that has no target number', () => {
+    let call
+    beforeEach(async () => {
+      const callee = await Callee.query().insert(associatedCallee);
+      const caller = await Caller.query().insert(associatedCaller);
+      call = await Call.query().insert({status: 'answered', caller_id: caller.id, callee_id: callee.id});
+    });
+    it('should dial the campaign target number', async () => {
+      await request.post(`/transfer_to_target?campaign_id=${campaign.id}&call_id=${call.id}`)
+        .type('form').send({CallUUID})
+        .expect(/Number>1234<\/Number/)
+    });
+    it('should record an event', async () => {
+      await request.post(`/transfer_to_target?campaign_id=${campaign.id}&call_id=${call.id}`)
+        .type('form').send({CallUUID})
+        .expect(200)
+      expect(await Event.query().where({name: 'transfer_to_target'}).first()).to.be.a(Event);
+    });
   });
 });
 

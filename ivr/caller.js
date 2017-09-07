@@ -121,8 +121,11 @@ app.post('/briefing', async ({body, query}, res) => {
     valid_briefing_digits = valid_briefing_digits.concat(more_info_digits);
   }
 
+  let readyUrl =`ready?campaign_id=${campaign.id}&start=1&authenticated=${query.authenticated ? '1' : '0'}`
+  if (query.caller_number) readyUrl += `&caller_number=${query.caller_number}`
+  if (query.caller_id) readyUrl += `&caller_id=${query.caller_id}`
   const briefing = r.addGetDigits({
-    action: res.locals.appUrl(`ready?campaign_id=${campaign.id}&caller_number=${query.caller_number}&start=1&authenticated=${query.authenticated ? '1' : '0'}`),
+    action: res.locals.appUrl(readyUrl),
     method: 'POST',
     timeout: 5,
     numDigits: 1,
@@ -178,6 +181,8 @@ app.post('/ready', async ({body, query}, res) => {
       r.addSpeakAU('Sending an sms with instructions to your number. Thank you and speak soon!')
       return res.send(r.toXML());
     }
+  }
+  if (query.start && !query.caller_id) {
     caller_params = {
       phone_number: query.caller_number,
       call_uuid: body.CallUUID,
@@ -219,13 +224,13 @@ app.post('/ready', async ({body, query}, res) => {
     return res.send(r.toXML());
   } else if (body.Digits === '4') {
     r.addSpeakAU("Welcome to the Get Up dialer tool! This system works by dialing a number of people and patching them through to you when they pick up. Until they pick up, you'll hear music playing. When the music stops, that's your queue to start talking. Then you can attempt to have a conversation with them. At the end of the conversation, you'll be prompted to enter numbers into your phone to indicate the outcome of the call. It's important to remember that you never have to hang up your phone to end a call. If you need to end a call, just press star.");
-    r.addRedirect(res.locals.appUrl(`briefing?campaign_id=${campaign.id}&entry=more_info&entry_key=4&authenticated=${query.authenticated}`));
+    r.addRedirect(res.locals.appUrl(`briefing?caller_id=${caller_id}&campaign_id=${campaign.id}&entry=more_info&entry_key=4&authenticated=${query.authenticated}`));
     return res.send(r.toXML());
   }
 
   if(Object.keys(campaign.more_info).length > 0 && Object.keys(campaign.more_info).includes(body.Digits)) {
     r.addSpeakAU(campaign.more_info[body.Digits].content);
-    r.addRedirect(res.locals.appUrl(`briefing?campaign_id=${campaign.id}&entry=more_info&entry_key=${body.Digits}&authenticated=${query.authenticated}`));
+    r.addRedirect(res.locals.appUrl(`briefing?caller_id=${caller_id}&campaign_id=${campaign.id}&entry=more_info&entry_key=${body.Digits}&authenticated=${query.authenticated}`));
     return res.send(r.toXML());
   }
 
@@ -290,7 +295,7 @@ app.post('/ready', async ({body, query}, res) => {
     action: res.locals.appUrl(`survey?q=disposition&caller_id=${caller_id}&campaign_id=${query.campaign_id}`)
   }
   if (process.env.ENABLE_ANSWER_MACHINE_SHORTCUT) params.digitsMatch = ['2']
-  if (campaign.transfer_to_target && campaign.target_number) params.digitsMatch = (params.digitsMatch || []).concat('9')
+  if (campaign.transfer_to_target) params.digitsMatch = (params.digitsMatch || []).concat('9')
   r.addConference(`conference-${caller_id}`, params);
   res.send(r.toXML());
 });
@@ -358,8 +363,11 @@ app.post('/conference_event/caller', async ({query, body}, res) => {
 app.post('/transfer_to_target', async ({query, body}, res) => {
   const r = plivo.Response();
   const campaign = await Campaign.query().where({id: query.campaign_id}).first();
-  r.addDial().addNumber(campaign.target_number);
-  await Event.query().insert({campaign_id: query.campaign_id, name: 'transfer_to_target', value: {call_uuid: body.CallUUID, target_number: campaign.target_number}});
+  const call = await Call.query().where({id: query.call_id}).first();
+  const callee = await Callee.query().where({id: call.callee_id}).first();
+  const target_number = callee.target_number ? callee.target_number : campaign.target_number
+  r.addDial().addNumber(target_number);
+  await Event.query().insert({campaign_id: query.campaign_id, name: 'transfer_to_target', value: {call_uuid: body.CallUUID, target_number: target_number, target_origin: callee.target_number ? 'callee' : 'campaign'}});
   return res.send(r.toXML());
 });
 
