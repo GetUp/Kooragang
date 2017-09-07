@@ -411,6 +411,22 @@ describe('/ready', () => {
     })
   })
 
+  context('with 1 pressed inside work hours', () => {
+    it('should inform me about wait times during the day', async() => {
+      await request.post(`/ready?caller_number=1111&campaign_id=${campaign.id}&start=1`)
+         .expect(/wait times/)
+         .expect(/day/)
+    })
+  })
+
+  context('with 1 pressed without minimum callers for ratio', () => {
+    it('should inform me about wait times during small vollie engagement', async() => {
+      await request.post(`/ready?caller_number=1111&campaign_id=${campaign.id}&start=1`)
+         .expect(/wait times/)
+         .expect(/few/)
+    })
+  })
+
   context('with 1 pressed and a campaign with hud enabled', () => {
     beforeEach(async() => campaign = await campaign.$query().patchAndFetch({hud: true}) )
 
