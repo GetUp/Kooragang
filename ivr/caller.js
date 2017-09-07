@@ -274,6 +274,13 @@ app.post('/ready', async ({body, query}, res) => {
 
   if (query.start || body.Digits === '1') {
     r.addSpeakAU('You are now in the call queue.')
+    if (!campaign.isWithinOptimalCallingTimes()) {
+      r.addWait({length: 1});
+      r.addSpeakAU('You may experience *longer* than normal wait times between calls as you\'re dialing during the *day*');
+    } else if (await !campaign.isRatioDialing()) {
+      r.addWait({length: 1});
+      r.addSpeakAU('You may experience *longer* than normal wait times between calls as you\'re dialing with only a *few* other volunteers at the moment.');
+    }
   } else {
     r.addSpeakAU('You have been placed back in the call queue.')
   }
