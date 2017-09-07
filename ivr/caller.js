@@ -197,7 +197,8 @@ app.post('/ready', async ({body, query}, res) => {
     caller = await Caller.query().insert(caller_params);
     caller_id = caller.id;
   } else {
-    caller_id = query.caller_id;
+    caller = await Caller.query().where({id: query.caller_id});
+    caller_id = caller.id;
   }
   if (await campaign.isComplete()) {
     r.addSpeakAU('The campaign has been completed!');
