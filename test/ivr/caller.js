@@ -69,6 +69,7 @@ const holdMusicCampaign = Object.assign({}, activeCampaign, {hold_music: '{"stev
 const CallUUID = '111';
 let campaign
 let caller = {
+  id: 1,
   first_name: 'bob',
   phone_number: '61288888888',
   location: 'balmain',
@@ -338,6 +339,8 @@ describe('/connect', () => {
 
 describe('/ready', () => {
   beforeEach(async () => { await Callee.query().insert(associatedCallee) });
+  beforeEach(async () => { await Caller.query().delete() });
+  beforeEach(async () => { await Caller.query().insert(caller) });
 
   context('with a starting path', () => {
     let startPath;
@@ -358,6 +361,7 @@ describe('/ready', () => {
     context('with an existing number', () => {
       let payload;
       beforeEach(() => payload = {From: caller.phone_number, CallUUID: '1'});
+      beforeEach(async () => await Caller.query().delete());
       beforeEach(async () => caller = await Caller.query().insert(caller));
 
       it('create a new record', async() => {
@@ -419,9 +423,11 @@ describe('/ready', () => {
 
   context('with 1 pressed without minimum callers for ratio', () => {
     it('should inform me about wait times during small vollie engagement', async() => {
+      process.env.WEEKDAY_OPTIMAL_CALLING_TIMES_START = '00:00:01'
       await request.post(`/ready?caller_number=1111&campaign_id=${campaign.id}&start=1`)
          .expect(/wait times/)
          .expect(/few/)
+      delete process.env.WEEKDAY_OPTIMAL_CALLING_TIMES_START
     })
   })
 
@@ -465,6 +471,7 @@ describe('/ready', () => {
   context('with 9 pressed', () => {
     let call, url, caller;
     beforeEach(async () => {
+      await Caller.query().insert(Object.assign({}, caller, {id: 4}));
       call = await Call.query().insert({status: 'answered'});
       url = `/ready?caller_id=4&campaign_id=${campaign.id}&call_id=${call.id}`
     });
@@ -490,10 +497,12 @@ describe('/ready', () => {
   context('with 8 pressed', () => {
     let call, url, caller;
     beforeEach(async () => {
+      await Caller.query().delete();
+      const replayCaller = await Caller.query().insert(Object.assign({}, caller, {id: 4}));
       call = await Call.query().insert({status: 'answered'});
       await SurveyResult.query().delete();
       await SurveyResult.query().insert({call_id: call.id, question: 'disposition', answer: 'answering machine'})
-      url = `/ready?caller_id=4&campaign_id=${campaign.id}&call_id=${call.id}`
+      url = `/ready?caller_id=${replayCaller.id}&campaign_id=${campaign.id}&call_id=${call.id}`
     });
     it('should delete the survey results', async () => {
       await request.post(url)
@@ -536,6 +545,7 @@ describe('/ready', () => {
   context('with existing user and team', () => {
     beforeEach(async () => {
       await Callee.query().delete();
+      await Caller.query().delete();
       await Campaign.query().delete();
       await User.query().delete();
       await Team.query().delete();
