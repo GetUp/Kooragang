@@ -97,7 +97,6 @@ app.post('/connect', async ({body, query}, res) => {
     r.addRedirect(res.locals.appUrl(`team?campaign_id=${campaign.id}&caller_id=${caller.id}&start=1&callback=${query.callback ? query.callback : 0}&authenticated=${query.authenticated ? '1' : '0'}`));
     return res.send(r.toXML())
   }
-  console.log('~~~~~~~~~~', caller.id)
   r.addRedirect(res.locals.appUrl(`briefing?campaign_id=${campaign.id}&caller_id=${caller.id}&start=1&callback=${query.callback ? query.callback : 0}&authenticated=${query.authenticated ? '1' : '0'}`));
   res.send(r.toXML())
 });
