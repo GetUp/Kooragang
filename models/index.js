@@ -92,7 +92,8 @@ class Campaign extends Base {
     const today = _.lowerCase(moment.tz(this.timezone()).format('dddd'))
     if (_.includes(['saturday', 'sunday'], today)) return true
     const start = moment.tz('00:00:00', 'HHmm', this.timezone())
-    const stop = moment.tz('17:00:00', 'HHmm', this.timezone())
+    const weekday_optimal_calling_times_start = process.env.WEEKDAY_OPTIMAL_CALLING_TIMES_START || '17:00:00'
+    const stop = moment.tz(weekday_optimal_calling_times_start, 'HHmm', this.timezone())
     return !moment.tz(this.timezone()).isBetween(start, stop, null, '[]')
   }
   async isRatioDialing() {
