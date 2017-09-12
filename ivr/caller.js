@@ -173,15 +173,6 @@ app.post('/ready', async ({body, query}, res) => {
   const authenticated = query.authenticated ? query.authenticated === "1" : false;
   const campaign = await Campaign.query().where({id: query.campaign_id}).first();
   let caller_id, caller;
-  if (query.start) {
-    if (body.Digits === '3') {
-      r.addMessage(`Please print or download the script and disposition codes from ${_.escape(campaign.script_url)}. When you are ready, call again!`, {
-        src: process.env.NUMBER || '1111111111', dst: query.caller_number
-      });
-      r.addSpeakAU('Sending an sms with instructions to your number. Thank you and speak soon!')
-      return res.send(r.toXML());
-    }
-  }
   if (query.start && !query.caller_id) {
     caller_params = {
       phone_number: query.caller_number,
@@ -199,6 +190,15 @@ app.post('/ready', async ({body, query}, res) => {
   } else {
     caller = await Caller.query().where({id: query.caller_id});
     caller_id = caller.id;
+  }
+  if (query.start) {
+    if (body.Digits === '3') {
+      r.addMessage(`Please print or download the script and disposition codes from ${_.escape(campaign.script_url)}. When you are ready, call again!`, {
+        src: process.env.NUMBER || '1111111111', dst: caller.phone_number
+      });
+      r.addSpeakAU('Sending an sms with instructions to your number. Thank you and speak soon!')
+      return res.send(r.toXML());
+    }
   }
   if (await campaign.isComplete()) {
     r.addSpeakAU('The campaign has been completed!');
