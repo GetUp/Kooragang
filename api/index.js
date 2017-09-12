@@ -11,7 +11,6 @@ if (process.env.NODE_ENV !== 'development') {
 app.use(body_parser.json())
 app.use(cors(cors_options))
 app.use(headers)
-app.use(log)
 app.use(authentication)
 app.use(require('./campaign'))
 app.use(require('./team'))

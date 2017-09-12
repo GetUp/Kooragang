@@ -312,4 +312,45 @@ app.get('/api/callees/statistics', wrap(async (req, res, next) => {
   return res.json({data: data.rows.map(event => { return event })})
 }))
 
+//status report
+app.get('/api/system/statistics', wrap(async (req, res, next) => {
+  data = await knex.raw(`
+    select
+      campaigns.name as campaign_name,
+      campaigns.ratio as campaign_ratio,
+      available_callers.count as available_callers, 
+      in_call_callers.count as in_call_callers, 
+      calls_made_minute.count as calls_made_minute
+    from campaigns
+    left outer join (
+      select count(*), campaign_id
+      from callers
+      where status = 'available'
+      group by campaign_id
+    ) available_callers
+    on available_callers.campaign_id = campaigns.id
+    left outer join (
+      select count(*), campaign_id
+      from callers
+      where status = 'in-call'
+      group by campaign_id
+    ) in_call_callers
+    on in_call_callers.campaign_id = campaigns.id
+    left outer join (
+      select count(calls.id), callers.campaign_id
+      from calls
+      inner join callers on callers.id = calls.caller_id
+      where (calls.created_at > NOW() - INTERVAL '1 minutes')
+      group by callers.campaign_id
+    ) calls_made_minute
+    on calls_made_minute.campaign_id = campaigns.id
+    where status = 'active'
+    and (
+      available_callers.count is not null or
+      calls_made_minute.count is not null
+    )
+  `)
+  return res.json({data: data.rows.map(row => { return row })})
+}))
+
 module.exports = app
