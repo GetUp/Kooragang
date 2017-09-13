@@ -55,7 +55,6 @@ class Campaign extends Base {
     return process.env.TZ || 'Australia/Sydney'
   }
   isWithinDailyTimeOfOperation() {
-    return true
     const todays_hours = this.hours_of_operation[_.lowerCase(moment.tz(this.timezone()).format('dddd'))]
     if (_.isNull(todays_hours)) return false
     const start = moment.tz(todays_hours['start'], 'HHmm', this.timezone())
