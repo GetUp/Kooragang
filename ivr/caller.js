@@ -54,10 +54,21 @@ app.post('/connect', async ({body, query}, res) => {
     return res.send(r.toXML());
   }
 
+  let caller
   const caller_number = extractCallerNumber(query, body);
-  if (!isValidCallerNumber(caller_number)){
+  if (query.caller_id) {
+    caller = await Caller.query().where({id: query.caller_id});
+  } else if (isValidCallerNumber(caller_number)) {
+    caller_params = {
+      phone_number: caller_number,
+      call_uuid: body.CallUUID,
+      campaign_id: query.campaign_id
+    }
+    caller = await Caller.query().insert(caller_params);
+  } else {
     r.addWait({length: 2});
     r.addSpeakAU('It appears you do not have caller ID enabled. Please enable it and call back. Don\'t worry, even when your caller ID is enabled the people you\'re talking to do not see your number. Thank you.');
+    await Event.query().insert({name: 'caller ID not enabled', campaign_id: campaign.id, value: {log_id: res.locals.log_id}})
     return res.send(r.toXML());
   }
 
@@ -104,31 +115,10 @@ app.post('/connect', async ({body, query}, res) => {
   }
 
   if (campaign.teams && !query.team && !query.callback) {
-    r.addWait({length: 2})
-    const user = await User.query().where({phone_number: body.From}).first()
-    let valid_team_digits = ['2', '*']
-    if (user && user.team_id) { valid_team_digits.push('1') }
-    const teamAction = r.addGetDigits({
-      action: res.locals.appUrl(`team?campaign_id=${query.campaign_id}&callback=${query.callback ? query.callback : 0}&authenticated=${query.authenticated ? '1' : '0'}`),
-      timeout: 10,
-      retries: 10,
-      numDigits: 1,
-      validDigits: valid_team_digits
-    })
-    if (user && user.team_id) {
-      const team = await Team.query().where({id: user.team_id}).first()
-      teamAction.addSpeakAU(`Press the one key to resume your membership to the ${team.name} calling team`)
-      teamAction.addWait({length: 1})
-      teamAction.addSpeakAU('Press the two key if you\'re joining a new team.')
-    } else {
-      teamAction.addSpeakAU('Press the two key on your keypad if you\'re a member of a calling team.')
-    }
-    teamAction.addSpeakAU('Otherwise to continue without a team press the star key.')
-    r.addSpeakAU('No key pressed. Hanging up now')
+    r.addRedirect(res.locals.appUrl(`team?campaign_id=${campaign.id}&caller_id=${caller.id}&start=1&callback=${query.callback ? query.callback : 0}&authenticated=${query.authenticated ? '1' : '0'}`));
     return res.send(r.toXML())
   }
-
-  r.addRedirect(res.locals.appUrl(`briefing?campaign_id=${campaign.id}&caller_number=${caller_number}&start=1&callback=${query.callback ? query.callback : 0}&authenticated=${query.authenticated ? '1' : '0'}`));
+  r.addRedirect(res.locals.appUrl(`briefing?campaign_id=${campaign.id}&caller_id=${caller.id}&start=1&callback=${query.callback ? query.callback : 0}&authenticated=${query.authenticated ? '1' : '0'}`));
   res.send(r.toXML())
 });
 
@@ -143,7 +133,7 @@ app.post('/briefing', async ({body, query}, res) => {
   }
 
   const briefing = r.addGetDigits({
-    action: res.locals.appUrl(`ready?campaign_id=${campaign.id}&caller_number=${query.caller_number}&start=1&authenticated=${query.authenticated ? '1' : '0'}`),
+    action: res.locals.appUrl(`inform?campaign_id=${campaign.id}&caller_id=${query.caller_id}&start=1&authenticated=${query.authenticated ? '1' : '0'}`),
     method: 'POST',
     timeout: 5,
     numDigits: 1,
@@ -186,35 +176,43 @@ app.post('/briefing', async ({body, query}, res) => {
   res.send(r.toXML());
 });
 
+app.post('/inform', async ({body, query}, res) => {
+  const r = plivo.Response();
+  const campaign = await Campaign.query().where({id: query.campaign_id}).first()
+  const caller = await Caller.query().where({id: query.caller_id}).first()
+  switch (body.Digits) {
+    case '1':
+      r.addRedirect(res.locals.appUrl(`ready?campaign_id=${campaign.id}&caller_id=${query.caller_id}&start=1&authenticated=${query.authenticated ? '1' : '0'}`))
+      break
+    case '2':
+      await Caller.query().where({id: caller_id}).patch({callback: true})
+      r.addSpeakAU('We will call you back immediately. Please hang up now!')
+      break
+    case '3':
+      r.addMessage(`Please print or download the script and disposition codes from ${_.escape(campaign.script_url)}. When you are ready, call again!`, {
+        src: process.env.NUMBER || '1111111111', dst: caller.phone_number
+      })
+      r.addSpeakAU('Sending an sms with instructions to your number. Thank you and speak soon!')
+      break
+    case '4':
+      r.addSpeakAU("Welcome to the Get Up dialer tool! This system works by dialing a number of people and patching them through to you when they pick up. Until they pick up, you'll hear music playing. When the music stops, that's your queue to start talking. Then you can attempt to have a conversation with them. At the end of the conversation, you'll be prompted to enter numbers into your phone to indicate the outcome of the call. It's important to remember that you never have to hang up your phone to end a call. If you need to end a call, just press star.")
+      r.addRedirect(res.locals.appUrl(`briefing?campaign_id=${campaign.id}&caller_id=${query.caller_id}&entry=more_info&entry_key=4&authenticated=${query.authenticated}`))
+      break
+    default:
+      if(Object.keys(campaign.more_info).length > 0 && Object.keys(campaign.more_info).includes(body.Digits)) {
+        r.addSpeakAU(campaign.more_info[body.Digits].content)
+        r.addRedirect(res.locals.appUrl(`briefing?campaign_id=${campaign.id}&caller_id=${query.caller_id}&entry=more_info&entry_key=${body.Digits}&authenticated=${query.authenticated}`))
+      }
+      break
+  }
+  res.send(r.toXML())
+})
+
 app.post('/ready', async ({body, query}, res) => {
   const r = plivo.Response();
-  const authenticated = query.authenticated ? query.authenticated === "1" : false;
-  const campaign = await Campaign.query().where({id: query.campaign_id}).first();
-  let caller_id, caller;
-  if (query.start) {
-    if (body.Digits === '3') {
-      r.addMessage(`Please print or download the script and disposition codes from ${_.escape(campaign.script_url)}. When you are ready, call again!`, {
-        src: process.env.NUMBER || '1111111111', dst: query.caller_number
-      });
-      r.addSpeakAU('Sending an sms with instructions to your number. Thank you and speak soon!')
-      return res.send(r.toXML());
-    }
-    caller_params = {
-      phone_number: query.caller_number,
-      call_uuid: body.CallUUID,
-      campaign_id: query.campaign_id
-    }
-    if (body.From) {
-      const user = await User.query().where({phone_number: body.From}).first();
-      if (user && user.team_id) {
-        caller_params.team_id = user.team_id
-      }
-    }
-    caller = await Caller.query().insert(caller_params);
-    caller_id = caller.id;
-  } else {
-    caller_id = query.caller_id;
-  }
+  const campaign = await Campaign.query().where({id: query.campaign_id}).first()
+  const caller = await Caller.query().where({id: query.caller_id}).first()
+
   if (await campaign.isComplete()) {
     r.addSpeakAU('The campaign has been completed!');
     r.addRedirect(res.locals.appUrl('disconnect?completed=1'));
@@ -222,31 +220,17 @@ app.post('/ready', async ({body, query}, res) => {
   }
 
   if (body.Digits === '8' && query.call_id) {
-    await Event.query().insert({name: 'undo', campaign_id: campaign.id, caller_id, call_id: query.call_id, value: {log_id: query.log_id}})
+    await Event.query().insert({name: 'undo', campaign_id: campaign.id, caller_id: caller.id, call_id: query.call_id, value: {log_id: query.log_id}})
     await SurveyResult.query().where({call_id: query.call_id}).delete();
-    r.addRedirect(res.locals.appUrl(`survey?q=disposition&caller_id=${caller_id}&campaign_id=${campaign.id}&undo=1&call_id=${query.call_id}`))
+    r.addRedirect(res.locals.appUrl(`survey?q=disposition&caller_id=${caller.id}&campaign_id=${campaign.id}&undo=1&call_id=${query.call_id}`))
     return res.send(r.toXML());
   } else if (body.Digits === '9' && query.call_id) {
-    await Event.query().insert({name: 'technical_issue_reported', campaign_id: campaign.id, caller_id, call_id: query.call_id, value: {query: query, body: body}})
+    await Event.query().insert({name: 'technical_issue_reported', campaign_id: campaign.id, caller_id: caller.id, call_id: query.call_id, value: {query: query, body: body}})
     r.addSpeakAU('The technical issue has been reported. The team will investigate. Thank you!')
-    r.addRedirect(res.locals.appUrl(`call_again?caller_id=${caller_id}&campaign_id=${query.campaign_id}&tech_issue_reported=1&call_id=${query.call_id}`));
+    r.addRedirect(res.locals.appUrl(`call_again?caller_id=${caller.id}&campaign_id=${query.campaign_id}&tech_issue_reported=1&call_id=${query.call_id}`));
     return res.send(r.toXML());
   } else if (body.Digits === '0') {
     r.addRedirect(res.locals.appUrl('disconnect'));
-    return res.send(r.toXML());
-  } else if (body.Digits === '2') {
-    await Caller.query().where({id: caller_id}).patch({callback: true});
-    r.addSpeakAU('We will call you back immediately. Please hang up now!');
-    return res.send(r.toXML());
-  } else if (body.Digits === '4') {
-    r.addSpeakAU("Welcome to the Get Up dialer tool! This system works by dialing a number of people and patching them through to you when they pick up. Until they pick up, you'll hear music playing. When the music stops, that's your queue to start talking. Then you can attempt to have a conversation with them. At the end of the conversation, you'll be prompted to enter numbers into your phone to indicate the outcome of the call. It's important to remember that you never have to hang up your phone to end a call. If you need to end a call, just press star.");
-    r.addRedirect(res.locals.appUrl(`briefing?campaign_id=${campaign.id}&entry=more_info&entry_key=4&authenticated=${query.authenticated}`));
-    return res.send(r.toXML());
-  }
-
-  if(Object.keys(campaign.more_info).length > 0 && Object.keys(campaign.more_info).includes(body.Digits)) {
-    r.addSpeakAU(campaign.more_info[body.Digits].content);
-    r.addRedirect(res.locals.appUrl(`briefing?campaign_id=${campaign.id}&entry=more_info&entry_key=${body.Digits}&authenticated=${query.authenticated}`));
     return res.send(r.toXML());
   }
 
@@ -263,7 +247,7 @@ app.post('/ready', async ({body, query}, res) => {
       .limit(1).first();
     if (last_call && !last_call.survey_results.length) {
       const resumeIVR = r.addGetDigits({
-        action: res.locals.appUrl(`resume_survey?caller_id=${caller_id}&last_call_id=${last_call.id}&campaign_id=${query.campaign_id}`),
+        action: res.locals.appUrl(`resume_survey?caller_id=${caller.id}&last_call_id=${last_call.id}&campaign_id=${query.campaign_id}`),
         redirect: true,
         retries: 10,
         numDigits: 1,
@@ -277,7 +261,7 @@ app.post('/ready', async ({body, query}, res) => {
   }
 
   if ((query.start || query.resumed) && campaign.hud) {
-    const code = caller_id.toString().split('').join(' ');
+    const code = caller.id.toString().split('').join(' ');
     r.addSpeakAU(`If you are using a computer to preview the callees details, your session code is ${code}. I repeat ${code}`)
     const sessionCodePause = r.addGetDigits({
       retries: 4,
@@ -288,7 +272,7 @@ app.post('/ready', async ({body, query}, res) => {
     sessionCodePause.addSpeakAU('Press 1 when you are ready to continue')
   }
 
-  if (query.start || body.Digits === '1') {
+  if (query.start) {
     r.addSpeakAU('You are now in the call queue.')
     if (!campaign.isWithinOptimalCallingTimes()) {
       r.addWait({length: 1});
@@ -301,7 +285,7 @@ app.post('/ready', async ({body, query}, res) => {
     r.addSpeakAU('You have been placed back in the call queue.')
   }
 
-  let callbackUrl = `conference_event/caller?caller_id=${caller_id}&campaign_id=${query.campaign_id}`;
+  let callbackUrl = `conference_event/caller?caller_id=${caller.id}&campaign_id=${query.campaign_id}`;
   if (query.start) {
     r.addSpeakAU('We will connect you to a call shortly.')
     r.addWait({length: 1});
@@ -315,11 +299,11 @@ app.post('/ready', async ({body, query}, res) => {
     timeLimit: 60 * 120,
     callbackUrl: res.locals.appUrl(callbackUrl),
     hangupOnStar: 'true',
-    action: res.locals.appUrl(`survey?q=disposition&caller_id=${caller_id}&campaign_id=${query.campaign_id}`)
+    action: res.locals.appUrl(`survey?q=disposition&caller_id=${caller.id}&campaign_id=${query.campaign_id}`)
   }
   if (process.env.ENABLE_ANSWER_MACHINE_SHORTCUT) params.digitsMatch = ['2']
   if (campaign.transfer_to_target && campaign.target_number) params.digitsMatch = (params.digitsMatch || []).concat('9')
-  r.addConference(`conference-${caller_id}`, params);
+  r.addConference(`conference-${caller.id}`, params);
   res.send(r.toXML());
 });
 
