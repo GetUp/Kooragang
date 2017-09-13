@@ -76,9 +76,11 @@ app.post('/connect', async ({body, query}, res) => {
     r.addWait({length: 2})
     r.addSpeakAU(`Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool.`)
     r.addWait({length: 1})
-    r.addSpeakAU('The campaign is currently experiencing a lot of traffic.')
+    r.addSpeakAU('There are hundreds of people calling right now!')
     r.addWait({length: 1})
-    r.addSpeakAU(`To accommodate this, could we possibly ask you to call ${redundancy_number_delimited} instead.`)
+    r.addSpeakAU(`To handle this, could we possibly ask you to call another number instead.`)
+    r.addWait({length: 1})
+    r.addSpeakAU(`The number is, ${redundancy_number_delimited}.`)
     r.addWait({length: 3})
     for (i = 0; i <= 3; i++) {
       r.addSpeakAU(`That number again is, ${redundancy_number_delimited}.`)
