@@ -29,7 +29,7 @@ module.exports.extractDialInNumber = (query, body) => {
   return _.includes(_.keys(body), 'SIP-H-To') ? body['SIP-H-To'].match(/phone=(\w+)\D/)[1] : dialInNumber;
 };
 
-module.exports.sipHeaderPresent = (body) => _.includes(_.keys(body), 'SIP-H-To')
+module.exports.sipHeaderPresent = (body) => !!body['SIP-H-To']
 
 module.exports.incomingCaller = (body) => body.Direction == 'inbound'
 

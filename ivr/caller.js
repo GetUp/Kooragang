@@ -16,7 +16,6 @@ const {
 const {Call, Callee, Caller, Campaign, SurveyResult, Event, User, Team} = require('../models');
 
 app.post('/connect', async ({body, query}, res) => {
-  console.log({body, query})
   if (body.CallStatus === 'completed') return res.sendStatus(200);
   const r = plivo.Response();
   const campaign = query.campaign_id && await Campaign.query().where({id: query.campaign_id}).first();
@@ -78,21 +77,21 @@ app.post('/connect', async ({body, query}, res) => {
   const sip_header_present = sipHeaderPresent(body);
   const reached_dial_in_number_channel_limit = await campaign.reached_dial_in_number_channel_limit(dial_in_number, sip_header_present)
   if (reached_dial_in_number_channel_limit) {
-    const redundancy_number = query.redundancy_number ? query.redundancy_number : _.first(_.shuffle(campaign.redundancy_numbers))
-    const redundancy_number_period_delimited = _.join(_.map(_.split(redundancy_number, _.stubString()), (n) => n + ', '), _.stubString())
-    if (!query.redundancy_number) {
-      await Event.query().insert({name: 'redundancy_number_prompt', campaign_id: campaign.id, value: {redundancy_number: redundancy_number}})
-      r.addWait({length: 2})
-      r.addSpeakAU(`Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool.`)
-      r.addWait({length: 1})
-      r.addSpeakAU('The campaign is currently experiencing a lot of traffic.')
-      r.addWait({length: 1})
-      r.addSpeakAU(`To accommodate this, could we possibly ask you to call ${redundancy_number_period_delimited} instead.`)
-      r.addWait({length: 3})
-    }
-    r.addSpeakAU(`That number again is, ${redundancy_number_period_delimited}.`)
+    await Event.query().insert({name: 'redundancy_number_prompt', campaign_id: campaign.id, value: {redundancy_number: redundancy_number}})
+    const redundancy_number =  _.first(_.shuffle(campaign.redundancy_numbers))
+    const redundancy_number_delimited = _.join(_.map(_.split(redundancy_number, _.stubString()), (n) => n + ', '), _.stubString())
     r.addWait({length: 2})
-    r.addRedirect(res.locals.appUrl(`connect?campaign_id=${query.campaign_id}&redundancy_number=${redundancy_number}`))
+    r.addSpeakAU(`Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool.`)
+    r.addWait({length: 1})
+    r.addSpeakAU('The campaign is currently experiencing a lot of traffic.')
+    r.addWait({length: 1})
+    r.addSpeakAU(`To accommodate this, could we possibly ask you to call ${redundancy_number_delimited} instead.`)
+    r.addWait({length: 3})
+    for (i = 0; i <= 1; i++) {
+      r.addSpeakAU(`That number again is, ${redundancy_number_delimited}.`)
+      r.addWait({length: 2})
+    }
+    r.addRedirect(res.locals.appUrl(`call_ended?campaign_id=${campaign.id}&number=${caller_number}`));
     return res.send(r.toXML())
   }
 
