@@ -10,11 +10,13 @@ const {
   extractDialInNumber,
   sipHeaderPresent,
   authenticationNeeded,
-  isValidCallerNumber
+  isValidCallerNumber,
+  incomingCaller
 } = require('../utils');
 const {Call, Callee, Caller, Campaign, SurveyResult, Event, User, Team} = require('../models');
 
 app.post('/connect', async ({body, query}, res) => {
+  console.log({body, query})
   if (body.CallStatus === 'completed') return res.sendStatus(200);
   const r = plivo.Response();
   const campaign = query.campaign_id && await Campaign.query().where({id: query.campaign_id}).first();
@@ -63,13 +65,13 @@ app.post('/connect', async ({body, query}, res) => {
     return res.send(r.toXML());
   }
 
-  if (await campaign.isComplete()) {
+  /*if (await campaign.isComplete()) {
     r.addWait({length: 2});
     r.addSpeakAU(`Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool.`);
     r.addWait({length: 1});
     r.addSpeakAU('The campaign has been completed! Please contact the campaign coordinator for further instructions. Thank you and have a great day!');
     return res.send(r.toXML());
-  }
+  }*/
 
   //check number channel limit
   const dial_in_number = extractDialInNumber(query, body);
@@ -209,7 +211,8 @@ app.post('/ready', async ({body, query}, res) => {
       inbound_phone_number: extractDialInNumber(query, body),
       inbound_sip: sipHeaderPresent(body),
       call_uuid: body.CallUUID,
-      campaign_id: query.campaign_id
+      campaign_id: query.campaign_id,
+      created_from_incoming: incomingCaller(body)
     }
     if (body.From) {
       const user = await User.query().where({phone_number: body.From}).first();

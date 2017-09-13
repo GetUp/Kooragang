@@ -29,9 +29,9 @@ module.exports.extractDialInNumber = (query, body) => {
   return _.includes(_.keys(body), 'SIP-H-To') ? body['SIP-H-To'].match(/phone=(\w+)\D/)[1] : dialInNumber;
 };
 
-module.exports.sipHeaderPresent = (body) => {
-  return _.includes(_.keys(body), 'SIP-H-To')
-}
+module.exports.sipHeaderPresent = (body) => _.includes(_.keys(body), 'SIP-H-To')
+
+module.exports.incomingCaller = (body) => body.Direction == 'inbound'
 
 module.exports.authenticationNeeded = (callback, campaign_passcode, authenticated) => {
   return !(callback || !campaign_passcode || authenticated);
