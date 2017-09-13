@@ -60,6 +60,7 @@ const activeCampaign = Object.assign({status: 'active'}, defaultCampaign)
 const pausedCampaign = Object.assign({status: 'paused'}, defaultCampaign)
 const inactiveCampaign = Object.assign({status: 'inactive'}, defaultCampaign)
 const statuslessCampaign = Object.assign({status: null}, defaultCampaign)
+const redundancyCampaign = Object.assign({revert_to_redundancy: true}, activeCampaign)
 const amdCampaign = Object.assign({status: 'active', detect_answering_machine: true}, defaultCampaign)
 const operationalWindowCampaign = Object.assign({}, activeCampaign, {hours_of_operation: hours_of_operation_null})
 const teamsCampaign = Object.assign({status: 'active', teams: true}, defaultCampaign)
@@ -211,6 +212,21 @@ describe('/connect', () => {
         .type('form')
         .send(payload)
         .expect(/hours of operation/);
+    });
+  });
+
+  context('with an revert_to_redundancy campaign', () => {
+    beforeEach(async () => { await Campaign.query().delete() });
+    beforeEach(async () => campaign = await Campaign.query().insert(redundancyCampaign));
+    beforeEach(async () => { await Callee.query().insert(associatedCallee) });
+    const payload = { From: caller.phone_number };
+    it('informs user of high traffic', () => {
+      process.env.REDUNDANCY_NUMBER="012345"
+      return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
+        .type('form')
+        .send(payload)
+        .expect(/traffic/)
+        .expect(/0, 1, 2, 3, 4, 5, /);
     });
   });
 

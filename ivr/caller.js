@@ -69,6 +69,25 @@ app.post('/connect', async ({body, query}, res) => {
     return res.send(r.toXML());
   }
 
+  if (campaign.revert_to_redundancy) {
+    const redundancy_number =  process.env.REDUNDANCY_NUMBER
+    const redundancy_number_delimited = _.join(_.map(_.split(redundancy_number, _.stubString()), (n) => n + ', '), _.stubString())
+    await Event.query().insert({name: 'redundancy_number_prompt', campaign_id: campaign.id, value: {redundancy_number: redundancy_number}})
+    r.addWait({length: 2})
+    r.addSpeakAU(`Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool.`)
+    r.addWait({length: 1})
+    r.addSpeakAU('The campaign is currently experiencing a lot of traffic.')
+    r.addWait({length: 1})
+    r.addSpeakAU(`To accommodate this, could we possibly ask you to call ${redundancy_number_delimited} instead.`)
+    r.addWait({length: 3})
+    for (i = 0; i <= 3; i++) {
+      r.addSpeakAU(`That number again is, ${redundancy_number_delimited}.`)
+      r.addWait({length: 3})
+    }
+    r.addRedirect(res.locals.appUrl(`call_ended?campaign_id=${campaign.id}&number=${caller_number}`));
+    return res.send(r.toXML())
+  }
+
   if (promptAuth) {
     r.addWait({length: 2});
     const passcodeAction = r.addGetDigits({
