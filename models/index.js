@@ -147,6 +147,11 @@ class Campaign extends Base {
   async callee_total() {
     return await Callee.query().where('campaign_id', this.id).count('*')
   }
+  async reached_dial_in_number_channel_limit(dial_in_number, sip_header_present) {
+    const callers = await Caller.query().where({campaign_id: this.id, inbound_phone_number: dial_in_number}).count('*').first()
+    const max_channels = sip_header_present ? process.env.DID_NUMBER_CHANNEL_LIMIT : process.env.PLIVO_NUMBER_CHANNEL_LIMIT
+    return callers.count >= max_channels - process.env.NUMBER_CHANNEL_LIMIT_PADDING
+  }
 }
 
 class Call extends Base {

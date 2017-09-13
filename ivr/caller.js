@@ -7,6 +7,8 @@ const dialer = require('../dialer');
 const {
   sleep,
   extractCallerNumber,
+  extractDialInNumber,
+  sipHeaderPresent,
   authenticationNeeded,
   isValidCallerNumber
 } = require('../utils');
@@ -67,6 +69,28 @@ app.post('/connect', async ({body, query}, res) => {
     r.addWait({length: 1});
     r.addSpeakAU('The campaign has been completed! Please contact the campaign coordinator for further instructions. Thank you and have a great day!');
     return res.send(r.toXML());
+  }
+
+  //check number channel limit
+  const dial_in_number = extractDialInNumber(query, body);
+  const sip_header_present = sipHeaderPresent(body);
+  const reached_dial_in_number_channel_limit = await campaign.reached_dial_in_number_channel_limit(dial_in_number, sip_header_present)
+  if (reached_dial_in_number_channel_limit) {
+    const redundancy_number = query.redundancy_number ? query.redundancy_number : _.first(_.shuffle(campaign.redundancy_numbers))
+    const redundancy_number_period_delimited = _.join(_.map(_.split(redundancy_number, _.stubString()), (n) => n + ', '), _.stubString())
+    if (!query.redundancy_number) {
+      r.addWait({length: 2})
+      r.addSpeakAU(`Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool.`)
+      r.addWait({length: 1})
+      r.addSpeakAU('The campaign is currently experiencing a lot of traffic.')
+      r.addWait({length: 1})
+      r.addSpeakAU(`To accommodate this, could we possibly ask you to call ${redundancy_number_period_delimited} instead.`)
+      r.addWait({length: 3})
+    }
+    r.addSpeakAU(`That number again is, ${redundancy_number_period_delimited}.`)
+    r.addWait({length: 2})
+    r.addRedirect(res.locals.appUrl(`connect?campaign_id=${query.campaign_id}&redundancy_number=${redundancy_number}`))
+    return res.send(r.toXML())
   }
 
   if (promptAuth) {
@@ -178,8 +202,11 @@ app.post('/ready', async ({body, query}, res) => {
       r.addSpeakAU('Sending an sms with instructions to your number. Thank you and speak soon!')
       return res.send(r.toXML());
     }
+
     caller_params = {
       phone_number: query.caller_number,
+      inbound_phone_number: extractDialInNumber(query, body),
+      inbound_sip: sipHeaderPresent(body),
       call_uuid: body.CallUUID,
       campaign_id: query.campaign_id
     }
