@@ -148,8 +148,9 @@ class Campaign extends Base {
     return await Callee.query().where('campaign_id', this.id).count('*')
   }
   async reached_dial_in_number_channel_limit(dial_in_number, sip_header_present) {
+    let callers, max_channels
     if (sip_header_present) {
-      const callers = await Caller.query()
+      callers = await Caller.query()
         .where({
           campaign_id: this.id,
           inbound_sip: true,
@@ -157,14 +158,14 @@ class Campaign extends Base {
           created_from_incoming: true
         })
         .whereNot('status', 'completed').count('*').first()
-      const max_channels = process.env.DID_NUMBER_CHANNEL_LIMIT
+      max_channels = process.env.DID_NUMBER_CHANNEL_LIMIT
     } else {
-      const callers = await Caller.query()
+      callers = await Caller.query()
         .where({
           inbound_sip: false,
           created_from_incoming: true
         }).whereNot('status', 'completed').count('*').first()
-      const max_channels = process.env.PLIVO_ACCOUNT_CHANNEL_LIMIT
+      max_channels = process.env.PLIVO_ACCOUNT_CHANNEL_LIMIT
     }
     return callers.count >= max_channels - process.env.CHANNEL_LIMIT_PADDING
   }
