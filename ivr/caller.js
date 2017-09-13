@@ -79,6 +79,7 @@ app.post('/connect', async ({body, query}, res) => {
     const redundancy_number = query.redundancy_number ? query.redundancy_number : _.first(_.shuffle(campaign.redundancy_numbers))
     const redundancy_number_period_delimited = _.join(_.map(_.split(redundancy_number, _.stubString()), (n) => n + ', '), _.stubString())
     if (!query.redundancy_number) {
+      await Event.query().insert({name: 'redundancy_number_prompt', campaign_id: campaign.id, value: {redundancy_number: redundancy_number}})
       r.addWait({length: 2})
       r.addSpeakAU(`Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool.`)
       r.addWait({length: 1})
