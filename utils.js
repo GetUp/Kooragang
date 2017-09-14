@@ -20,6 +20,15 @@ module.exports.extractCallerNumber = (query, body) => {
   }
 };
 
+module.exports.extractDialInNumber = (body) => {
+  const dialInNumber = body.Direction === 'outbound' ? body.From : body.To
+  return sipHeaderPresent(body) ? body['SIP-H-To'].match(/phone=(\w+)\D/)[1] : dialInNumber;
+}
+
+const sipHeaderPresent = module.exports.sipHeaderPresent = (body) => !!body['SIP-H-To']
+
+module.exports.incomingCaller = (body) => body.Direction == 'inbound'
+
 module.exports.authenticationNeeded = (callback, campaign_passcode, authenticated) => {
   return !(callback || !campaign_passcode || authenticated);
 };

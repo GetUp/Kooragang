@@ -7,8 +7,11 @@ const dialer = require('../dialer');
 const {
   sleep,
   extractCallerNumber,
+  extractDialInNumber,
+  sipHeaderPresent,
   authenticationNeeded,
-  isValidCallerNumber
+  isValidCallerNumber,
+  incomingCaller
 } = require('../utils');
 const {Call, Callee, Caller, Campaign, SurveyResult, Event, User, Team} = require('../models');
 
@@ -201,8 +204,11 @@ app.post('/ready', async ({body, query}, res) => {
     }
     caller_params = {
       phone_number: query.caller_number,
+      inbound_phone_number: extractDialInNumber(body),
+      inbound_sip: sipHeaderPresent(body),
       call_uuid: body.CallUUID,
-      campaign_id: query.campaign_id
+      campaign_id: query.campaign_id,
+      created_from_incoming: incomingCaller(body)
     }
     if (body.From) {
       const user = await User.query().where({phone_number: body.From}).first();
@@ -293,7 +299,7 @@ app.post('/ready', async ({body, query}, res) => {
     if (!campaign.isWithinOptimalCallingTimes()) {
       r.addWait({length: 1});
       r.addSpeakAU('You may experience *longer* than normal wait times between calls as you\'re dialing during the *day*');
-    } else if (await !campaign.isRatioDialing()) {
+    } else if (!(await campaign.isRatioDialing())) {
       r.addWait({length: 1});
       r.addSpeakAU('You may experience *longer* than normal wait times between calls as you\'re dialing with only a *few* other volunteers at the moment.');
     }
