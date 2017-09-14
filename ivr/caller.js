@@ -83,9 +83,11 @@ app.post('/connect', async ({body, query}, res) => {
     r.addWait({length: 2})
     r.addSpeakAU(`Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool.`)
     r.addWait({length: 1})
-    r.addSpeakAU('The campaign is currently experiencing a lot of traffic.')
+    r.addSpeakAU('There are hundreds of people calling right now!')
     r.addWait({length: 1})
-    r.addSpeakAU(`To accommodate this, could we possibly ask you to call instead: ${redundancy_number_delimited}.`)
+    r.addSpeakAU(`To handle this, could we possibly ask you to call another number instead.`)
+    r.addWait({length: 1})
+    r.addSpeakAU(`The number is, ${redundancy_number_delimited}.`)
     r.addWait({length: 3})
     for (i = 0; i <= 3; i++) {
       r.addSpeakAU(`That number again is, ${redundancy_number_delimited}.`)
@@ -207,7 +209,7 @@ app.post('/ready', async ({body, query}, res) => {
 
     caller_params = {
       phone_number: query.caller_number,
-      inbound_phone_number: extractDialInNumber(query, body),
+      inbound_phone_number: extractDialInNumber(body),
       inbound_sip: sipHeaderPresent(body),
       call_uuid: body.CallUUID,
       campaign_id: query.campaign_id,
@@ -302,7 +304,7 @@ app.post('/ready', async ({body, query}, res) => {
     if (!campaign.isWithinOptimalCallingTimes()) {
       r.addWait({length: 1});
       r.addSpeakAU('You may experience *longer* than normal wait times between calls as you\'re dialing during the *day*');
-    } else if (await !campaign.isRatioDialing()) {
+    } else if (!(await campaign.isRatioDialing())) {
       r.addWait({length: 1});
       r.addSpeakAU('You may experience *longer* than normal wait times between calls as you\'re dialing with only a *few* other volunteers at the moment.');
     }

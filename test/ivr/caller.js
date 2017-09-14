@@ -1,3 +1,4 @@
+const _ = require('lodash');
 const expect = require('expect.js');
 const nock = require('nock');
 const proxyquire = require('proxyquire');
@@ -60,6 +61,7 @@ const activeCampaign = Object.assign({status: 'active'}, defaultCampaign)
 const pausedCampaign = Object.assign({status: 'paused'}, defaultCampaign)
 const inactiveCampaign = Object.assign({status: 'inactive'}, defaultCampaign)
 const statuslessCampaign = Object.assign({status: null}, defaultCampaign)
+const redundancyCampaign = Object.assign({revert_to_redundancy: true}, activeCampaign)
 const amdCampaign = Object.assign({status: 'active', detect_answering_machine: true}, defaultCampaign)
 const operationalWindowCampaign = Object.assign({}, activeCampaign, {hours_of_operation: hours_of_operation_null})
 const teamsCampaign = Object.assign({status: 'active', teams: true}, defaultCampaign)
@@ -214,6 +216,21 @@ describe('/connect', () => {
     });
   });
 
+  context('with an revert_to_redundancy campaign', () => {
+    beforeEach(async () => { await Campaign.query().delete() });
+    beforeEach(async () => campaign = await Campaign.query().insert(redundancyCampaign));
+    beforeEach(async () => { await Callee.query().insert(associatedCallee) });
+    const payload = { From: caller.phone_number };
+    it('informs user of high traffic', () => {
+      process.env.REDUNDANCY_NUMBER="012345"
+      return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
+        .type('form')
+        .send(payload)
+        .expect(/hundreds of people/)
+        .expect(/0, 1, 2, 3, 4, 5, /);
+    });
+  });
+
   context('with teams active campaign', () => {
     beforeEach(async () => {
       await Campaign.query().delete();
@@ -337,46 +354,133 @@ describe('/connect', () => {
 });
 
 describe('/ready', () => {
-  beforeEach(async () => { await Callee.query().insert(associatedCallee) });
+  beforeEach(async () => { await Callee.query().insert(associatedCallee) })
 
-  context('with a starting path', () => {
-    let startPath;
-    beforeEach(() => startPath = `/ready?campaign_id=${campaign.id}&caller_number=${caller.phone_number}&start=1`);
+  context('with a ready path', () => {
+    let readyPath
+    beforeEach(() => readyPath = `/ready?campaign_id=${campaign.id}&caller_number=${caller.phone_number}&start=1`)
 
     context('with an unknown number', () => {
-      const payload = { CallUUID: '1231', From: '1231' };
-      it('create a record', async() => {
-        await request.post(startPath)
+      const payload = { CallUUID: '1231', From: '1231' }
+      it('creates a record', async() => {
+        await request.post(readyPath)
           .type('form')
           .send(payload)
-          .expect(/call queue/i);
-        const foundCaller = await Caller.query().where({phone_number: caller.phone_number}).first();
-        expect(foundCaller).to.be.a(Caller);
-      });
-    });
+          .expect(/call queue/i)
+        const foundCaller = await Caller.query().where({phone_number: caller.phone_number}).first()
+        expect(foundCaller).to.be.a(Caller)
+      })
+      it('records the campaign id', async() => {
+        await request.post(readyPath)
+          .type('form')
+          .send(payload)
+          .expect(/call queue/i)
+        const foundCaller = await Caller.query().where({campaign_id: campaign.id}).first()
+        expect(foundCaller.campaign_id).to.be(campaign.id)
+      })
+      it('records the call uuid', async() => {
+        await request.post(readyPath)
+          .type('form')
+          .send(payload)
+          .expect(/call queue/i)
+        const foundCaller = await Caller.query().where({call_uuid: payload.CallUUID}).first()
+        expect(foundCaller.call_uuid).to.be(payload.CallUUID)
+      })
+    })
 
     context('with an existing number', () => {
-      let payload;
-      beforeEach(() => payload = {From: caller.phone_number, CallUUID: '1'});
-      beforeEach(async () => caller = await Caller.query().insert(caller));
+      const payload = {From: caller.phone_number, CallUUID: '1'}
+      beforeEach(async () => caller = await Caller.query().insert(caller))
 
-      it('create a new record', async() => {
-        await request.post(startPath)
-          .type('form')
-          .send({From: caller.phone_number})
-          .expect(/call queue/i);
-        const callers = await Caller.query().where({phone_number: caller.phone_number});
-        expect(callers.length).to.be(2);
-      });
-
-      it('record the call uuid', async() => {
-        await request.post(startPath)
+      it('creates a new record', async() => {
+        await request.post(readyPath)
           .type('form')
           .send(payload)
-          .expect(/call queue/i);
-        expect(await Caller.query().where({call_uuid: payload.CallUUID}).first()).to.be.a(Caller);
-      });
-    });
+          .expect(/call queue/i)
+        const callers = await Caller.query().where({phone_number: caller.phone_number})
+        expect(callers.length).to.be(2)
+      })
+      it('records the campaign id', async() => {
+        await request.post(readyPath)
+          .type('form')
+          .send(payload)
+          .expect(/call queue/i)
+        const foundCaller = await Caller.query().where({campaign_id: campaign.id}).first()
+        expect(foundCaller.campaign_id).to.be(campaign.id)
+      })
+      it('records the call uuid', async() => {
+        await request.post(readyPath)
+          .type('form')
+          .send(payload)
+          .expect(/call queue/i)
+        const foundCaller = await Caller.query().where({call_uuid: payload.CallUUID}).first()
+        expect(foundCaller.call_uuid).to.be(payload.CallUUID)
+      })
+    })
+
+    context('with a number of non sip origin', () => {
+      beforeEach(async () => { await Caller.query().delete() });
+      context('inbound', () => {
+        const payload = { CallUUID: '1231', From: '1231', To: '8667', Direction: 'inbound'}
+        it('records the number details', async() => {
+          await request.post(readyPath)
+            .type('form')
+            .send(payload)
+            .expect(/call queue/i)
+          const foundCaller = await Caller.query().where({phone_number: caller.phone_number}).first()
+          expect(foundCaller.phone_number).to.be(_.toString(caller.phone_number))
+          expect(foundCaller.inbound_phone_number).to.be(_.toString(payload['To']))
+          expect(foundCaller.inbound_sip).to.be(false)
+          expect(foundCaller.created_from_incoming).to.be(true)
+        })
+      })
+      context('outbound', () => {
+        const payload = { CallUUID: '1231', From: '1231', To: '8667', Direction: 'outbound'}
+        it('records the number details', async() => {
+          await request.post(readyPath)
+            .type('form')
+            .send(payload)
+            .expect(/call queue/i)
+          const foundCaller = await Caller.query().where({phone_number: caller.phone_number}).first()
+          expect(foundCaller.phone_number).to.be(_.toString(caller.phone_number))
+          expect(foundCaller.inbound_phone_number).to.be(_.toString(payload['From']))
+          expect(foundCaller.inbound_sip).to.be(false)
+          expect(foundCaller.created_from_incoming).to.be(false)
+        })
+      })
+    })
+
+    context('with a number of sip origin', () => {
+      beforeEach(async () => { await Caller.query().delete() });
+      context('inbound', () => {
+        const payload = { CallUUID: '1231', From: 'sip:61481222333@119.9.12.222', To: 'sip:2342352352352@app.plivo.com', Direction: 'inbound', 'SIP-H-To': '<sip:38092489203840928@app.plivo.com;phone=99999>'}
+        it('records the number details', async() => {
+          await request.post(readyPath)
+            .type('form')
+            .send(payload)
+            .expect(/call queue/i)
+          const foundCaller = await Caller.query().where({phone_number: caller.phone_number}).first()
+          expect(foundCaller.phone_number).to.be(_.toString(caller.phone_number))
+          expect(foundCaller.inbound_phone_number).to.be('99999')
+          expect(foundCaller.inbound_sip).to.be(true)
+          expect(foundCaller.created_from_incoming).to.be(true)
+        })
+      })
+      context('outbound', () => {
+        const payload = { CallUUID: '1231', From: 'sip:61481222333@119.9.12.222', To: 'sip:2342352352352@app.plivo.com', Direction: 'outbound', 'SIP-H-To': '<sip:38092489203840928@app.plivo.com;phone=99999>'}
+        it('records the number details', async() => {
+          await request.post(readyPath)
+            .type('form')
+            .send(payload)
+            .expect(/call queue/i)
+          const foundCaller = await Caller.query().where({phone_number: caller.phone_number}).first()
+          expect(foundCaller.phone_number).to.be(_.toString(caller.phone_number))
+          expect(foundCaller.inbound_phone_number).to.be('99999')
+          expect(foundCaller.inbound_sip).to.be(true)
+          expect(foundCaller.created_from_incoming).to.be(false)
+        })
+      })
+    })
 
     it('should give extra instructions',
       () => request.post(`/ready?caller_number=12333&start=1&campaign_id=${campaign.id}`).expect(/press star/i));
@@ -411,17 +515,21 @@ describe('/ready', () => {
 
   context('with 1 pressed inside work hours', () => {
     it('should inform me about wait times during the day', async() => {
+      process.env.OPTIMAL_CALLING_PERIOD_START = '24:00:00'
       await request.post(`/ready?caller_number=1111&campaign_id=${campaign.id}&start=1`)
          .expect(/wait times/)
          .expect(/day/)
+      delete process.env.OPTIMAL_CALLING_PERIOD_START
     })
   })
 
   context('with 1 pressed without minimum callers for ratio', () => {
     it('should inform me about wait times during small vollie engagement', async() => {
+      process.env.OPTIMAL_CALLING_PERIOD_START = '00:00:00'
       await request.post(`/ready?caller_number=1111&campaign_id=${campaign.id}&start=1`)
          .expect(/wait times/)
          .expect(/few/)
+      delete process.env.OPTIMAL_CALLING_PERIOD_START
     })
   })
 
