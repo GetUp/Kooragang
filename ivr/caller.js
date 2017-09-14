@@ -7,8 +7,11 @@ const dialer = require('../dialer');
 const {
   sleep,
   extractCallerNumber,
+  extractDialInNumber,
+  sipHeaderPresent,
   authenticationNeeded,
-  isValidCallerNumber
+  isValidCallerNumber,
+  incomingCaller
 } = require('../utils');
 const {Call, Callee, Caller, Campaign, SurveyResult, Event, User, Team} = require('../models');
 
@@ -69,6 +72,27 @@ app.post('/connect', async ({body, query}, res) => {
     return res.send(r.toXML());
   }
 
+  if (campaign.revert_to_redundancy) {
+    const redundancy_number =  process.env.REDUNDANCY_NUMBER
+    const redundancy_number_delimited = _.join(_.map(_.split(redundancy_number, _.stubString()), (n) => n + ', '), _.stubString())
+    await Event.query().insert({name: 'redundancy_number_prompt', campaign_id: campaign.id, value: {redundancy_number: redundancy_number}})
+    r.addWait({length: 2})
+    r.addSpeakAU(`Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool.`)
+    r.addWait({length: 1})
+    r.addSpeakAU('There are hundreds of people calling right now!')
+    r.addWait({length: 1})
+    r.addSpeakAU(`To handle this, could we possibly ask you to call another number instead.`)
+    r.addWait({length: 1})
+    r.addSpeakAU(`The number is, ${redundancy_number_delimited}.`)
+    r.addWait({length: 3})
+    for (i = 0; i <= 3; i++) {
+      r.addSpeakAU(`That number again is, ${redundancy_number_delimited}.`)
+      r.addWait({length: 3})
+    }
+    r.addRedirect(res.locals.appUrl(`call_ended?campaign_id=${campaign.id}&number=${caller_number}`));
+    return res.send(r.toXML())
+  }
+
   if (promptAuth) {
     r.addWait({length: 2});
     const passcodeAction = r.addGetDigits({
@@ -121,11 +145,8 @@ app.post('/briefing', async ({body, query}, res) => {
     valid_briefing_digits = valid_briefing_digits.concat(more_info_digits);
   }
 
-  let readyUrl =`ready?campaign_id=${campaign.id}&start=1&authenticated=${query.authenticated ? '1' : '0'}`
-  if (query.caller_number) readyUrl += `&caller_number=${query.caller_number}`
-  if (query.caller_id) readyUrl += `&caller_id=${query.caller_id}`
   const briefing = r.addGetDigits({
-    action: res.locals.appUrl(readyUrl),
+    action: res.locals.appUrl(`ready?campaign_id=${campaign.id}&caller_number=${query.caller_number}&start=1&authenticated=${query.authenticated ? '1' : '0'}`),
     method: 'POST',
     timeout: 5,
     numDigits: 1,
@@ -181,12 +202,13 @@ app.post('/ready', async ({body, query}, res) => {
       r.addSpeakAU('Sending an sms with instructions to your number. Thank you and speak soon!')
       return res.send(r.toXML());
     }
-  }
-  if (query.start && !query.caller_id) {
     caller_params = {
       phone_number: query.caller_number,
+      inbound_phone_number: extractDialInNumber(body),
+      inbound_sip: sipHeaderPresent(body),
       call_uuid: body.CallUUID,
-      campaign_id: query.campaign_id
+      campaign_id: query.campaign_id,
+      created_from_incoming: incomingCaller(body)
     }
     if (body.From) {
       const user = await User.query().where({phone_number: body.From}).first();
@@ -224,13 +246,13 @@ app.post('/ready', async ({body, query}, res) => {
     return res.send(r.toXML());
   } else if (body.Digits === '4') {
     r.addSpeakAU("Welcome to the Get Up dialer tool! This system works by dialing a number of people and patching them through to you when they pick up. Until they pick up, you'll hear music playing. When the music stops, that's your queue to start talking. Then you can attempt to have a conversation with them. At the end of the conversation, you'll be prompted to enter numbers into your phone to indicate the outcome of the call. It's important to remember that you never have to hang up your phone to end a call. If you need to end a call, just press star.");
-    r.addRedirect(res.locals.appUrl(`briefing?caller_id=${caller_id}&campaign_id=${campaign.id}&entry=more_info&entry_key=4&authenticated=${query.authenticated}`));
+    r.addRedirect(res.locals.appUrl(`briefing?campaign_id=${campaign.id}&entry=more_info&entry_key=4&authenticated=${query.authenticated}`));
     return res.send(r.toXML());
   }
 
   if(Object.keys(campaign.more_info).length > 0 && Object.keys(campaign.more_info).includes(body.Digits)) {
     r.addSpeakAU(campaign.more_info[body.Digits].content);
-    r.addRedirect(res.locals.appUrl(`briefing?caller_id=${caller_id}&campaign_id=${campaign.id}&entry=more_info&entry_key=${body.Digits}&authenticated=${query.authenticated}`));
+    r.addRedirect(res.locals.appUrl(`briefing?campaign_id=${campaign.id}&entry=more_info&entry_key=${body.Digits}&authenticated=${query.authenticated}`));
     return res.send(r.toXML());
   }
 
@@ -277,7 +299,7 @@ app.post('/ready', async ({body, query}, res) => {
     if (!campaign.isWithinOptimalCallingTimes()) {
       r.addWait({length: 1});
       r.addSpeakAU('You may experience *longer* than normal wait times between calls as you\'re dialing during the *day*');
-    } else if (await !campaign.isRatioDialing()) {
+    } else if (!(await campaign.isRatioDialing())) {
       r.addWait({length: 1});
       r.addSpeakAU('You may experience *longer* than normal wait times between calls as you\'re dialing with only a *few* other volunteers at the moment.');
     }
