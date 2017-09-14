@@ -423,71 +423,29 @@ describe('/ready', () => {
       beforeEach(async () => { await Caller.query().delete() });
       context('inbound', () => {
         const payload = { CallUUID: '1231', From: '1231', To: '8667', Direction: 'inbound'}
-        it('records the phone_number', async() => {
+        it('records the number details', async() => {
           await request.post(readyPath)
             .type('form')
             .send(payload)
             .expect(/call queue/i)
           const foundCaller = await Caller.query().where({phone_number: caller.phone_number}).first()
           expect(foundCaller.phone_number).to.be(_.toString(caller.phone_number))
-        })
-        it('records the inbound_phone_number', async() => {
-          await request.post(readyPath)
-            .type('form')
-            .send(payload)
-            .expect(/call queue/i)
-          const foundCaller = await Caller.query().where({phone_number: caller.phone_number}).first()
           expect(foundCaller.inbound_phone_number).to.be(_.toString(payload['To']))
-        })
-        it('records the inbound_sip', async() => {
-          await request.post(readyPath)
-            .type('form')
-            .send(payload)
-            .expect(/call queue/i)
-          const foundCaller = await Caller.query().where({phone_number: caller.phone_number}).first()
           expect(foundCaller.inbound_sip).to.be(false)
-        })
-        it('records the created_from_incoming', async() => {
-          await request.post(readyPath)
-            .type('form')
-            .send(payload)
-            .expect(/call queue/i)
-          const foundCaller = await Caller.query().where({phone_number: caller.phone_number}).first()
           expect(foundCaller.created_from_incoming).to.be(true)
         })
       })
       context('outbound', () => {
         const payload = { CallUUID: '1231', From: '1231', To: '8667', Direction: 'outbound'}
-        it('records the phone_number', async() => {
+        it('records the number details', async() => {
           await request.post(callbackReadyPath)
             .type('form')
             .send(payload)
             .expect(/call queue/i)
           const foundCaller = await Caller.query().where({phone_number: caller.phone_number}).first()
           expect(foundCaller.phone_number).to.be(_.toString(caller.phone_number))
-        })
-        it('records the inbound_phone_number', async() => {
-          await request.post(callbackReadyPath)
-            .type('form')
-            .send(payload)
-            .expect(/call queue/i)
-          const foundCaller = await Caller.query().where({phone_number: caller.phone_number}).first()
           expect(foundCaller.inbound_phone_number).to.be(_.toString(payload['From']))
-        })
-        it('records the inbound_sip', async() => {
-          await request.post(callbackReadyPath)
-            .type('form')
-            .send(payload)
-            .expect(/call queue/i)
-          const foundCaller = await Caller.query().where({phone_number: caller.phone_number}).first()
           expect(foundCaller.inbound_sip).to.be(false)
-        })
-        it('records the created_from_incoming', async() => {
-          await request.post(callbackReadyPath)
-            .type('form')
-            .send(payload)
-            .expect(/call queue/i)
-          const foundCaller = await Caller.query().where({phone_number: caller.phone_number}).first()
           expect(foundCaller.created_from_incoming).to.be(false)
         })
       })
@@ -497,71 +455,29 @@ describe('/ready', () => {
       beforeEach(async () => { await Caller.query().delete() });
       context('inbound', () => {
         const payload = { CallUUID: '1231', From: 'sip:61481222333@119.9.12.222', To: 'sip:2342352352352@app.plivo.com', Direction: 'inbound', 'SIP-H-To': '<sip:38092489203840928@app.plivo.com;phone=99999>'}
-        it('records the phone_number', async() => {
+        it('records the number details', async() => {
           await request.post(readyPath)
             .type('form')
             .send(payload)
             .expect(/call queue/i)
           const foundCaller = await Caller.query().where({phone_number: caller.phone_number}).first()
           expect(foundCaller.phone_number).to.be(_.toString(caller.phone_number))
-        })
-        it('records the inbound_phone_number', async() => {
-          await request.post(readyPath)
-            .type('form')
-            .send(payload)
-            .expect(/call queue/i)
-          const foundCaller = await Caller.query().where({phone_number: caller.phone_number}).first()
           expect(foundCaller.inbound_phone_number).to.be('99999')
-        })
-        it('records the inbound_sip', async() => {
-          await request.post(readyPath)
-            .type('form')
-            .send(payload)
-            .expect(/call queue/i)
-          const foundCaller = await Caller.query().where({phone_number: caller.phone_number}).first()
           expect(foundCaller.inbound_sip).to.be(true)
-        })
-        it('records the created_from_incoming', async() => {
-          await request.post(readyPath)
-            .type('form')
-            .send(payload)
-            .expect(/call queue/i)
-          const foundCaller = await Caller.query().where({phone_number: caller.phone_number}).first()
           expect(foundCaller.created_from_incoming).to.be(true)
         })
       })
       context('outbound', () => {
         const payload = { CallUUID: '1231', From: 'sip:61481222333@119.9.12.222', To: 'sip:2342352352352@app.plivo.com', Direction: 'outbound', 'SIP-H-To': '<sip:38092489203840928@app.plivo.com;phone=99999>'}
-        it('records the phone_number', async() => {
+        it('records the number details', async() => {
           await request.post(callbackReadyPath)
             .type('form')
             .send(payload)
             .expect(/call queue/i)
           const foundCaller = await Caller.query().where({phone_number: caller.phone_number}).first()
           expect(foundCaller.phone_number).to.be(_.toString(caller.phone_number))
-        })
-        it('records the inbound_phone_number', async() => {
-          await request.post(callbackReadyPath)
-            .type('form')
-            .send(payload)
-            .expect(/call queue/i)
-          const foundCaller = await Caller.query().where({phone_number: caller.phone_number}).first()
           expect(foundCaller.inbound_phone_number).to.be('99999')
-        })
-        it('records the inbound_sip', async() => {
-          await request.post(callbackReadyPath)
-            .type('form')
-            .send(payload)
-            .expect(/call queue/i)
-          const foundCaller = await Caller.query().where({phone_number: caller.phone_number}).first()
           expect(foundCaller.inbound_sip).to.be(true)
-        })
-        it('records the created_from_incoming', async() => {
-          await request.post(callbackReadyPath)
-            .type('form')
-            .send(payload)
-            .expect(/call queue/i)
-          const foundCaller = await Caller.query().where({phone_number: caller.phone_number}).first()
           expect(foundCaller.created_from_incoming).to.be(false)
         })
       })
