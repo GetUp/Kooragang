@@ -359,7 +359,6 @@ describe('/ready', () => {
   context('with a ready path', () => {
     let readyPath
     beforeEach(() => readyPath = `/ready?campaign_id=${campaign.id}&caller_number=${caller.phone_number}&start=1`)
-    beforeEach(() => callbackReadyPath = `/ready?campaign_id=${campaign.id}&caller_number=${caller.phone_number}&start=1&callback=1`)
 
     context('with an unknown number', () => {
       const payload = { CallUUID: '1231', From: '1231' }
@@ -438,7 +437,7 @@ describe('/ready', () => {
       context('outbound', () => {
         const payload = { CallUUID: '1231', From: '1231', To: '8667', Direction: 'outbound'}
         it('records the number details', async() => {
-          await request.post(callbackReadyPath)
+          await request.post(readyPath)
             .type('form')
             .send(payload)
             .expect(/call queue/i)
@@ -470,7 +469,7 @@ describe('/ready', () => {
       context('outbound', () => {
         const payload = { CallUUID: '1231', From: 'sip:61481222333@119.9.12.222', To: 'sip:2342352352352@app.plivo.com', Direction: 'outbound', 'SIP-H-To': '<sip:38092489203840928@app.plivo.com;phone=99999>'}
         it('records the number details', async() => {
-          await request.post(callbackReadyPath)
+          await request.post(readyPath)
             .type('form')
             .send(payload)
             .expect(/call queue/i)

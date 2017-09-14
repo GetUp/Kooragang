@@ -204,7 +204,7 @@ app.post('/ready', async ({body, query}, res) => {
     }
     caller_params = {
       phone_number: query.caller_number,
-      inbound_phone_number: extractDialInNumber(query, body),
+      inbound_phone_number: extractDialInNumber(body),
       inbound_sip: sipHeaderPresent(body),
       call_uuid: body.CallUUID,
       campaign_id: query.campaign_id,
