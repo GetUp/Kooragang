@@ -21,15 +21,11 @@ module.exports.extractCallerNumber = (query, body) => {
 };
 
 module.exports.extractDialInNumber = (query, body) => {
-  if (query.callback === '1') {
-    dialInNumber = body.From
-  } else {
-    dialInNumber = body.To
-  }
-  return _.includes(_.keys(body), 'SIP-H-To') ? body['SIP-H-To'].match(/phone=(\w+)\D/)[1] : dialInNumber;
+  const dialInNumber = query.callback === '1' ? body.From : body.To
+  return sipHeaderPresent(body) ? body['SIP-H-To'].match(/phone=(\w+)\D/)[1] : dialInNumber;
 }
 
-module.exports.sipHeaderPresent = (body) => !!body['SIP-H-To']
+const sipHeaderPresent = module.exports.sipHeaderPresent = (body) => !!body['SIP-H-To']
 
 module.exports.incomingCaller = (body) => body.Direction == 'inbound'
 
