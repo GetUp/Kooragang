@@ -324,7 +324,7 @@ app.post('/ready', async ({body, query}, res) => {
     action: res.locals.appUrl(`survey?q=disposition&caller_id=${caller_id}&campaign_id=${query.campaign_id}`)
   }
   if (process.env.ENABLE_ANSWER_MACHINE_SHORTCUT) params.digitsMatch = ['2']
-  if (campaign.transfer_to_target && campaign.target_number) params.digitsMatch = (params.digitsMatch || []).concat('9')
+  if (campaign.transfer_to_target) params.digitsMatch = (params.digitsMatch || []).concat('9')
   r.addConference(`conference-${caller_id}`, params);
   res.send(r.toXML());
 });
@@ -392,8 +392,11 @@ app.post('/conference_event/caller', async ({query, body}, res) => {
 app.post('/transfer_to_target', async ({query, body}, res) => {
   const r = plivo.Response();
   const campaign = await Campaign.query().where({id: query.campaign_id}).first();
-  r.addDial().addNumber(campaign.target_number);
-  await Event.query().insert({campaign_id: query.campaign_id, name: 'transfer_to_target', value: {call_uuid: body.CallUUID, target_number: campaign.target_number}});
+  const call = await Call.query().where({id: query.call_id}).first();
+  const callee = await Callee.query().where({id: call.callee_id}).first();
+  const target_number = callee.target_number ? callee.target_number : campaign.target_number
+  r.addDial().addNumber(target_number);
+  await Event.query().insert({campaign_id: query.campaign_id, call_id: call.id, caller_id: call.caller_id, name: 'transfer_to_target', value: {callee_id: callee.id, call_uuid: body.CallUUID, target_number: target_number, target_origin: (callee.target_number ? 'callee' : 'campaign')}});
   return res.send(r.toXML());
 });
 
