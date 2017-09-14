@@ -89,11 +89,12 @@ class Campaign extends Base {
     return operating_hours_in_words
   }
   isWithinOptimalCallingTimes() {
+    const optimal_calling_period_start = process.env.OPTIMAL_CALLING_PERIOD_START || '17:00:00'
     const today = _.lowerCase(moment.tz(this.timezone()).format('dddd'))
     if (_.includes(['saturday', 'sunday'], today)) return true
-    const start = moment.tz('00:00:00', 'HHmm', this.timezone())
-    const stop = moment.tz('17:00:00', 'HHmm', this.timezone())
-    return !moment.tz(this.timezone()).isBetween(start, stop, null, '[]')
+    const start = moment.tz('00:00:00', 'HH:mm:ss', this.timezone())
+    const stop = moment.tz(optimal_calling_period_start, 'HH:mm:ss', this.timezone())
+    return !moment.tz(this.timezone()).isBetween(start, stop)
   }
   async isRatioDialing() {
     const callers = await Caller.knexQuery().where({campaign_id: this.id}).whereIn('status', ['available', 'in-call']).count().first();

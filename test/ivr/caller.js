@@ -226,7 +226,7 @@ describe('/connect', () => {
       return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
         .type('form')
         .send(payload)
-        .expect(/traffic/)
+        .expect(/hundreds of people/)
         .expect(/0, 1, 2, 3, 4, 5, /);
     });
   });
@@ -516,17 +516,21 @@ describe('/ready', () => {
 
   context('with 1 pressed inside work hours', () => {
     it('should inform me about wait times during the day', async() => {
+      process.env.OPTIMAL_CALLING_PERIOD_START = '24:00:00'
       await request.post(`/ready?caller_number=1111&campaign_id=${campaign.id}&start=1`)
          .expect(/wait times/)
          .expect(/day/)
+      delete process.env.OPTIMAL_CALLING_PERIOD_START
     })
   })
 
   context('with 1 pressed without minimum callers for ratio', () => {
     it('should inform me about wait times during small vollie engagement', async() => {
+      process.env.OPTIMAL_CALLING_PERIOD_START = '00:00:00'
       await request.post(`/ready?caller_number=1111&campaign_id=${campaign.id}&start=1`)
          .expect(/wait times/)
          .expect(/few/)
+      delete process.env.OPTIMAL_CALLING_PERIOD_START
     })
   })
 
