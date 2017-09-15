@@ -569,7 +569,7 @@ app.post('/call_ended', async ({body, query}, res) => {
       to: caller.phone_number,
       answer_url: res.locals.appUrl(`connect?campaign_id=${campaign.id}&callback=1&number=${caller.phone_number}`),
       hangup_url: res.locals.appUrl(`call_ended?campaign_id=${campaign.id}&callback=1&number=${caller.phone_number}`),
-      ring_timeout: 120
+      ring_timeout: 30
     };
     try{
       await sleep(5000);
