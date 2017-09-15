@@ -61,8 +61,7 @@ const activeCampaign = Object.assign({status: 'active'}, defaultCampaign)
 const pausedCampaign = Object.assign({status: 'paused'}, defaultCampaign)
 const inactiveCampaign = Object.assign({status: 'inactive'}, defaultCampaign)
 const statuslessCampaign = Object.assign({status: null}, defaultCampaign)
-const redundancyNumberCampaign = Object.assign({redundancy_numbers: '{012345}'}, activeCampaign)
-const redundancyCampaign = Object.assign({revert_to_redundancy: true, redundancy_numbers: '{012345}'}, activeCampaign)
+const redundancyCampaign = Object.assign({revert_to_redundancy: true}, activeCampaign)
 const amdCampaign = Object.assign({status: 'active', detect_answering_machine: true}, defaultCampaign)
 const operationalWindowCampaign = Object.assign({}, activeCampaign, {hours_of_operation: hours_of_operation_null})
 const teamsCampaign = Object.assign({status: 'active', teams: true}, defaultCampaign)
@@ -224,20 +223,29 @@ describe('/connect', () => {
     beforeEach(async () => { await Campaign.query().delete() });
     beforeEach(async () => campaign = await Campaign.query().insert(redundancyCampaign));
     beforeEach(async () => { await Callee.query().insert(associatedCallee) });
-    const payload = { From: caller.phone_number };
-    it('informs user of high traffic', async () => {
-      await request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
-        .type('form')
-        .send(payload)
-        .expect(/hundreds of people/)
-        .expect(/handle this traffic/);
+    context('when direction is inbound', () => {
+      const payload = { From: caller.phone_number, Direction: 'inbound' };
+      it('informs user of high traffic', async () => {
+        await request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
+          .type('form')
+          .send(payload)
+          .expect(/hundreds of people/)
+          .expect(/handle this traffic/)
+      });
+    });
+    context('when direction is outbound', () => {
+      const payload = { From: caller.phone_number, Direction: 'outbound' };
+      it('should continue to briefing', async () => {
+        await request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
+          .type('form')
+          .send(payload)
+          .expect(/briefing/)
+      });
     });
   });
 
 
-  context('with redundancy_number set', () => {
-    beforeEach(async () => { await Campaign.query().delete() });
-    beforeEach(async () => campaign = await Campaign.query().insert(redundancyNumberCampaign));
+  context('with revert_to_redundancy set', () => {
     beforeEach(async () => { await Callee.query().insert(associatedCallee) });
 
     context('dialing into a didlogic number', () => {
