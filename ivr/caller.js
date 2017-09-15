@@ -197,21 +197,24 @@ app.post('/ready', async ({body, query}, res) => {
       return res.send(r.toXML());
     }
 
-    caller_params = {
-      phone_number: query.caller_number,
-      inbound_phone_number: extractDialInNumber(body),
-      inbound_sip: sipHeaderPresent(body),
-      call_uuid: body.CallUUID,
-      campaign_id: query.campaign_id,
-      created_from_incoming: incomingCaller(body)
-    }
-    if (body.From) {
-      const user = await User.query().where({phone_number: body.From}).first();
-      if (user && user.team_id) {
-        caller_params.team_id = user.team_id
+    caller = await Caller.query().where({call_uuid: body.CallUUID}).first()
+    if (!caller) {
+      caller_params = {
+        phone_number: query.caller_number,
+        inbound_phone_number: extractDialInNumber(body),
+        inbound_sip: sipHeaderPresent(body),
+        call_uuid: body.CallUUID,
+        campaign_id: query.campaign_id,
+        created_from_incoming: incomingCaller(body)
       }
+      if (body.From) {
+        const user = await User.query().where({phone_number: body.From}).first();
+        if (user && user.team_id) {
+          caller_params.team_id = user.team_id
+        }
+      }
+      caller = await Caller.query().insert(caller_params);
     }
-    caller = await Caller.query().insert(caller_params);
     caller_id = caller.id;
   } else {
     caller_id = query.caller_id;
@@ -241,13 +244,13 @@ app.post('/ready', async ({body, query}, res) => {
     return res.send(r.toXML());
   } else if (body.Digits === '4') {
     r.addSpeakAU("Welcome to the Get Up dialer tool! This system works by dialing a number of people and patching them through to you when they pick up. Until they pick up, you'll hear music playing. When the music stops, that's your queue to start talking. Then you can attempt to have a conversation with them. At the end of the conversation, you'll be prompted to enter numbers into your phone to indicate the outcome of the call. It's important to remember that you never have to hang up your phone to end a call. If you need to end a call, just press star.");
-    r.addRedirect(res.locals.appUrl(`briefing?campaign_id=${campaign.id}&entry=more_info&entry_key=4&authenticated=${query.authenticated}`));
+    r.addRedirect(res.locals.appUrl(`briefing?campaign_id=${campaign.id}&caller_number=${query.caller_number}&entry=more_info&entry_key=4&authenticated=${query.authenticated}`));
     return res.send(r.toXML());
   }
 
   if(Object.keys(campaign.more_info).length > 0 && Object.keys(campaign.more_info).includes(body.Digits)) {
     r.addSpeakAU(campaign.more_info[body.Digits].content);
-    r.addRedirect(res.locals.appUrl(`briefing?campaign_id=${campaign.id}&entry=more_info&entry_key=${body.Digits}&authenticated=${query.authenticated}`));
+    r.addRedirect(res.locals.appUrl(`briefing?campaign_id=${campaign.id}&caller_number=${query.caller_number}&entry=more_info&entry_key=${body.Digits}&authenticated=${query.authenticated}`));
     return res.send(r.toXML());
   }
 
@@ -348,7 +351,7 @@ app.all('/hold_music', async ({query, body}, res) => {
   if (campaign && campaign.hold_music) {
     _.shuffle(campaign.hold_music).forEach(filename => r.addPlay(`http://d1bm7er3ouf1yi.cloudfront.net/kooragang-hold-music/${filename}`) )
   } else {
-    [1, 2].forEach(i => r.addPlay(`http://d1bm7er3ouf1yi.cloudfront.net/kooragang-hold-music/welcome-pack-${i}.mp3`) )    
+    [1, 2].forEach(i => r.addPlay(`http://d1bm7er3ouf1yi.cloudfront.net/kooragang-hold-music/welcome-pack-${i}.mp3`) )
   }
   res.send(r.toXML());
 });

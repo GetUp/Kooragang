@@ -543,6 +543,19 @@ describe('/ready', () => {
       })
     })
 
+    context('with an existing caller with matching CallUUID', () => {
+      const payload = { CallUUID: '1231', From: '1231' }
+      beforeEach(() => Caller.query().insert({phone_number: '1234', call_uuid: payload.CallUUID, campaign_id: campaign.id}) )
+      it('creates a record', async() => {
+        await request.post(readyPath)
+          .type('form')
+          .send(payload)
+          .expect(/call queue/i)
+        const foundCallers = await Caller.query().where({call_uuid: payload.CallUUID})
+        expect(foundCallers.length).to.be(1)
+      })
+    })
+
     context('with a number of sip origin', () => {
       beforeEach(async () => { await Caller.query().delete() });
       context('inbound', () => {
@@ -576,7 +589,7 @@ describe('/ready', () => {
     })
 
     it('should give extra instructions',
-      () => request.post(`/ready?caller_number=12333&start=1&campaign_id=${campaign.id}`).expect(/press star/i));
+      () => request.post(`/ready?caller_number=12333&start=1&campaign_id=${campaign.id}`).type('form').send({CallUUID: '1'}).expect(/press star/i));
 
     context('with a call that on the same campaign and phone number that has no survey result', () => {
       let previous_caller, previous_call;
@@ -587,22 +600,23 @@ describe('/ready', () => {
 
       it ('should ask if they want to resume', async () => {
         await request.post(`/ready?caller_number=${previous_caller.phone_number}&campaign_id=${campaign.id}&start=1`)
+          .type('form').send({CallUUID: '1'})
           .expect(new RegExp(`resume_survey.*caller_id=.*last_call_id=${previous_call.id}.*campaign_id=${campaign.id}`));
       })
     })
   });
 
   it('should put them in a conference',
-    () => request.post(`/ready?caller_id=${caller.id}&campaign_id=${campaign.id}`).expect(/<Conference/i));
+    () => request.post(`/ready?caller_id=${caller.id}&campaign_id=${campaign.id}`).type('form').send({CallUUID: '1'}).expect(/<Conference/i));
 
   it('should use the caller number as the conference name',
-    () => request.post(`/ready?caller_id=${caller.id}&campaign_id=${campaign.id}`).expect(new RegExp(caller.id)));
+    () => request.post(`/ready?caller_id=${caller.id}&campaign_id=${campaign.id}`).type('form').send({CallUUID: '1'}).expect(new RegExp(caller.id)));
 
   context('with redirect_to_target set for the campaign', () => {
     beforeEach(async() => campaign = await campaign.$query().patchAndFetch({transfer_to_target: true, target_number: '1'}) )
 
     it('should enable 9 as a digit to press', () => {
-      return request.post(`/ready?caller_id=${caller.id}&campaign_id=${campaign.id}`).expect(/digitsMatch="9"/i);
+      return request.post(`/ready?caller_id=${caller.id}&campaign_id=${campaign.id}`).type('form').send({CallUUID: '1'}).expect(/digitsMatch="9"/i);
     })
   })
 
@@ -610,6 +624,7 @@ describe('/ready', () => {
     it('should inform me about wait times during the day', async() => {
       process.env.OPTIMAL_CALLING_PERIOD_START = '24:00:00'
       await request.post(`/ready?caller_number=1111&campaign_id=${campaign.id}&start=1`)
+         .type('form').send({CallUUID: '1'})
          .expect(/wait times/)
          .expect(/day/)
       delete process.env.OPTIMAL_CALLING_PERIOD_START
@@ -620,6 +635,7 @@ describe('/ready', () => {
     it('should inform me about wait times during small vollie engagement', async() => {
       process.env.OPTIMAL_CALLING_PERIOD_START = '00:00:00'
       await request.post(`/ready?caller_number=1111&campaign_id=${campaign.id}&start=1`)
+         .type('form').send({CallUUID: '1'})
          .expect(/wait times/)
          .expect(/few/)
       delete process.env.OPTIMAL_CALLING_PERIOD_START
@@ -631,6 +647,7 @@ describe('/ready', () => {
 
     it('should let them know their session id', async() => {
       await request.post(`/ready?caller_number=1111&campaign_id=${campaign.id}&start=1`)
+         .type('form').send({CallUUID: '1'})
          .expect(/session code is \d+/)
     })
   })
@@ -638,7 +655,7 @@ describe('/ready', () => {
   context('with 0 pressed', () => {
     it('should redirect them to disconnect', () => {
       return request.post(`/ready?caller_id=${caller.id}&start=1&campaign_id=${campaign.id}`)
-        .type('form').send({Digits: '0'})
+        .type('form').send({Digits: '0', CallUUID: '1'})
         .expect(/disconnect/i)
     });
   });
@@ -718,8 +735,9 @@ describe('/ready', () => {
   context('with 4 pressed', () => {
     it('should give the caller information on the dialing tool', async () => {
       return request.post(`/ready?caller_number=${caller.phone_number}&start=1&campaign_id=${campaign.id}`)
-        .type('form').send({Digits: '4'})
+        .type('form').send({Digits: '4', CallUUID: '1333'})
         .expect(/system works/i)
+        .expect(new RegExp(`briefing.*caller_number=${caller.phone_number}`))
     });
   });
 
@@ -729,8 +747,9 @@ describe('/ready', () => {
       const more_info_item_content = campaign.more_info[more_info_item_key];
       const regexp = new RegExp(more_info_item_content, "i");
       return request.post(`/ready?caller_number=${caller.phone_number}&start=1&campaign_id=${campaign.id}`)
-        .type('form').send({Digits: more_info_item_key})
+        .type('form').send({Digits: more_info_item_key, CallUUID: '1333'})
         .expect(regexp)
+        .expect(new RegExp(`briefing.*caller_number=${caller.phone_number}`))
     });
   });
 
@@ -745,7 +764,7 @@ describe('/ready', () => {
     beforeEach(async () => team = await Team.query().insert({name: 'planet savers', passcode: '1234'}));
     beforeEach(async () => user = await User.query().insert({phone_number: '098765', team_id: team.id}));
     const payload = {
-      call_uuid: CallUUID,
+      CallUUID,
       From: '098765'
     };
     it('should update caller creation params to include team id', async () => {
