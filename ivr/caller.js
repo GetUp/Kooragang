@@ -76,41 +76,14 @@ app.post('/connect', async ({body, query}, res) => {
   const dial_in_number = extractDialInNumber(body);
   const sip_header_present = sipHeaderPresent(body);
   const reached_dial_in_number_channel_limit = await campaign.reached_dial_in_number_channel_limit(dial_in_number, sip_header_present)
-  const redundancy_number =  _.first(_.shuffle(campaign.redundancy_numbers))
-  if (redundancy_number && (campaign.revert_to_redundancy || reached_dial_in_number_channel_limit)) {
-    const formatted_caller_number = caller_number.replace(/^0/, '61')
+  if (campaign.revert_to_redundancy || reached_dial_in_number_channel_limit) {
     r.addWait({length: 2})
     r.addSpeakAU(`Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool.`)
     r.addWait({length: 1})
     r.addSpeakAU('There are hundreds of people calling right now!')
     r.addWait({length: 1})
-    r.addSpeakAU('To handle this, could we possibly ask you to call another number instead.')
-    if (_.startsWith(formatted_caller_number, '614')) {
-      await Event.query().insert({name: 'redundancy_number_prompt', campaign_id: campaign.id, value: {contact_method: 'sms', redundancy_number: redundancy_number}})
-      r.addWait({length: 1})
-      r.addSpeakAU('We will send you a message with this number now.')
-      r.addWait({length: 1})
-      r.addSpeakAU('Thank you, and have a great day.')
-      r.addWait({length: 1})
-      let sms_content = `Hi! This is the ${campaign.name} Team. `
-      sms_content += 'To handle how many people are calling right now, could we possibly ask you to call another number instead. '
-      sms_content += `The number is: ${redundancy_number}`
-      r.addMessage(`${sms_content}`, {
-        src: campaign.sms_number || process.env.NUMBER || '1111111111',
-        dst: formatted_caller_number
-      });
-    } else {
-      await Event.query().insert({name: 'redundancy_number_prompt', campaign_id: campaign.id, value: {contact_method: 'read out', redundancy_number: redundancy_number}})
-      const redundancy_number_delimited = _.join(_.map(_.split(redundancy_number, _.stubString()), (n) => n + ', '), _.stubString())
-      r.addWait({length: 1})
-      r.addSpeakAU(`The number is, ${redundancy_number_delimited}.`)
-      r.addWait({length: 3})
-      for (i = 0; i <= 3; i++) {
-        r.addSpeakAU(`That number again is, ${redundancy_number_delimited}.`)
-        r.addWait({length: 3})
-      } 
-    }
-    r.addRedirect(res.locals.appUrl(`call_ended?campaign_id=${campaign.id}&number=${caller_number}`));
+    r.addSpeakAU('To handle this traffic, we will call *you* *back* immediately.')
+    r.addRedirect(res.locals.appUrl(`ready?campaign_id=${campaign.id}&caller_number=${caller_number}&start=1&force_callback=1`))
     return res.send(r.toXML())
   }
 
@@ -262,7 +235,7 @@ app.post('/ready', async ({body, query}, res) => {
   } else if (body.Digits === '0') {
     r.addRedirect(res.locals.appUrl('disconnect'));
     return res.send(r.toXML());
-  } else if (body.Digits === '2') {
+  } else if (body.Digits === '2' || query.force_callback) {
     await Caller.query().where({id: caller_id}).patch({callback: true});
     r.addSpeakAU('We will call you back immediately. Please hang up now!');
     return res.send(r.toXML());

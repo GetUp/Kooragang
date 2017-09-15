@@ -229,13 +229,11 @@ describe('/connect', () => {
     beforeEach(async () => { await Callee.query().insert(associatedCallee) });
     const payload = { From: caller.phone_number };
     it('informs user of high traffic', async () => {
-      process.env.REDUNDANCY_NUMBER="012345"
       await request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
         .type('form')
         .send(payload)
         .expect(/hundreds of people/)
-        .expect(/0, 1, 2, 3, 4, 5, /);
-      delete process.env.REDUNDANCY_NUMBER
+        .expect(/handle this traffic/);
     });
   });
 
@@ -244,13 +242,10 @@ describe('/connect', () => {
     beforeEach(async () => { await Campaign.query().delete() });
     beforeEach(async () => campaign = await Campaign.query().insert(redundancyNumberCampaign));
     beforeEach(async () => { await Callee.query().insert(associatedCallee) });
-    beforeEach(() => process.env.REDUNDANCY_NUMBER="012345")
-    afterEach(() => delete process.env.REDUNDANCY_NUMBER )
 
     context('dialing into a didlogic number', () => {
       const didlogic_number = '1111111'
       const payload = { From: caller.phone_number, 'SIP-H-To': `<sip:38092489203840928@app.plivo.com;phone=${didlogic_number}>` };
-      const mobile_payload = { From: '614888999333', 'SIP-H-To': `<sip:38092489203840928@app.plivo.com;phone=${didlogic_number}>` };
 
       context('under the channel limit', () => {
         it('should continue to briefing', async () => {
@@ -274,21 +269,12 @@ describe('/connect', () => {
             created_from_incoming: true, campaign_id: campaign.id})
         })
 
-        context('with a landline', async () => {
-          it('should read out a selected number multiple times', async () => {
-            await request.post(`/connect?campaign_id=${campaign.id}`)
-              .type('form')
-              .send(payload)
-              .expect(/0, 1, 2, 3, 4, 5, /);
-          })
-        })
-        context('with a mobile', async () => {
-          it('should send an sms with a selected number', async () => {
-            await request.post(`/connect?campaign_id=${campaign.id}`)
-              .type('form')
-              .send(mobile_payload)
-              .expect(/message/);
-          })
+        it('should tell them it will call them back', async () => {
+          await request.post(`/connect?campaign_id=${campaign.id}`)
+            .type('form')
+            .send(payload)
+            .expect(/handle this traffic/)
+            .expect(new RegExp(`ready.*campaign_id=${campaign.id}.*caller_number=${caller.phone_number}.*start=1.*force_callback=1`));
         })
       })
     })
@@ -726,6 +712,17 @@ describe('/ready', () => {
       expect(new_caller.team_id).to.be(team.id)
     });
   });
+
+  context('with force_callback set to true', () => {
+    it('should set a boolean for a call back', async () => {
+      await request.post(`/ready?caller_number=${caller.phone_number}&start=1&campaign_id=${campaign.id}&force_callback=1`)
+        .type('form').send({CallUUID: '1234'})
+        .expect(/hang up now/i)
+      const updatedCaller = await Caller.query().where({call_uuid: '1234'}).first();
+      return expect(updatedCaller.callback).to.be(true);
+    });
+  });
+
 });
 
 describe('/transfer_to_target', () => {
