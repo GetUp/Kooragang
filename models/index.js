@@ -57,8 +57,9 @@ class Campaign extends Base {
   isWithinDailyTimeOfOperation() {
     const todays_hours = this.hours_of_operation[_.lowerCase(moment.tz(this.timezone()).format('dddd'))]
     if (_.isNull(todays_hours)) return false
-    const start = moment.tz(todays_hours['start'], 'HHmm', this.timezone())
-    const stop = moment.tz(todays_hours['stop'], 'HHmm', this.timezone())
+    const today = moment.tz(this.timezone()).format('YYYY-MM-DD')
+    const start = moment.tz(`${today} ${todays_hours['start']}`, this.timezone())
+    const stop = moment.tz(`${today} ${todays_hours['stop']}`, this.timezone())
     return moment.tz(this.timezone()).isBetween(start, stop, null, '[]')
   }
   dailyTimeOfOperationInWords() {
@@ -69,7 +70,7 @@ class Campaign extends Base {
       if (_.isNull(hours)) return
       running_days.push(day)
       tomorrow_index = (_.indexOf(_.keys(this.hours_of_operation), day) + 1)
-      tomorrow_hours = this.hours_of_operation[daysOfWeek[tomorrow_index]]     
+      tomorrow_hours = this.hours_of_operation[daysOfWeek[tomorrow_index]]
       if (_.isNil(tomorrow_hours) || hours.start != tomorrow_hours.start || hours.stop != tomorrow_hours.stop) {
         start = moment.tz(hours['start'], 'HHmm', this.timezone()).format('h mm a').replace(/00\s/,'')
         stop = moment.tz(hours['stop'], 'HHmm', this.timezone()).format('h mm a').replace(/00\s/,'')
@@ -92,8 +93,9 @@ class Campaign extends Base {
     const optimal_calling_period_start = process.env.OPTIMAL_CALLING_PERIOD_START || '17:00:00'
     const today = _.lowerCase(moment.tz(this.timezone()).format('dddd'))
     if (_.includes(['saturday', 'sunday'], today)) return true
-    const start = moment.tz('00:00:00', 'HH:mm:ss', this.timezone())
-    const stop = moment.tz(optimal_calling_period_start, 'HH:mm:ss', this.timezone())
+    const today_date = moment.tz(this.timezone()).format('YYYY-MM-DD')
+    const start = moment.tz(`${today_date} 00:00:00`, this.timezone())
+    const stop = moment.tz(`${today_date} ${optimal_calling_period_start}`, this.timezone())
     return !moment.tz(this.timezone()).isBetween(start, stop)
   }
   async isRatioDialing() {
