@@ -244,7 +244,6 @@ describe('/connect', () => {
     });
   });
 
-
   context('with revert_to_redundancy set', () => {
     beforeEach(async () => { await Callee.query().insert(associatedCallee) });
 
@@ -271,6 +270,46 @@ describe('/connect', () => {
           await Caller.query().insert({phone_number: '1234', inbound_sip: true, inbound_phone_number: didlogic_number,
             created_from_incoming: true, campaign_id: campaign.id})
           await Caller.query().insert({phone_number: '1234', inbound_sip: true, inbound_phone_number: didlogic_number,
+            created_from_incoming: true, campaign_id: campaign.id})
+        })
+
+        it('should tell them it will call them back', async () => {
+          await request.post(`/connect?campaign_id=${campaign.id}`)
+            .type('form')
+            .send(payload)
+            .expect(/handle this traffic/)
+            .expect(new RegExp(`ready.*campaign_id=${campaign.id}.*caller_number=${caller.phone_number}.*start=1.*force_callback=1`));
+        })
+      })
+    })
+  })
+
+  context('with revert_to_redundancy set', () => {
+    beforeEach(async () => { await Callee.query().insert(associatedCallee) });
+
+    context('dialing into a plivo number', () => {
+      const plivo_number = '61200001111'
+      const payload = { From: caller.phone_number, To: plivo_number };
+
+      context('under the channel limit', () => {
+        it('should continue to briefing', async () => {
+          await request.post(`/connect?campaign_id=${campaign.id}`)
+            .type('form')
+            .send(payload)
+            .expect(/briefing/);
+        })
+      })
+      context('over the channel limit', () => {
+        beforeEach(() => {
+          process.env.PLIVO_ACCOUNT_CHANNEL_LIMIT=10
+          process.env.CHANNEL_LIMIT_PADDING=8
+        })
+        afterEach(() => delete process.env.PLIVO_ACCOUNT_CHANNEL_LIMIT )
+        afterEach(() => delete process.env.CHANNEL_LIMIT_PADDING )
+        beforeEach(async() => {
+          await Caller.query().insert({phone_number: '1234', inbound_sip: false, inbound_phone_number: plivo_number,
+            created_from_incoming: true, campaign_id: campaign.id})
+          await Caller.query().insert({phone_number: '1234', inbound_sip: false, inbound_phone_number: '61222223333',
             created_from_incoming: true, campaign_id: campaign.id})
         })
 
