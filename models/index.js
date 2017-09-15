@@ -158,14 +158,20 @@ class Campaign extends Base {
           inbound_phone_number: dial_in_number,
           created_from_incoming: true
         })
-        .whereNot('status', 'completed').count('*').first()
+        .where(function(){
+          this.whereNull('status').orWhere('status', '!=', 'complete')
+        })
+        .count('*').first()
       max_channels = process.env.DID_NUMBER_CHANNEL_LIMIT
     } else {
       callers = await Caller.query()
         .where({
           inbound_sip: false,
           created_from_incoming: true
-        }).whereNot('status', 'completed').count('*').first()
+        })
+        .where(function(){
+          this.whereNull('status').orWhere('status', '!=', 'complete')
+        }).count('*').first()
       max_channels = process.env.PLIVO_ACCOUNT_CHANNEL_LIMIT
     }
     return callers.count >= max_channels - process.env.CHANNEL_LIMIT_PADDING

@@ -20,7 +20,7 @@ module.exports.extractCallerNumber = (query, body) => {
   }
 };
 
-module.exports.extractDialInNumber = (body) => {
+module.exports.extractDialInNumber = body => {
   const dialInNumber = body.Direction === 'outbound' ? body.From : body.To
   return sipHeaderPresent(body) ? body['SIP-H-To'].match(/phone=(\w+)\D/)[1] : dialInNumber;
 }

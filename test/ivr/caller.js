@@ -61,7 +61,8 @@ const activeCampaign = Object.assign({status: 'active'}, defaultCampaign)
 const pausedCampaign = Object.assign({status: 'paused'}, defaultCampaign)
 const inactiveCampaign = Object.assign({status: 'inactive'}, defaultCampaign)
 const statuslessCampaign = Object.assign({status: null}, defaultCampaign)
-const redundancyCampaign = Object.assign({revert_to_redundancy: true}, activeCampaign)
+const redundancyNumberCampaign = Object.assign({redundancy_numbers: '{012345}'}, activeCampaign)
+const redundancyCampaign = Object.assign({revert_to_redundancy: true, redundancy_numbers: '{012345}'}, activeCampaign)
 const amdCampaign = Object.assign({status: 'active', detect_answering_machine: true}, defaultCampaign)
 const operationalWindowCampaign = Object.assign({}, activeCampaign, {hours_of_operation: hours_of_operation_null})
 const teamsCampaign = Object.assign({status: 'active', teams: true}, defaultCampaign)
@@ -87,6 +88,12 @@ const unassociatedCallee = {
   first_name: 'alice',
   phone_number: '+612 9999-9999',
   location: 'drummoyne',
+  campaign_id: 1
+};
+let mobileCaller = {
+  first_name: 'bob',
+  phone_number: '61488888888',
+  location: 'balmain',
   campaign_id: 1
 };
 
@@ -221,15 +228,71 @@ describe('/connect', () => {
     beforeEach(async () => campaign = await Campaign.query().insert(redundancyCampaign));
     beforeEach(async () => { await Callee.query().insert(associatedCallee) });
     const payload = { From: caller.phone_number };
-    it('informs user of high traffic', () => {
+    it('informs user of high traffic', async () => {
       process.env.REDUNDANCY_NUMBER="012345"
-      return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
+      await request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
         .type('form')
         .send(payload)
         .expect(/hundreds of people/)
         .expect(/0, 1, 2, 3, 4, 5, /);
+      delete process.env.REDUNDANCY_NUMBER
     });
   });
+
+
+  context('with redundancy_number set', () => {
+    beforeEach(async () => { await Campaign.query().delete() });
+    beforeEach(async () => campaign = await Campaign.query().insert(redundancyNumberCampaign));
+    beforeEach(async () => { await Callee.query().insert(associatedCallee) });
+    beforeEach(() => process.env.REDUNDANCY_NUMBER="012345")
+    afterEach(() => delete process.env.REDUNDANCY_NUMBER )
+
+    context('dialing into a didlogic number', () => {
+      const didlogic_number = '1111111'
+      const payload = { From: caller.phone_number, 'SIP-H-To': `<sip:38092489203840928@app.plivo.com;phone=${didlogic_number}>` };
+      const mobile_payload = { From: '614888999333', 'SIP-H-To': `<sip:38092489203840928@app.plivo.com;phone=${didlogic_number}>` };
+
+      context('under the channel limit', () => {
+        it('should continue to briefing', async () => {
+          await request.post(`/connect?campaign_id=${campaign.id}`)
+            .type('form')
+            .send(payload)
+            .expect(/briefing/);
+        })
+      })
+      context('over the channel limit', () => {
+        beforeEach(() => {
+          process.env.DID_NUMBER_CHANNEL_LIMIT=10
+          process.env.CHANNEL_LIMIT_PADDING=8
+        })
+        afterEach(() => delete process.env.DID_NUMBER_CHANNEL_LIMIT )
+        afterEach(() => delete process.env.CHANNEL_LIMIT_PADDING )
+        beforeEach(async() => {
+          await Caller.query().insert({phone_number: '1234', inbound_sip: true, inbound_phone_number: didlogic_number,
+            created_from_incoming: true, campaign_id: campaign.id})
+          await Caller.query().insert({phone_number: '1234', inbound_sip: true, inbound_phone_number: didlogic_number,
+            created_from_incoming: true, campaign_id: campaign.id})
+        })
+
+        context('with a landline', async () => {
+          it('should read out a selected number multiple times', async () => {
+            await request.post(`/connect?campaign_id=${campaign.id}`)
+              .type('form')
+              .send(payload)
+              .expect(/0, 1, 2, 3, 4, 5, /);
+          })
+        })
+        context('with a mobile', async () => {
+          it('should send an sms with a selected number', async () => {
+            await request.post(`/connect?campaign_id=${campaign.id}`)
+              .type('form')
+              .send(mobile_payload)
+              .expect(/message/);
+          })
+        })
+      })
+    })
+  })
 
   context('with teams active campaign', () => {
     beforeEach(async () => {

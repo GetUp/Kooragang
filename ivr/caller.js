@@ -73,7 +73,7 @@ app.post('/connect', async ({body, query}, res) => {
   }
 
   //check number channel limit
-  const dial_in_number = extractDialInNumber(query, body);
+  const dial_in_number = extractDialInNumber(body);
   const sip_header_present = sipHeaderPresent(body);
   const reached_dial_in_number_channel_limit = await campaign.reached_dial_in_number_channel_limit(dial_in_number, sip_header_present)
   const redundancy_number =  _.first(_.shuffle(campaign.redundancy_numbers))
@@ -85,19 +85,17 @@ app.post('/connect', async ({body, query}, res) => {
     r.addSpeakAU('There are hundreds of people calling right now!')
     r.addWait({length: 1})
     r.addSpeakAU('To handle this, could we possibly ask you to call another number instead.')
-    if (_.startsWith(formatted_caller_number), '614') {
+    if (_.startsWith(formatted_caller_number, '614')) {
       await Event.query().insert({name: 'redundancy_number_prompt', campaign_id: campaign.id, value: {contact_method: 'sms', redundancy_number: redundancy_number}})
       r.addWait({length: 1})
       r.addSpeakAU('We will send you a message with this number now.')
       r.addWait({length: 1})
       r.addSpeakAU('Thank you, and have a great day.')
       r.addWait({length: 1})
-      const content = question.answers[body.Digits || query.digit].content;
-      const call = await Call.query().where({id: query.call_id}).eager('callee').first();
-      let content = `Hi! This is the ${campagin.name} Team. `
-      content += 'To handle how many people are calling right now, could we possibly ask you to call another number instead. '
-      content += `The number is: ${redundancy_number}`
-      r.addMessage(`${content}`, {
+      let sms_content = `Hi! This is the ${campaign.name} Team. `
+      sms_content += 'To handle how many people are calling right now, could we possibly ask you to call another number instead. '
+      sms_content += `The number is: ${redundancy_number}`
+      r.addMessage(`${sms_content}`, {
         src: campaign.sms_number || process.env.NUMBER || '1111111111',
         dst: formatted_caller_number
       });
