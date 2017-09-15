@@ -76,7 +76,7 @@ app.post('/connect', async ({body, query}, res) => {
   const dial_in_number = extractDialInNumber(body);
   const sip_header_present = sipHeaderPresent(body);
   const reached_dial_in_number_channel_limit = await campaign.reached_dial_in_number_channel_limit(dial_in_number, sip_header_present)
-  if ((campaign.revert_to_redundancy && body.Direction == 'inbound') || reached_dial_in_number_channel_limit) {
+  if (body.Direction == 'inbound' && (campaign.revert_to_redundancy || reached_dial_in_number_channel_limit)) {
     r.addWait({length: 2})
     r.addSpeakAU(`Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool.`)
     r.addWait({length: 1})

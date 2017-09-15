@@ -249,7 +249,7 @@ describe('/connect', () => {
 
     context('dialing into a didlogic number', () => {
       const didlogic_number = '1111111'
-      const payload = { From: caller.phone_number, 'SIP-H-To': `<sip:38092489203840928@app.plivo.com;phone=${didlogic_number}>` };
+      const payload = { Direction: 'inbound', From: caller.phone_number, 'SIP-H-To': `<sip:38092489203840928@app.plivo.com;phone=${didlogic_number}>` };
 
       context('under the channel limit', () => {
         it('should continue to briefing', async () => {
@@ -289,7 +289,7 @@ describe('/connect', () => {
 
     context('dialing into a plivo number', () => {
       const plivo_number = '61200001111'
-      const payload = { From: caller.phone_number, To: plivo_number };
+      const payload = { Direction: 'inbound', From: caller.phone_number, To: plivo_number };
 
       context('under the channel limit', () => {
         it('should continue to briefing', async () => {
