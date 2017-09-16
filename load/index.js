@@ -119,7 +119,7 @@ const addAgent = async (count) => {
   console.log(`Adding ${count} agents; wait until all added before adding more`);
   const range = _.range(count)
   for (let step of range) {
-    const agent = 61400000000 + agents++
+    const agent = 61900000000 + agents++
     const params = {
       to: selectTarget(),
       from : agent,
