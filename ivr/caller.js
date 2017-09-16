@@ -82,8 +82,18 @@ app.post('/connect', async ({body, query}, res) => {
     r.addWait({length: 1})
     r.addSpeakAU('There are hundreds of people calling right now!')
     r.addWait({length: 1})
-    r.addSpeakAU('To handle this traffic we\'re going to have to call you back.')
-    r.addRedirect(res.locals.appUrl(`ready?campaign_id=${campaign.id}&caller_number=${caller_number}&start=1&force_callback=1`))
+    if (process.env.DISABLE_REDUNDANCY) {
+      r.addSpeakAU('Unfortunately all our lines are full. Please try calling back later. Thanks for your patience.')
+      r.addHangup()
+    }  else {
+      r.addSpeakAU('To handle this traffic we\'re going to have to call you back.')
+      r.addRedirect(res.locals.appUrl(`ready?campaign_id=${campaign.id}&caller_number=${caller_number}&start=1&force_callback=1`))
+    }
+    await Event.query().insert({name: 'reached_channel_limit', campaign_id: campaign.id, value: {
+      log_id: query.log_id, caller_number, reached_dial_in_number_channel_limit,
+      disable_redundancy: process.env.DISABLE_REDUNDANCY,  sip_header_present, dial_in_number,
+      revert_to_redundancy: campaign.revert_to_redundancy
+    }})
     return res.send(r.toXML())
   }
 

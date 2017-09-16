@@ -232,6 +232,13 @@ describe('/connect', () => {
           .expect(/hundreds of people/)
           .expect(/handle this traffic/)
       });
+
+      it('should log an event', async () => {
+        await request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
+          .type('form')
+          .send(payload)
+        expect(await Event.query().where({name: 'reached_channel_limit', campaign_id: campaign.id}).first()).to.be.a(Event);
+      });
     });
     context('when direction is outbound', () => {
       const payload = { From: caller.phone_number, Direction: 'outbound' };
@@ -240,6 +247,20 @@ describe('/connect', () => {
           .type('form')
           .send(payload)
           .expect(/briefing/)
+      });
+    });
+    context('when DISABLE_REDUNDANCY=1', () => {
+      const payload = { From: caller.phone_number, Direction: 'inbound' };
+      beforeEach(() => process.env.DISABLE_REDUNDANCY=1 )
+      afterEach(() => delete process.env.DISABLE_REDUNDANCY )
+
+      it('informs user of high traffic and hangsup', async () => {
+        await request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
+          .type('form')
+          .send(payload)
+          .expect(/hundreds of people/)
+          .expect(/all our lines are full/)
+          .expect(/hangup/i)
       });
     });
   });
