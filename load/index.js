@@ -12,13 +12,21 @@ const objection = require('objection');
 const Model = objection.Model;
 const promisfy = require('es6-promisify');
 Model.knex(knex);
-const target = process.env.TARGET;
+const targets = process.env.TARGET.split(',');
+console.error(targets)
 const debug = process.env.DEBUG;
 let wrap;
 
 let state = {};
 let agents = 0;
 let agentIds = [];
+let targetCount = 0
+
+const selectTarget = () => {
+  const target = targets[targetCount % targets.length]
+  targetCount++
+  return target
+}
 
 class Caller extends Model {
   static get tableName() { return 'callers' }
@@ -44,7 +52,7 @@ const appUrl = endpoint => endpoint ? `${host}/${endpoint}` : host;
 app.get('/', (req, res) => res.send('<_-.-_>let\'s test.</_-.-_>'));
 
 app.all('/answer', async (req, res, next) => {
-  if (debug) console.error(`Agent ${req.query.agent} connected.`)
+  if (debug) console.error(`Agent ${req.query.agent} connected. with CallUUID: ${req.body.CallUUID}`)
   state[req.query.agent] = 'joining';
   const r = plivo.Response();
   r.addWait({length: 10});
@@ -55,6 +63,7 @@ app.all('/answer', async (req, res, next) => {
 });
 app.all('/hangup', async (req, res, next) => {
   if (debug) console.error(`Agent ${req.query.agent} disconnected.`)
+  if (debug) console.error(req.body)
   state[req.query.agent] = 'disconnected';
   return res.sendStatus(200);
 });
@@ -66,6 +75,11 @@ app.all('/cycle', async (req, res, next) => {
     return res.send(r.toXML());
   }
   const caller = await Caller.query().orderBy('created_at', 'desc').where({phone_number: req.query.agent}).limit(1).first();
+  if (!caller) {
+    console.error(`Unable to find caller ${req.query.agent}. Hanging up`)
+    r.addHangup()
+    return res.send(r.toXML());
+  }
   if (!agentIds.includes(caller.id)) agentIds.push(caller.id);
   if (debug) console.error(`Agent ${caller.phone_number} has status ${caller.status}`);
   if (caller.status === 'in-call') {
@@ -105,15 +119,16 @@ const addAgent = async (count) => {
   console.log(`Adding ${count} agents; wait until all added before adding more`);
   const range = _.range(count)
   for (let step of range) {
-    const agent = 1 + agents++
+    const agent = 61400000000 + agents++
     const params = {
-      to: target,
+      to: selectTarget(),
       from : agent,
       answer_url : appUrl(`answer?agent=${agent}`),
       hangup_url : appUrl(`hangup?agent=${agent}`),
       time_limit: 60 * 120
     };
     try{
+      if (debug) console.error(`calling to ${params.to} from ${params.from}`)
       await promisfy(plivo_api.make_call.bind(plivo_api))(params);
     } catch (e) {
       console.error(`Agent ${agent} could not connect - `, e)
