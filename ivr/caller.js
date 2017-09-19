@@ -154,7 +154,7 @@ app.post('/connect_sms', async ({body, query}, res) => {
   }
 
   if (campaign.isPaused()){ 
-    let content = `Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool.`
+    let content = `Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool. `
     content += `The ${campaign.name} campaign is currently paused! Please contact the campaign coordinator for further instructions. Thank you and have a great day!`
     r.addMessage(`${content}`, {
       src: body.To,
@@ -164,7 +164,7 @@ app.post('/connect_sms', async ({body, query}, res) => {
   }
 
   if (!campaign.isWithinDailyTimeOfOperation()) {
-    let content = `Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool.`
+    let content = `Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool. `
     content += `The ${campaign.name} campaign is currently outside of it\'s hours of operation! ${campaign.dailyTimeOfOperationInWords('sms')} Thank you and have a great day!`
     r.addMessage(`${content}`, {
       src: body.To,
@@ -174,7 +174,7 @@ app.post('/connect_sms', async ({body, query}, res) => {
   }
 
   if (await campaign.isComplete()) {
-    let content = `Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool.`
+    let content = `Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool. `
     content += `The ${campaign.name} campaign has been completed! Please contact the campaign coordinator for further instructions. Thank you and have a great day!`
     r.addMessage(`${content}`, {
       src: body.To,
