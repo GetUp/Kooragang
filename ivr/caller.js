@@ -141,11 +141,11 @@ app.post('/connect', async ({body, query}, res) => {
 
 app.post('/connect_sms', async ({body, query}, res) => {
   const r = plivo.Response()
-  const shortcode = _.lowerCase(body.Text)
+  const shortcode = _.lowerCase(_.trim(body.Text))
   const campaign = shortcode && await Campaign.query().where({shortcode: shortcode}).first()
   if (!campaign){
     let content = 'Sorry we can\'t find the campaign you\'re after from the message you sent. '
-    content += `Check the message and try again late. `
+    content += `Check the message and try again later. `
     r.addMessage(`${content}`, {
       src: body.To,
       dst: body.From
@@ -188,15 +188,16 @@ app.post('/connect_sms', async ({body, query}, res) => {
     to: caller_number,
     from : campaign.phone_number || process.env.NUMBER || '1111111111',
     answer_url : res.locals.appUrl(`connect?campaign_id=${campaign.id}&sms_callback=1&number=${caller_number}`),
-    hangup_url : res.locals.appUrl(`call_ended?campaign_id=${campaign.id}&callback=1&number=${caller_number}`),
+    hangup_url : res.locals.appUrl(`call_ended?campaign_id=${campaign.id}&sms_callback=1&number=${caller_number}`),
     ring_timeout: process.env.RING_TIMEOUT || 30
   };
 
   if (process.env.NODE_ENV === 'development') console.error('CALLING', params)
   try{
-    await plivo_api('make_call', params);
+    await Event.query().insert({campaign_id: campaign.id, name: 'sms_connect', value: {caller_number: caller_number}})
+    await plivo_api('make_call', params)
   } catch(e) {
-    await Event.query().insert({campaign_id: campaign.id, name: 'api_error', value: {error: e}});
+    await Event.query().insert({campaign_id: campaign.id, name: 'api_error', value: {error: e}})
   }
   return res.send(r.toXML())
 })
@@ -254,7 +255,6 @@ app.post('/briefing', async ({body, query}, res) => {
   briefing.addSpeakAU('This message will automatically replay until you select a number on your phone\'s key pad.');
   res.send(r.toXML());
 });
-
 
 app.post('/ready', async ({body, query}, res) => {
   const r = plivo.Response();

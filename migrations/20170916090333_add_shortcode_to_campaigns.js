@@ -3,6 +3,7 @@ exports.up = function(knex) {
     .table('campaigns', table => {
       table.text('shortcode')
     })
+    .table('campaigns', table => table.index(['shortcode']))
 };
 
 exports.down = function(knex, Promise) {
@@ -10,4 +11,5 @@ exports.down = function(knex, Promise) {
     .table('campaigns', table => {
       table.dropColumn('shortcode')
     })
+    .table('campaigns', table => table.dropIndex(['shortcode']));
 };
