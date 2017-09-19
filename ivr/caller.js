@@ -139,6 +139,69 @@ app.post('/connect', async ({body, query}, res) => {
   res.send(r.toXML())
 });
 
+app.post('/connect_sms', async ({body, query}, res) => {
+  const r = plivo.Response()
+  const shortcode = _.lowerCase(body.Text)
+  const campaign = shortcode && await Campaign.query().where({shortcode: shortcode}).first()
+  if (!campaign){
+    let content = 'Sorry we can\'t find the campaign you\'re after from the message you sent. '
+    content += `Check the message and try again late. `
+    r.addMessage(`${content}`, {
+      src: body.To,
+      dst: body.From
+    })
+    console.log(r.toXML())
+    return res.send(r.toXML())
+  }
+
+  if (campaign.isPaused()){ 
+    let content = `Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool.`
+    content += `The ${campaign.name} campaign is currently paused! Please contact the campaign coordinator for further instructions. Thank you and have a great day!`
+    r.addMessage(`${content}`, {
+      src: body.To,
+      dst: body.From
+    })
+    return res.send(r.toXML())
+  }
+
+  if (!campaign.isWithinDailyTimeOfOperation()) {
+    let content = `Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool.`
+    content += `The ${campaign.name} campaign is currently outside of it\'s hours of operation! ${campaign.dailyTimeOfOperationInWords('sms')} Thank you and have a great day!`
+    r.addMessage(`${content}`, {
+      src: body.To,
+      dst: body.From
+    })
+    return res.send(r.toXML())
+  }
+
+  if (await campaign.isComplete()) {
+    let content = `Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool.`
+    content += `The ${campaign.name} campaign has been completed! Please contact the campaign coordinator for further instructions. Thank you and have a great day!`
+    r.addMessage(`${content}`, {
+      src: body.To,
+      dst: body.From
+    })
+    return res.send(r.toXML())
+  }
+
+  const caller_number = extractCallerNumber(query, body);
+  const params = {
+    to: caller_number,
+    from : campaign.phone_number || process.env.NUMBER || '1111111111',
+    answer_url : res.locals.appUrl(`connect?campaign_id=${campaign.id}&sms_callback=1&number=${caller_number}`),
+    hangup_url : res.locals.appUrl(`call_ended?campaign_id=${campaign.id}&callback=1&number=${caller_number}`),
+    ring_timeout: process.env.RING_TIMEOUT || 30
+  };
+
+  if (process.env.NODE_ENV === 'development') console.error('CALLING', params)
+  try{
+    await plivo_api('make_call', params);
+  } catch(e) {
+    await Event.query().insert({campaign_id: campaign.id, name: 'api_error', value: {error: e}});
+  }
+  return res.send(r.toXML())
+})
+
 app.post('/briefing', async ({body, query}, res) => {
   const r = plivo.Response();
   const campaign = await Campaign.query().where({id: (query.campaign_id || "")}).first();
@@ -192,6 +255,7 @@ app.post('/briefing', async ({body, query}, res) => {
   briefing.addSpeakAU('This message will automatically replay until you select a number on your phone\'s key pad.');
   res.send(r.toXML());
 });
+
 
 app.post('/ready', async ({body, query}, res) => {
   const r = plivo.Response();
