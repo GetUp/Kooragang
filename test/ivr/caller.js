@@ -1408,9 +1408,15 @@ describe('/connect_sms', () => {
 
     it('successfully queries the call plivo api endpoint', async () => {
       const mockedApiCall = nock('https://api.plivo.com')
-        .post(/Call/, body => true)
+        .post(/Call/, body => {
+          return body.to === '61288888888'
+            && body.from === campaign.phone_number
+            && body.answer_url.match(/connect/)
+            && body.answer_url.match(/sms_callback=1/)
+            && body.answer_url.match(/campaign_id=1/);
+        })
         .query(true)
-        .reply(200);
+        .reply(200)
       await request.post(`/connect_sms`)
         .type('form')
         .send(payload)
