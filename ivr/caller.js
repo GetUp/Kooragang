@@ -150,7 +150,6 @@ app.post('/connect_sms', async ({body, query}, res) => {
       src: body.To,
       dst: body.From
     })
-    console.log(r.toXML())
     return res.send(r.toXML())
   }
 
