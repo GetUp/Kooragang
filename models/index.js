@@ -62,8 +62,8 @@ class Campaign extends Base {
     const stop = moment.tz(`${today} ${todays_hours['stop']}`, this.timezone())
     return moment.tz(this.timezone()).isBetween(start, stop, null, '[]')
   }
-  dailyTimeOfOperationInWords() {
-    let operating_hours_in_words = 'Please call back within the hours of '
+  dailyTimeOfOperationInWords(contact_method="call") {
+    let operating_hours_in_words = `Please ${contact_method} back within the hours of `
     let running_days = [], start, stop, tomorrow_index, tomorrow_hours
     const daysOfWeek = _.keys(this.hours_of_operation)
     _.forEach(this.hours_of_operation, (hours, day) => {

@@ -46,7 +46,8 @@ const defaultCampaign = {
   more_info: more_info,
   phone_number: '1111',
   sms_number: '22222222',
-  hours_of_operation: hours_of_operation_full
+  hours_of_operation: hours_of_operation_full,
+  shortcode: 'test'
 }
 const malformedCampaign = {
   id: 1,
@@ -1320,4 +1321,107 @@ describe('/machine_detection', () => {
       expect(event).to.be.an(Event);
     });
   });
+});
+
+describe('/connect_sms', () => {
+  beforeEach(async () => {
+    await Campaign.query().delete()
+    campaign = await Campaign.query().insert(activeCampaign)
+  })
+  context('with shortcode attributed to no campaign', () => {
+    const payload = { From: caller.phone_number, To: '61481565877', Text: 'blerg' }
+    it('plays the briefing message', () => {
+      return request.post('/connect_sms')
+        .type('form')
+        .send(payload)
+        .expect(/Sorry we can\'t find the campaign/)
+    })
+  })
+  context('with a paused campaign', () => {
+    beforeEach(async () => { await Campaign.query().delete() })
+    beforeEach(async () => campaign = await Campaign.query().insert(pausedCampaign))
+    const payload = { From: caller.phone_number, To: '61481565877', Text: 'test' }
+    it('plays the paused briefing message ', () => {
+      return request.post('/connect_sms')
+        .type('form')
+        .send(payload)
+        .expect(/currently paused/)
+    })
+  })
+
+  context('with a statusless campaign', () => {
+    beforeEach(async () => { await Campaign.query().delete() })
+    beforeEach(async () => campaign = await Campaign.query().insert(statuslessCampaign))
+    const payload = { From: caller.phone_number, To: '61481565877', Text: 'test' }
+    it('plays the paused briefing message ', () => {
+      return request.post('/connect_sms')
+        .type('form')
+        .send(payload)
+        .expect(/currently paused/)
+    })
+  })
+
+  context('with a inactive campaign', () => {
+    beforeEach(async () => { await Campaign.query().delete() })
+    beforeEach(async () => campaign = await Campaign.query().insert(inactiveCampaign))
+    const payload = { From: caller.phone_number, To: '61481565877', Text: 'test' }
+    it('plays the outside operational window briefing message', () => {
+      return request.post(`/connect_sms`)
+        .type('form')
+        .send(payload)
+        .expect(/has been completed/)
+    })
+  })
+
+  context('with an operational window campaign', () => {
+    beforeEach(async () => { await Campaign.query().delete() })
+    beforeEach(async () => campaign = await Campaign.query().insert(operationalWindowCampaign))
+    beforeEach(async () => { await Callee.query().insert(associatedCallee) })
+    const payload = { From: caller.phone_number, To: '61481565877', Text: 'test' }
+    it('plays the operational window briefing message', () => {
+      return request.post(`/connect_sms`)
+        .type('form')
+        .send(payload)
+        .expect(/hours of operation/)
+    })
+  })
+
+  context('with an active campaign and a valid shortcode', () => {
+    beforeEach(async () => { await Campaign.query().delete() })
+    beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign))
+    beforeEach(async () => { await Callee.query().insert(associatedCallee) })
+    const payload = { From: caller.phone_number, To: '61481565877', Text: 'test' }
+    it('does respond with empty xml response', () => {
+      return request.post(`/connect_sms`)
+        .type('form')
+        .send(payload)
+        .expect(/<Response\/>/)
+    })
+    it('creates an event', async () => {
+      await request.post(`/connect_sms`)
+        .type('form')
+        .send(payload)
+        .expect(200)
+      const event = await Event.query().where({name: 'sms_connect', campaign_id: campaign.id}).first()
+      expect(event).to.be.an(Event)
+    })
+
+    it('successfully queries the call plivo api endpoint', async () => {
+      const mockedApiCall = nock('https://api.plivo.com')
+        .post(/Call/, body => {
+          return body.to === '61288888888'
+            && body.from === campaign.phone_number
+            && body.answer_url.match(/connect/)
+            && body.answer_url.match(/sms_callback=1/)
+            && body.answer_url.match(/campaign_id=1/);
+        })
+        .query(true)
+        .reply(200)
+      await request.post(`/connect_sms`)
+        .type('form')
+        .send(payload)
+        .expect(200)
+      mockedApiCall.done()
+    })
+  })
 });
