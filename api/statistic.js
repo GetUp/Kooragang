@@ -47,6 +47,10 @@ app.get('/api/campaigns/:id/statistics', wrap(async (req, res, next) => {
       .count('callees.id as count')
       .where({campaign_id: campaign.id})
       .whereNotNull('last_called_at');
+    const calls = await Call.knexQuery()
+      .count('calls.id as count')
+      .join('callees', 'callees.id', '=', 'calls.callee_id')
+      .where({campaign_id: campaign.id});
 
     const average_wait_time = wait_events.length ? Math.round(_.sumBy(wait_events, event => JSON.parse(event.value).seconds_waiting) / wait_events.length) : 0;
     const total_calls = _.sumBy(status_counts, ({count}) => parseInt(count, 10));
@@ -60,6 +64,7 @@ app.get('/api/campaigns/:id/statistics', wrap(async (req, res, next) => {
     const callee_total_count = callee_total ? parseInt(callee_total[0].count, 10) : 0;
     const callee_remaining_count = callee_remaining.length;
     const callee_called_count = parseInt(callee_called[0].count);
+    const calls_count = parseInt(callee_called[0].count);
     const data = {
       timestamp: moment().format('HH:mm:ss'),
       average_wait_time,
@@ -73,7 +78,8 @@ app.get('/api/campaigns/:id/statistics', wrap(async (req, res, next) => {
       validation_errors,
       callee_total_count,
       callee_remaining_count,
-      callee_called_count
+      callee_called_count,
+      calls_count
     };
 
     if (true) {
