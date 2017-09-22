@@ -1,9 +1,7 @@
 const app = require('express')();
-const moment = require('moment');
 const plivo = require('plivo');
 const _ = require('lodash');
 const { plivo_api } = require('../api/plivo');
-const dialer = require('../dialer');
 const {
   sleep,
   extractCallerNumber,
@@ -13,7 +11,7 @@ const {
   isValidCallerNumber,
   incomingCaller
 } = require('../utils');
-const {Call, Callee, Caller, Campaign, SurveyResult, Event, User, Team} = require('../models');
+const {Call, Caller, Campaign, SurveyResult, Event, User, Team} = require('../models');
 
 app.post('/connect', async ({body, query}, res) => {
   if (body.CallStatus === 'completed') return res.sendStatus(200);
@@ -258,7 +256,6 @@ app.post('/briefing', async ({body, query}, res) => {
 
 app.post('/ready', async ({body, query}, res) => {
   const r = plivo.Response();
-  const authenticated = query.authenticated ? query.authenticated === "1" : false;
   const campaign = await Campaign.query().where({id: query.campaign_id}).first();
   let caller_id, caller;
   if (query.start) {
@@ -656,7 +653,7 @@ app.post('/call_ended', async ({body, query}, res) => {
 
 app.post('/machine_detection', async ({body, query}, res) => {
   try{
-    if ( !body.CallUUID ) { throw 'no CallUUID present machine_detection' };
+    if ( !body.CallUUID ) { throw 'no CallUUID present machine_detection' }
     await Call.query().where({ callee_call_uuid: body.CallUUID }).patch({ status: 'machine_detection' });
     await plivo_api('hangup_call', { call_uuid: body.CallUUID });
   } catch(e){

@@ -1,4 +1,3 @@
-const plivo = require('plivo');
 const { plivo_api } = require('../api/plivo')
 const moment = require('moment');
 const _ = require('lodash');
@@ -137,6 +136,6 @@ module.exports.notifyAgents = async (campaign) => {
         text: 'Campaign ended. Press star to exit',
         language: 'en-GB', voice: 'MAN'
       });
-    }catch(e){};
+    }catch(e){}
   }
 }

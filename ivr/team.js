@@ -1,6 +1,6 @@
 const app = require('express')()
 const plivo = require('plivo')
-const {Campaign, User, Team, Event} = require('../models')
+const { User, Team, Event } = require('../models')
 
 app.post('/team', async ({query, body}, res) => {
   const r = plivo.Response()
@@ -21,7 +21,7 @@ app.post('/team', async ({query, body}, res) => {
   if (user && body.Digits === '2') {
     await Event.query().insert({name: 'team selection', campaign_id: query.campaign_id, value: {log_id: query.log_id}})
     r.addSpeakAU('Please enter in your teams passcode on your keypad now.')
-    const teamAction = r.addGetDigits({
+    r.addGetDigits({
       action: res.locals.appUrl(`team/join?campaign_id=${query.campaign_id}&user_id=${user.id}&callback=${query.callback ? query.callback : 0}&authenticated=${query.authenticated ? '1' : '0'}`),
       timeout: 10,
       retries: 10,

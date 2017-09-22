@@ -1,7 +1,8 @@
+/* eslint no-control-regex: 0 */
+
 const app = require('express')();
 const plivo = require('plivo');
 const bodyParser = require('body-parser');
-const _ = require('lodash');
 const { plivo_signature } = require('../api/plivo')
 
 app.use(bodyParser.urlencoded({extended: true}));
