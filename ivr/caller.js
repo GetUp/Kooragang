@@ -240,7 +240,7 @@ app.post('/briefing', async ({body, query}, res) => {
     briefing.addWait({length: 1});
   }
 
-  for (key in campaign.more_info) {
+  for (let key in campaign.more_info) {
     if (query.entry_key != key) {
       let info_item = campaign.more_info[key];
       briefing.addSpeakAU('For info on '+ info_item.title +' please press the '+ key + 'key');
@@ -257,7 +257,7 @@ app.post('/briefing', async ({body, query}, res) => {
 app.post('/ready', async ({body, query}, res) => {
   const r = plivo.Response();
   const campaign = await Campaign.query().where({id: query.campaign_id}).first();
-  let caller_id, caller;
+  let caller_id, caller, caller_params;
   if (query.start) {
     if (body.Digits === '3') {
       r.addMessage(`Please print or download the script and disposition codes from ${_.escape(campaign.script_url)}. When you are ready, call again!`, {
