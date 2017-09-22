@@ -11,7 +11,7 @@ const {
   isValidCallerNumber,
   incomingCaller
 } = require('../utils');
-const {Call, Caller, Campaign, SurveyResult, Event, User, Team} = require('../models');
+const {Call, Callee, Caller, Campaign, SurveyResult, Event, User, Team} = require('../models');
 
 app.post('/connect', async ({body, query}, res) => {
   if (body.CallStatus === 'completed') return res.sendStatus(200);
