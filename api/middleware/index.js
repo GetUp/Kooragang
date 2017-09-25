@@ -1,4 +1,3 @@
-const express_cors = require('cors')
 const { Log } = require("../../models")
 const {
   BadRequestError,
@@ -36,7 +35,7 @@ const authentication = (req, res, next) => {
   }
 }
 
-const error_handler = (err, req, res, next) => {
+const error_handler = (err, req, res) => {
   console.error(err.stack)
   const returned_error = {errors: {message: err.message}}
   switch(err.constructor) {

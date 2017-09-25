@@ -11,7 +11,6 @@ const { BadRequestError, NotFoundError } = require("./middleware/errors")
 
 //campaign stats
 app.get('/api/campaigns/:id/statistics', wrap(async (req, res, next) => {
-  const graph = !!req.query.graph
   const campaign = await Campaign.query().where({id: req.params.id}).first()
   if (!campaign) return next(new NotFoundError('No Campagin Exists With ID: ' + req.params.id))
   const generateReport = async () => {
@@ -47,10 +46,6 @@ app.get('/api/campaigns/:id/statistics', wrap(async (req, res, next) => {
       .count('callees.id as count')
       .where({campaign_id: campaign.id})
       .whereNotNull('last_called_at');
-    const calls = await Call.knexQuery()
-      .count('calls.id as count')
-      .join('callees', 'callees.id', '=', 'calls.callee_id')
-      .where({campaign_id: campaign.id});
 
     const average_wait_time = wait_events.length ? Math.round(_.sumBy(wait_events, event => JSON.parse(event.value).seconds_waiting) / wait_events.length) : 0;
     const total_calls = _.sumBy(status_counts, ({count}) => parseInt(count, 10));
@@ -82,80 +77,79 @@ app.get('/api/campaigns/:id/statistics', wrap(async (req, res, next) => {
       calls_count
     };
 
-    if (true) {
-      const time_period_in_hours = 24;
-      const calls_in_progress = await Event.raw(`
-          select created_at, ((value::json)->>'calls_in_progress')::integer as calls_in_progress from events
-          where campaign_id = ${campaign.id}
-          and (value::json)->'calls_in_progress' is not null
-          and created_at > now() - '${time_period_in_hours} hours'::interval
-          order by 1
-          `)
-      const ratio_data = await Event.raw(`
-          select created_at, (value::json)->>'ratio' as ratio from events
-          where campaign_id = ${campaign.id}
-          and name = 'ratio'
-          and created_at > now() - '${time_period_in_hours} hours'::interval
-          order by 1
-          `)
-      const drop_ratio_data = await Event.raw(`
-          select created_at, round(((value::json)->>'calculatedRatio')::decimal * 100, 2) as ratio from events
-          where campaign_id = ${campaign.id}
-          and name = 'ratio'
-          and created_at > now() - '${time_period_in_hours} hours'::interval
-          order by 1
-          `)
-      const callers_data = await Event.raw(`
-          select created_at, (value::json)->>'callers' as callers from events
-          where campaign_id = ${campaign.id}
-          and name = 'calling'
-          and created_at > now() - '${time_period_in_hours} hours'::interval
-          order by 1
-          `)
-      const drop_data = await Event.raw(`
-          select created_at, 1 as drops from events
-          where campaign_id = ${campaign.id}
-          and name = 'drop'
-          and created_at > now() - '${time_period_in_hours} hours'::interval
-          order by 1
-          `)
-      const calls_data = await Event.raw(`
-          select date_trunc('minute', calls.created_at) as created_at, count(*) as value from calls
-          inner join callees on callees.id = calls.callee_id
-          where campaign_id = ${campaign.id}
-          and calls.created_at > now() - '${time_period_in_hours} hours'::interval
-          group by 1
-          order by 1
-          `)
-      const completed_data = await Event.raw(`
-          select events.created_at, 1 as value from events
-          inner join callers on events.caller_id = callers.id and not callback
-          where events.campaign_id = ${campaign.id}
-          and events.name = 'caller_complete'
-          and events.created_at > now() - '${time_period_in_hours} hours'::interval
-          order by 1
-          `)
-      const tech_issue_data = await Event.raw(`
-          select events.created_at, 1 as value from events
-          inner join callers on events.caller_id = callers.id and not callback
-          where events.campaign_id = ${campaign.id}
-          and events.name = 'technical_issue_reported'
-          and events.created_at > now() - '${time_period_in_hours} hours'::interval
-          order by 1
-          `)
-      Object.assign(data, { graph: {
-        calls_in_progress: calls_in_progress.rows.map(event => { return {x: event.created_at, y: event.calls_in_progress} }),
-        drop_data: drop_data.rows.map(event => { return {x: event.created_at, y: 0.5} }),
-        callers_data: callers_data.rows.map(event => { return {x: event.created_at, y: parseFloat(event.callers)} }),
-        completed_data: completed_data.rows.map(event => { return {x: event.created_at, y: 0} }),
-        tech_issue_data: tech_issue_data.rows.map(event => { return {x: event.created_at, y: 1} }),
-        calls_data: calls_data.rows.map(event => { return {x: event.created_at, y: event.value} }),
-        ratio_data: ratio_data.rows.map(event => { return {x: event.created_at, y: parseFloat(event.ratio)} }),
-        drop_ratio_data: drop_ratio_data.rows.map(event => { return {x: event.created_at, y: parseFloat(event.ratio)} })
-      }});
-    }
+    const time_period_in_hours = 24;
+    const calls_in_progress = await Event.raw(`
+        select created_at, ((value::json)->>'calls_in_progress')::integer as calls_in_progress from events
+        where campaign_id = ${campaign.id}
+        and (value::json)->'calls_in_progress' is not null
+        and created_at > now() - '${time_period_in_hours} hours'::interval
+        order by 1
+        `)
+    const ratio_data = await Event.raw(`
+        select created_at, (value::json)->>'ratio' as ratio from events
+        where campaign_id = ${campaign.id}
+        and name = 'ratio'
+        and created_at > now() - '${time_period_in_hours} hours'::interval
+        order by 1
+        `)
+    const drop_ratio_data = await Event.raw(`
+        select created_at, round(((value::json)->>'calculatedRatio')::decimal * 100, 2) as ratio from events
+        where campaign_id = ${campaign.id}
+        and name = 'ratio'
+        and created_at > now() - '${time_period_in_hours} hours'::interval
+        order by 1
+        `)
+    const callers_data = await Event.raw(`
+        select created_at, (value::json)->>'callers' as callers from events
+        where campaign_id = ${campaign.id}
+        and name = 'calling'
+        and created_at > now() - '${time_period_in_hours} hours'::interval
+        order by 1
+        `)
+    const drop_data = await Event.raw(`
+        select created_at, 1 as drops from events
+        where campaign_id = ${campaign.id}
+        and name = 'drop'
+        and created_at > now() - '${time_period_in_hours} hours'::interval
+        order by 1
+        `)
+    const calls_data = await Event.raw(`
+        select date_trunc('minute', calls.created_at) as created_at, count(*) as value from calls
+        inner join callees on callees.id = calls.callee_id
+        where campaign_id = ${campaign.id}
+        and calls.created_at > now() - '${time_period_in_hours} hours'::interval
+        group by 1
+        order by 1
+        `)
+    const completed_data = await Event.raw(`
+        select events.created_at, 1 as value from events
+        inner join callers on events.caller_id = callers.id and not callback
+        where events.campaign_id = ${campaign.id}
+        and events.name = 'caller_complete'
+        and events.created_at > now() - '${time_period_in_hours} hours'::interval
+        order by 1
+        `)
+    const tech_issue_data = await Event.raw(`
+        select events.created_at, 1 as value from events
+        inner join callers on events.caller_id = callers.id and not callback
+        where events.campaign_id = ${campaign.id}
+        and events.name = 'technical_issue_reported'
+        and events.created_at > now() - '${time_period_in_hours} hours'::interval
+        order by 1
+        `)
+    Object.assign(data, { graph: {
+      calls_in_progress: calls_in_progress.rows.map(event => { return {x: event.created_at, y: event.calls_in_progress} }),
+      drop_data: drop_data.rows.map(event => { return {x: event.created_at, y: 0.5} }),
+      callers_data: callers_data.rows.map(event => { return {x: event.created_at, y: parseFloat(event.callers)} }),
+      completed_data: completed_data.rows.map(event => { return {x: event.created_at, y: 0} }),
+      tech_issue_data: tech_issue_data.rows.map(event => { return {x: event.created_at, y: 1} }),
+      calls_data: calls_data.rows.map(event => { return {x: event.created_at, y: event.value} }),
+      ratio_data: ratio_data.rows.map(event => { return {x: event.created_at, y: parseFloat(event.ratio)} }),
+      drop_ratio_data: drop_ratio_data.rows.map(event => { return {x: event.created_at, y: parseFloat(event.ratio)} })
+    }});
+
     const current_callers = data.available + data['callers_in_call'];
-    data.approximate_rate = current_callers ? Math.round(total * 6 / current_callers) : 0;
+    data.approximate_rate = current_callers ? Math.round(total_calls * 6 / current_callers) : 0;
     return data;
   }
   const data = await generateReport();
@@ -167,7 +161,7 @@ app.get('/api/teams/:passcode/statistics', wrap(async (req, res, next) => {
   if (!req.params.passcode) return next(new BadRequestError('No Team Passcode Sent With Request'))
   const team = await Team.query().where({passcode: req.params.passcode}).first();
   if (!team) return next(new NotFoundError('No Team Exists With Passcode: ' + req.params.passcode))
-  data = await knex.raw(
+  const data = await knex.raw(
     `select c.created_at::date as date, cp.name, count(distinct ca.phone_number) as callers, count(c.id) as calls,
     sum(case when disposition !~* '(no answer|machine|meaningful)' then 1 else 0 end) as non_meaningful_conversations,
     sum(case when disposition ~* 'meaningful' then 1 else 0 end) as meaningful_conversations,
@@ -202,7 +196,8 @@ app.get('/api/teams/:passcode/statistics', wrap(async (req, res, next) => {
 }))
 
 //callees report
-app.get('/api/callees/statistics', wrap(async (req, res, next) => {
+app.get('/api/callees/statistics', wrap(async (req, res) => {
+  let period_in_words
   const period = req.query.period
   if (!period) {
     period_in_words = '99 years'
@@ -213,7 +208,7 @@ app.get('/api/callees/statistics', wrap(async (req, res, next) => {
   } else {
     period_in_words = '1 weeks'
   }
-  data = await knex.raw(`
+  const data = await knex.raw(`
     select
       calls_made.phone_number,
       (CASE WHEN calls_made.call_count is not null THEN calls_made.call_count::integer ELSE 0 END) as call_count,
@@ -319,8 +314,8 @@ app.get('/api/callees/statistics', wrap(async (req, res, next) => {
 }))
 
 //status report
-app.get('/api/system/statistics', wrap(async (req, res, next) => {
-  data = await knex.raw(`
+app.get('/api/system/statistics', wrap(async (req, res) => {
+  const data = await knex.raw(`
     select
       campaigns.name as campaign_name,
       campaigns.ratio as campaign_ratio,
