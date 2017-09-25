@@ -36,6 +36,7 @@
     "socket.io": "^2.0.3"
   },
   "devDependencies": {
+    "eslint": "4.7.2",
     "expect.js": "^0.3.1",
     "mocha": "^3.2.0",
     "ngrok": "^2.2.11",
