@@ -51,7 +51,7 @@ module.exports.dial = async (appUrl, campaign) => {
   }
 };
 
-const recalculateRatio = async(campaign) => {
+const recalculateRatio = async (campaign) => {
   const recalculationScheduledFor = moment().subtract(campaign.recalculate_ratio_window, 'seconds');
   let newRatio, drops = 0, calculatedRatio = 0;
   const dropRatio = campaign.acceptable_drop_rate;
