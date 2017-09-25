@@ -14,6 +14,7 @@ const {
 
 module.exports.dial = async (appUrl, campaign) => {
   const timer = new Date();
+  console.log(`${timer} - dialing for campaign: ${campaign.id}`)
   campaign = await recalculateRatio(campaign);
   const callers = await Caller.query().where({status: 'available', campaign_id: campaign.id});
   const incall = await Caller.query().where({status: 'in-call', campaign_id: campaign.id})
