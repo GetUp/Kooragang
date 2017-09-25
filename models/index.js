@@ -1,8 +1,6 @@
-const env = process.env.NODE_ENV || 'development'
 const moment = require('../api/moment')
 const pg = require('pg')
 pg.types.setTypeParser(1700, 'text', parseFloat)
-const config = require('../knexfile')
 const objection = require('objection')
 const Model = objection.Model
 const _ = require('lodash')

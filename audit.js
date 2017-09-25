@@ -1,3 +1,5 @@
+/* eslint no-constant-condition: 0 */
+
 const {sleep, error_exit} = require('./utils')
 const period = process.env.AUDIT_PERIOD || 60000
 const env = process.env.NODE_ENV || 'development'

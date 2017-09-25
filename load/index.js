@@ -51,7 +51,7 @@ const appUrl = endpoint => endpoint ? `${host}/${endpoint}` : host;
 
 app.get('/', (req, res) => res.send('<_-.-_>let\'s test.</_-.-_>'));
 
-app.all('/answer', async (req, res, next) => {
+app.all('/answer', async (req, res) => {
   if (debug) console.error(`Agent ${req.query.agent} connected. with CallUUID: ${req.body.CallUUID}`)
   state[req.query.agent] = 'joining';
   const r = plivo.Response();
@@ -61,14 +61,14 @@ app.all('/answer', async (req, res, next) => {
   r.addRedirect(appUrl(`cycle?agent=${req.query.agent}`));
   return res.send(r.toXML());
 });
-app.all('/hangup', async (req, res, next) => {
+app.all('/hangup', async (req, res) => {
   if (debug) console.error(`Agent ${req.query.agent} disconnected.`)
   if (debug) console.error(req.body)
   state[req.query.agent] = 'disconnected';
   return res.sendStatus(200);
 });
 
-app.all('/cycle', async (req, res, next) => {
+app.all('/cycle', async (req, res) => {
   const r = plivo.Response();
   if (wrap) {
     r.addHangup();
@@ -118,7 +118,7 @@ const report = async () => {
 const addAgent = async (count) => {
   console.log(`Adding ${count} agents; wait until all added before adding more`);
   const range = _.range(count)
-  for (let step of range) {
+  for (let _step of range) {
     // NOTE: some didlogic numbers required that this is set to a realish number?? e.g. 61400000000??
     const agent = 1 + agents++
     const params = {
