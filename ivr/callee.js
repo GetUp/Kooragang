@@ -94,7 +94,7 @@ app.post('/hangup', async ({body, query}, res) => {
 });
 
 
-app.post('/conference_event/callee', async ({query, body}, res) => {
+app.post('/conference_event/callee', async ({body}, res) => {
   if (body.ConferenceAction === 'enter'){
     const call = await Call.query().where({callee_call_uuid: body.CallUUID}).first();
     const data = {

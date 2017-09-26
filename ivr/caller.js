@@ -51,7 +51,7 @@ app.post('/connect', async ({body, query}, res) => {
     r.addWait({length: 2});
     r.addSpeakAU(`Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool.`);
     r.addWait({length: 1});
-    r.addSpeakAU(`The campaign is currently outside of it\'s hours of operation! ${campaign.dailyTimeOfOperationInWords()} Thank you and have a great day!`);
+    r.addSpeakAU(`The campaign is currently outside of it's hours of operation! ${campaign.dailyTimeOfOperationInWords()} Thank you and have a great day!`);
     return res.send(r.toXML());
   }
 
@@ -163,7 +163,7 @@ app.post('/connect_sms', async ({body, query}, res) => {
 
   if (!campaign.isWithinDailyTimeOfOperation()) {
     let content = `Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool. `
-    content += `The ${campaign.name} campaign is currently outside of it\'s hours of operation! ${campaign.dailyTimeOfOperationInWords('sms')} Thank you and have a great day!`
+    content += `The ${campaign.name} campaign is currently outside of it's hours of operation! ${campaign.dailyTimeOfOperationInWords('sms')} Thank you and have a great day!`
     r.addMessage(`${content}`, {
       src: body.To,
       dst: body.From
@@ -200,7 +200,7 @@ app.post('/connect_sms', async ({body, query}, res) => {
   return res.send(r.toXML())
 })
 
-app.post('/briefing', async ({body, query}, res) => {
+app.post('/briefing', async ({query}, res) => {
   const r = plivo.Response();
   const campaign = await Campaign.query().where({id: (query.campaign_id || "")}).first();
   let valid_briefing_digits = ['1', '2', '3', '4'];
@@ -415,7 +415,7 @@ app.post('/resume_survey', async ({query, body}, res) => {
   res.send(r.toXML());
 });
 
-app.all('/hold_music', async ({query, body}, res) => {
+app.all('/hold_music', async ({query}, res) => {
   const r = plivo.Response();
   const campaign = await Campaign.query().where({id: query.campaign_id}).first()
   if (campaign && campaign.hold_music) {
@@ -547,7 +547,7 @@ app.post('/survey_result', async ({query, body}, res) => {
   res.send(r.toXML());
 });
 
-app.post('/call_again', async ({query, body}, res) => {
+app.post('/call_again', async ({query}, res) => {
   const r = plivo.Response();
   const campaign = await Campaign.query().where({id: query.campaign_id}).first();
   if (campaign.calls_in_progress === 0) {
