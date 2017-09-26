@@ -645,10 +645,12 @@ describe('/ready', () => {
   context('with 1 pressed inside work hours', () => {
     it('should inform me about wait times during the day', async() => {
       process.env.OPTIMAL_CALLING_PERIOD_START = '24:00:00'
+      process.env.OPTIMAL_CALLING_DAYS = _.lowerCase(moment.tz(campaign.timezone()).add(1, 'day').format('dddd'))
       await request.post(`/ready?caller_number=1111&campaign_id=${campaign.id}&start=1`)
          .type('form').send({CallUUID: '1'})
          .expect(/wait times/)
          .expect(/day/)
+      delete process.env.OPTIMAL_CALLING_DAYS
       delete process.env.OPTIMAL_CALLING_PERIOD_START
     })
   })
