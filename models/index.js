@@ -92,7 +92,8 @@ class Campaign extends Base {
   isWithinOptimalCallingTimes() {
     const optimal_calling_period_start = process.env.OPTIMAL_CALLING_PERIOD_START || '17:00:00'
     const today = _.lowerCase(moment.tz(this.timezone()).format('dddd'))
-    if (_.includes(['saturday', 'sunday'], today)) return true
+    const optimal_calling_days = process.env.OPTIMAL_CALLING_DAYS ? _.split(process.env.OPTIMAL_CALLING_DAYS, ',') : ['saturday', 'sunday']
+    if (_.includes(optimal_calling_days, today)) return true
     const today_date = moment.tz(this.timezone()).format('YYYY-MM-DD')
     const start = moment.tz(`${today_date} 00:00:00`, this.timezone())
     const stop = moment.tz(`${today_date} ${optimal_calling_period_start}`, this.timezone())
