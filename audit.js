@@ -16,6 +16,9 @@ const query = `select ca.id, ca.phone_number, cam.name as campaign, cam.ratio, c
       inner join campaigns cam on cam.id = ca.campaign_id
       where ca.status = 'available'
       and now() - ca.updated_at > '${alert_window} seconds'::interval
+      and not exists (
+        select id from events e where e.campaign_id = cam.id and name in ('answered', 'filtered') and created_at > now() - '3 minutes'::interval
+      )
       order by 5 desc`
 let time_since_last_alert
 
