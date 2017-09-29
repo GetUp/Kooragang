@@ -109,8 +109,8 @@ const updateAndCall = async (campaign, callee, appUrl) => {
   }
   if (process.env.NODE_ENV === 'development') console.error('CALLING', params)
   try{
-    const [status, response] = await plivo_api('make_call', params, {multiArgs: true});
-    await Event.query().insert({name: 'call_initiated', campaign_id: callee.campaign_id, value: {callee_id: callee.id, status, response}})
+    const response = await plivo_api('make_call', params);
+    await Event.query().insert({name: 'call_initiated', campaign_id: callee.campaign_id, value: {callee_id: callee.id, response}})
   }catch(e){
     await decrementCallsInProgress(campaign);
     await Event.query().insert({campaign_id: campaign.id, name: 'api_error', value: {calls_in_progress: campaign.calls_in_progress, callee_id: callee.id, error: e}});
