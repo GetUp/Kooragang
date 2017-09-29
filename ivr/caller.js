@@ -39,6 +39,17 @@ app.post('/connect', async ({body, query}, res) => {
   const authenticated = query.authenticated ? query.authenticated === "1" : false;
   const promptAuth = authenticationNeeded(callback, campaign.passcode, authenticated);
 
+  if (campaign.isDown()){
+    let content = `Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool. `
+    content += `We apologise. The ${campaign.name} campaign is experiencing technical difficulties. We are working hard to try to fix it. Please try calling back later!`
+    r.addMessage(`${content}`, {
+      src: body.To,
+      dst: body.From
+    })
+    return res.send(r.toXML())
+  }
+
+
   if (campaign.isPaused()){
     r.addWait({length: 2});
     r.addSpeakAU(`Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool.`);
