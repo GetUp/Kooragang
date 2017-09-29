@@ -487,6 +487,16 @@ describe('.dial', () => {
         await dialer.dial(testUrl, campaign)
         mockedApiCall.done()
       });
+
+      it('should create an event for each call initiated', async () => {
+        const mockedApiCall = nock('https://api.plivo.com')
+          .post(/Call/, body => body.to === '61411111111')
+          .query(true)
+          .times(3)
+          .reply(200);
+        await dialer.dial(testUrl, campaign)
+        expect((await Event.query().where({name: 'call_initiated'})).length).to.be(3)
+      });
     });
   });
 });
