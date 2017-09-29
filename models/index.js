@@ -24,6 +24,7 @@ class Campaign extends Base {
   static get virtualAttributes() {
     return [
       'isPaused',
+      'isDown',
       'isInactive',
       'isComplete',
       'isWithinDailyTimeOfOperation',
@@ -39,6 +40,9 @@ class Campaign extends Base {
   }
   isPaused() {
     return this.status === "paused" || this.status === null
+  }
+  isDown() {
+    return this.status === "down"
   }
   isInactive() {
     return this.status === "inactive"

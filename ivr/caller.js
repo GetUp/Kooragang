@@ -151,9 +151,19 @@ app.post('/connect_sms', async ({body, query}, res) => {
     return res.send(r.toXML())
   }
 
-  if (campaign.isPaused()){ 
+  if (campaign.isPaused()){
     let content = `Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool. `
     content += `The ${campaign.name} campaign is currently paused! Please contact the campaign coordinator for further instructions. Thank you and have a great day!`
+    r.addMessage(`${content}`, {
+      src: body.To,
+      dst: body.From
+    })
+    return res.send(r.toXML())
+  }
+
+  if (campaign.isDown()){
+    let content = `Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool. `
+    content += `We apologise. The ${campaign.name} campaign is experiencing technical difficulties. We are working hard to try to fix it. Please try calling back later!`
     r.addMessage(`${content}`, {
       src: body.To,
       dst: body.From
