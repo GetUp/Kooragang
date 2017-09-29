@@ -347,6 +347,7 @@ describe('.dial', () => {
         await Caller.query().insert({phone_number: '132', status: 'in-call', campaign_id: campaign.id});
       });
       beforeEach(async () => {
+        await Callee.query().delete()
         const inserts = _.range(4).map(() => Callee.query().insert({phone_number: '61411111111', campaign_id: campaign.id}));
         await Promise.all(inserts);
       });
@@ -366,11 +367,13 @@ describe('.dial', () => {
           .query(true)
           .times(4)
           .reply(200);
+        expect((await Callee.query()).length).to.be(4)
         await dialer.dial(testUrl, campaign)
         const event = await Event.query().where({campaign_id: campaign.id, name: 'calling'}).first();
         expect(event).to.be.an(Event);
         expect(event.value).to.match(/callsToMake/);
         expect(JSON.parse(event.value).incall).to.be(1);
+        expect(JSON.parse(event.value).callee_ids.length).to.be(4);
       });
     });
 
