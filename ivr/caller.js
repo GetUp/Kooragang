@@ -40,12 +40,10 @@ app.post('/connect', async ({body, query}, res) => {
   const promptAuth = authenticationNeeded(callback, campaign.passcode, authenticated);
 
   if (campaign.isDown()){
-    let content = `Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool. `
-    content += `We apologise. The ${campaign.name} campaign is experiencing technical difficulties. We are working hard to try to fix it. Please try calling back later!`
-    r.addMessage(`${content}`, {
-      src: body.To,
-      dst: body.From
-    })
+    r.addWait({length: 2})
+    r.addSpeakAU(`Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool.`)
+    r.addWait({length: 1})
+    r.addSpeakAU('We apologise. The campaign is experiencing technical difficulties. We are working hard to try to fix it. Please try calling back later!')
     return res.send(r.toXML())
   }
 

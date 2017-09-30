@@ -60,6 +60,7 @@ const malformedCampaign = {
 }
 const activeCampaign = Object.assign({status: 'active'}, defaultCampaign)
 const pausedCampaign = Object.assign({status: 'paused'}, defaultCampaign)
+const downCampaign = Object.assign({status: 'down'}, defaultCampaign)
 const inactiveCampaign = Object.assign({status: 'inactive'}, defaultCampaign)
 const statuslessCampaign = Object.assign({status: null}, defaultCampaign)
 const redundancyCampaign = Object.assign({revert_to_redundancy: true}, activeCampaign)
@@ -182,6 +183,19 @@ describe('/connect', () => {
         .expect(/currently paused/);
     });
   });
+
+  context('with a down campaign', () => {
+    beforeEach(async () => { await Campaign.query().delete() });
+    beforeEach(async () => campaign = await Campaign.query().insert(downCampaign));
+    const payload = { From: caller.phone_number };
+    it('plays the down briefing message ', () => {
+      return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
+        .type('form')
+        .send(payload)
+        .expect(/technical/);
+    });
+  });
+
 
   context('with a statusless campaign', () => {
     beforeEach(async () => { await Campaign.query().delete() });
