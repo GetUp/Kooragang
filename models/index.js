@@ -31,6 +31,7 @@ class Campaign extends Base {
       'dailyTimeOfOperationInWords',
       'areCallsInProgress',
       'calledEveryone',
+      'recalculateCallersRemaining',
       'isRatioDialing',
       'isWithinOptimalCallingTimes'
     ]
@@ -47,8 +48,8 @@ class Campaign extends Base {
   isInactive() {
     return this.status === "inactive"
   }
-  async isComplete() {
-    return this.isInactive() || (await this.calledEveryone())
+  isComplete() {
+    return this.isInactive() || this.calledEveryone()
   }
   timezone() {
     if (this.hours_of_operation_timezone && moment.tz.zone(this.hours_of_operation_timezone)) {
@@ -108,10 +109,12 @@ class Campaign extends Base {
   areCallsInProgress() {
     return this.calls_in_progress > 0
   }
-  async calledEveryone() {
-    if (this.areCallsInProgress()) return false
+  async recalculateCallersRemaining() {
     const {count} = await Callee.query().count('id as count').whereIn('id', this.callableCallees()).first()
-    return parseInt(count, 10) === 0
+    await this.$query().patch({callers_remaining: parseInt(count, 10)})
+  }
+  calledEveryone() {
+    return !this.areCallsInProgress() && this.callers_remaining === 0
   }
   callableCallees(callsToMakeExcludingCurrentCalls=1) {
     return Callee.query()

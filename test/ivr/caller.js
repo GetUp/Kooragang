@@ -47,7 +47,9 @@ const defaultCampaign = {
   phone_number: '1111',
   sms_number: '22222222',
   hours_of_operation: hours_of_operation_full,
-  shortcode: 'test'
+  shortcode: 'test',
+  no_call_window: 240,
+  max_call_attempts: 1
 }
 const malformedCampaign = {
   id: 1,
@@ -118,6 +120,7 @@ describe('/connect', () => {
 
   context('with a sip number', () => {
     beforeEach(async () => { await Callee.query().insert(associatedCallee) });
+    beforeEach(async () => campaign.recalculateCallersRemaining() );
     it('should strip out sip details for caller number', async () => {
       await request.post(`/connect?campaign_id=${campaign.id}`)
         .type('form')
@@ -128,6 +131,7 @@ describe('/connect', () => {
 
   context('with a private number', () => {
     beforeEach(async () => { await Callee.query().insert(associatedCallee) });
+    beforeEach(async () => campaign.recalculateCallersRemaining() );
     const payload = { From: '' };
     it('directs them to enable caller id', () => {
       return request.post(`/connect?campaign_id=${campaign.id}`)
@@ -139,6 +143,7 @@ describe('/connect', () => {
 
   context('with a private number', () => {
     beforeEach(async () => { await Callee.query().insert(associatedCallee) });
+    beforeEach(async () => campaign.recalculateCallersRemaining() );
     const payload = { From: 'anonymous' };
     it('directs them to enable caller id', () => {
       return request.post(`/connect?campaign_id=${campaign.id}`)
@@ -150,6 +155,7 @@ describe('/connect', () => {
 
   context('with a private number', () => {
     beforeEach(async () => { await Callee.query().insert(associatedCallee) });
+    beforeEach(async () => campaign.recalculateCallersRemaining() );
     const payload = { From: 'undefined' };
     it('directs them to enable caller id', () => {
       return request.post(`/connect?campaign_id=${campaign.id}`)
@@ -162,6 +168,7 @@ describe('/connect', () => {
   context('with a callback', () => {
     const payload = { From: '33333' };
     beforeEach(async () => { await Callee.query().insert(associatedCallee) });
+    beforeEach(async () => campaign.recalculateCallersRemaining() );
     it('should use the number passed in the number parameter', () => {
       return request.post(`/connect?campaign_id=${campaign.id}&callback=1&number=${caller.phone_number}`)
         .type('form')
@@ -175,6 +182,7 @@ describe('/connect', () => {
   context('with a paused campaign', () => {
     beforeEach(async () => { await Campaign.query().delete() });
     beforeEach(async () => campaign = await Campaign.query().insert(pausedCampaign));
+    beforeEach(async () => campaign.recalculateCallersRemaining() );
     const payload = { From: caller.phone_number };
     it('plays the paused briefing message ', () => {
       return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
@@ -187,6 +195,7 @@ describe('/connect', () => {
   context('with a down campaign', () => {
     beforeEach(async () => { await Campaign.query().delete() });
     beforeEach(async () => campaign = await Campaign.query().insert(downCampaign));
+    beforeEach(async () => campaign.recalculateCallersRemaining() );
     const payload = { From: caller.phone_number };
     it('plays the down briefing message ', () => {
       return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
@@ -238,6 +247,7 @@ describe('/connect', () => {
     beforeEach(async () => { await Campaign.query().delete() });
     beforeEach(async () => campaign = await Campaign.query().insert(redundancyCampaign));
     beforeEach(async () => { await Callee.query().insert(associatedCallee) });
+    beforeEach(async () => campaign.recalculateCallersRemaining() );
     context('when direction is inbound', () => {
       const payload = { From: caller.phone_number, Direction: 'inbound' };
       it('informs user of high traffic', async () => {
@@ -282,6 +292,7 @@ describe('/connect', () => {
 
   context('with revert_to_redundancy set', () => {
     beforeEach(async () => { await Callee.query().insert(associatedCallee) });
+    beforeEach(async () => campaign.recalculateCallersRemaining() );
 
     context('dialing into a didlogic number', () => {
       const didlogic_number = '1111111'
@@ -322,6 +333,7 @@ describe('/connect', () => {
 
   context('with revert_to_redundancy set', () => {
     beforeEach(async () => { await Callee.query().insert(associatedCallee) });
+    beforeEach(async () => campaign.recalculateCallersRemaining() );
 
     context('dialing into a plivo number', () => {
       const plivo_number = '61200001111'
@@ -370,6 +382,7 @@ describe('/connect', () => {
     beforeEach(async () => team = await Team.query().insert({name: 'planet savers', passcode: '1234'}));
     beforeEach(async () => user = await User.query().insert({phone_number: '098765', team_id: team.id}));
     beforeEach(async () => { await Callee.query().insert(associatedCallee) });
+    beforeEach(async () => campaign.recalculateCallersRemaining() );
     const payload = { From: '098765' };
 
     context('with existing user and team', () => {
@@ -434,6 +447,7 @@ describe('/connect', () => {
     beforeEach(async () => { await Campaign.query().delete() });
     beforeEach(async () => campaign = await Campaign.query().insert(authCampaign));
     beforeEach(async () => { await Callee.query().insert(associatedCallee) });
+    beforeEach(async () => campaign.recalculateCallersRemaining() );
     const payload = { From: caller.phone_number };
     context('with a callback and authenticated false', () => {
       it('should be prompted to enter passcode', () => {
@@ -484,6 +498,7 @@ describe('/connect', () => {
 
 describe('/ready', () => {
   beforeEach(async () => { await Callee.query().insert(associatedCallee) })
+  beforeEach(async () => campaign.recalculateCallersRemaining() );
 
   context('with a ready path', () => {
     let readyPath
@@ -1393,6 +1408,7 @@ describe('/connect_sms', () => {
     beforeEach(async () => { await Campaign.query().delete() })
     beforeEach(async () => campaign = await Campaign.query().insert(operationalWindowCampaign))
     beforeEach(async () => { await Callee.query().insert(associatedCallee) })
+    beforeEach(async () => campaign.recalculateCallersRemaining() )
     const payload = { From: caller.phone_number, To: '61481565877', Text: 'test' }
     it('plays the operational window briefing message', () => {
       return request.post(`/connect_sms`)
@@ -1406,6 +1422,7 @@ describe('/connect_sms', () => {
     beforeEach(async () => { await Campaign.query().delete() })
     beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign))
     beforeEach(async () => { await Callee.query().insert(associatedCallee) })
+    beforeEach(async () => campaign.recalculateCallersRemaining() )
     const payload = { From: caller.phone_number, To: '61481565877', Text: 'test' }
     it('does respond with empty xml response', () => {
       return request.post(`/connect_sms`)

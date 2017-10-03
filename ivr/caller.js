@@ -71,7 +71,7 @@ app.post('/connect', async ({body, query}, res) => {
     return res.send(r.toXML());
   }
 
-  if (await campaign.isComplete()) {
+  if (campaign.isComplete()) {
     r.addWait({length: 2});
     r.addSpeakAU(`Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool.`);
     r.addWait({length: 1});
@@ -190,7 +190,7 @@ app.post('/connect_sms', async ({body, query}, res) => {
     return res.send(r.toXML())
   }
 
-  if (await campaign.isComplete()) {
+  if (campaign.isComplete()) {
     let content = `Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool. `
     content += `The ${campaign.name} campaign has been completed! Please contact the campaign coordinator for further instructions. Thank you and have a great day!`
     r.addMessage(`${content}`, {
@@ -308,7 +308,7 @@ app.post('/ready', async ({body, query}, res) => {
   } else {
     caller_id = query.caller_id;
   }
-  if (await campaign.isComplete()) {
+  if (campaign.isComplete()) {
     r.addSpeakAU('The campaign has been completed!');
     r.addRedirect(res.locals.appUrl('disconnect?completed=1'));
     return res.send(r.toXML());

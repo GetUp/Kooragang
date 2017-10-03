@@ -518,7 +518,7 @@ describe('.dial', () => {
   });
 });
 
-describe('.calledEveryone', () => {
+describe('.calledEveryone with recalculateCallersRemaining called beforehand', () => {
   let campaign;
   beforeEach(dropAll);
   beforeEach(async () => {
@@ -531,18 +531,27 @@ describe('.calledEveryone', () => {
       const anotherCampaign = await Campaign.query().insert({name: 'another'}).returning('*');
       Callee.query().insert({phone_number: '123456789', campaign_id: anotherCampaign.id});
     });
-    it('should return true', async () => expect(await campaign.calledEveryone()).to.be(true));
+    it('should return true', async () => {
+      await campaign.recalculateCallersRemaining()
+      expect(campaign.calledEveryone()).to.be(true)
+    })
 
     context('with calls_in_progress > 0', () => {
       beforeEach(async() => {
         campaign = await Campaign.query().patchAndFetchById(campaign.id, {calls_in_progress: 1});
       });
-      it('should return false', async () => expect(await campaign.calledEveryone()).to.be(false));
+      it('should return false', async () => {
+        await campaign.recalculateCallersRemaining()
+        expect(campaign.calledEveryone()).to.be(false);
+      })
     })
   });
   context('with available callees', () => {
     beforeEach(async () => Callee.query().insert({phone_number: '123456789', campaign_id: campaign.id}));
-    it('should return false', async () => expect(await campaign.calledEveryone()).to.be(false));
+    it('should return false', async () => {
+      await campaign.recalculateCallersRemaining()
+      expect(campaign.calledEveryone()).to.be(false)
+    })
   });
 
   context('with a campaign with max_call_attempts set to 1 (no recycle)', () => {
@@ -554,7 +563,8 @@ describe('.calledEveryone', () => {
       context('with the call busy or no-answer', () => {
         beforeEach(() => Call.query().insert({callee_id: callee.id, status: 'no-answer'}));
         it ('should be true', async() => {
-          expect(await campaign.calledEveryone()).to.be(true)
+          await campaign.recalculateCallersRemaining()
+          expect(campaign.calledEveryone()).to.be(true)
         });
       });
     });
@@ -570,20 +580,23 @@ describe('.calledEveryone', () => {
       context('with the call busy or no-answer', () => {
         beforeEach(() => Call.query().insert({callee_id: callee.id, status: 'no-answer'}));
         it ('should be false', async() => {
-          expect(await campaign.calledEveryone()).to.be(false)
+          await campaign.recalculateCallersRemaining()
+          expect(campaign.calledEveryone()).to.be(false)
         });
       });
 
       context('with the call completed', () => {
         beforeEach(() => Call.query().insert({callee_id: callee.id, status: 'completed'}));
         it ('should be true', async() => {
-          expect(await campaign.calledEveryone()).to.be(true)
+          await campaign.recalculateCallersRemaining()
+          expect(campaign.calledEveryone()).to.be(true)
         });
 
         context('with a prexisting call', () => {
           beforeEach(() => Call.query().insert({callee_id: callee.id, status: 'busy'}));
           it ('should NOT reset the last_called_at', async() => {
-            expect(await campaign.calledEveryone()).to.be(true)
+            await campaign.recalculateCallersRemaining()
+            expect(campaign.calledEveryone()).to.be(true)
           });
         });
       });
@@ -592,7 +605,8 @@ describe('.calledEveryone', () => {
         beforeEach(() => Call.query().insert({callee_id: callee.id, status: 'busy'}));
         beforeEach(() => Call.query().insert({callee_id: callee.id, status: 'busy'}));
         it ('should NOT reset the last_called_at', async() => {
-            expect(await campaign.calledEveryone()).to.be(true)
+          await campaign.recalculateCallersRemaining()
+          expect(campaign.calledEveryone()).to.be(true)
         });
       });
     });
