@@ -33,7 +33,7 @@ module.exports.dial = async (appUrl, campaign) => {
       if (callees.length) {
         await Callee.bindTransaction(trans).query()
           .patch({last_called_at: new Date()})
-          .whereIn('id', callees_callable_ids)
+          .whereIn('id', _.map(callees, 'id'))
       }
       await trans.commit();
     } catch (e) {
