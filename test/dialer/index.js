@@ -90,6 +90,20 @@ describe('.dial', () => {
       })
     });
 
+    context('with a name containing non-us-ascii characters and spaces', () => {
+      beforeEach(async () => {
+        await Callee.query().patch({first_name: 'Tîm Jamés 23', campaign_id: campaign.id})
+      });
+      it('should filter the name', async () => {
+        const mockedApiCall = nock('https://api.plivo.com')
+          .post(/Call/, body => body.answer_url.match(/Tim-James---/))
+          .query(true)
+          .reply(200);
+        await dialer.dial(testUrl, campaign);
+        mockedApiCall.done();
+      })
+    });
+
     context('with error with an api call', () => {
       it ('should remove decrement the calls_in_progress', async () => {
         const mockedApiCall = nock('https://api.plivo.com')

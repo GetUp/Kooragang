@@ -3,6 +3,7 @@ const moment = require('moment');
 const _ = require('lodash');
 const objection = require('objection')
 const transaction = objection.transaction
+const removeDiacritics = require('diacritics').remove
 
 const {
   Call,
@@ -93,11 +94,13 @@ const recalculateRatio = async (campaign) => {
   return Campaign.query().patchAndFetchById(campaign.id, {ratio: newRatio, last_checked_ratio_at: new Date()});
 }
 
+const formattedName = (callee) => removeDiacritics(callee.first_name  || '') .replace(/[^a-zA-Z]/g,'-')
+
 const updateAndCall = async (campaign, callee, appUrl) => {
   const params = {
     to: callee.phone_number,
     from : campaign.outgoing_number || process.env.NUMBER || '1111111111',
-    answer_url : `${appUrl}/answer?name=${callee.first_name || ''}&callee_id=${callee.id}&campaign_id=${callee.campaign_id}`,
+    answer_url : `${appUrl}/answer?name=${formattedName(callee)}&callee_id=${callee.id}&campaign_id=${callee.campaign_id}`,
     hangup_url : `${appUrl}/hangup?callee_id=${callee.id}&campaign_id=${callee.campaign_id}`,
     fallback_url : `${appUrl}/callee_fallback?callee_id=${callee.id}&campaign_id=${callee.campaign_id}`,
     time_limit: 30 * 60,
