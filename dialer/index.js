@@ -105,6 +105,7 @@ const updateAndCall = async (campaign, callee, appUrl) => {
     time_limit: 30 * 60,
     ring_timeout: process.env.RING_TIMEOUT || 15
   };
+  if (process.env.SIP_HEADERS && params.to.match(/^sip:/)) params.sip_headers = process.env.SIP_HEADERS
   if (campaign.detect_answering_machine) {
     params.machine_detection = 'true';
     params.machine_detection_time = process.env.MACHINE_DETECTION_TIME || '3500';

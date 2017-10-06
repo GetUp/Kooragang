@@ -90,6 +90,34 @@ describe('.dial', () => {
       })
     });
 
+    context('with SIP headers set', () => {
+      beforeEach(() => process.env.SIP_HEADERS = 'test=test' )
+      afterEach(() => delete process.env.SIP_HEADERS )
+
+      context('with a standard number', () => {
+        it('should not append SIP headers', async () => {
+          const mockedApiCall = nock('https://api.plivo.com')
+            .post(/Call/, body => !body.sip_headers)
+            .query(true)
+            .reply(200);
+          await dialer.dial(testUrl, campaign);
+          mockedApiCall.done();
+        })
+      })
+
+      context('with a SIP number', () => {
+        beforeEach(() => callee.$query().patch({phone_number: 'sip:234234234@sip.serverer:5080'}))
+        it('should use append the SIP headers', async () => {
+          const mockedApiCall = nock('https://api.plivo.com')
+            .post(/Call/, body => body.sip_headers === process.env.SIP_HEADERS)
+            .query(true)
+            .reply(200);
+          await dialer.dial(testUrl, campaign);
+          mockedApiCall.done();
+        })
+      })
+    });
+
     context('with a name containing non-us-ascii characters and spaces', () => {
       beforeEach(async () => {
         await Callee.query().patch({first_name: 'Tîm Jamés 23', campaign_id: campaign.id})
