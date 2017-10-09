@@ -14,5 +14,5 @@ module.exports = {
   production: {
     client: 'pg',
     connection: process.env.READ_ONLY_DATABASE_URL || process.env.DATABASE_URL
-  }    
+  }
 }

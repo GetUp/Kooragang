@@ -2,7 +2,7 @@ const app = require('express')()
 const env = process.env.NODE_ENV || 'development'
 const _ = require('lodash')
 const moment = require('moment')
-const config = require('../knexfile_read_only')   
+const config = require('../knexfile_read_only')
 const knex = require('knex')(config[env])
 const { modelsBoundReadOnly } = require('../utils')
 const { Campaign, Call, Caller, Callee, Event, Team } = modelsBoundReadOnly(require('../models'))
@@ -319,8 +319,8 @@ app.get('/api/system/statistics', wrap(async (req, res) => {
     select
       campaigns.name as campaign_name,
       campaigns.ratio as campaign_ratio,
-      available_callers.count as available_callers, 
-      in_call_callers.count as in_call_callers, 
+      available_callers.count as available_callers,
+      in_call_callers.count as in_call_callers,
       calls_made_minute.count as calls_made_minute
     from campaigns
     left outer join (
