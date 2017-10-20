@@ -209,6 +209,7 @@ app.post('/connect_sms', async ({body, query}, res) => {
     hangup_url : res.locals.appUrl(`call_ended?campaign_id=${campaign.id}&sms_callback=1&number=${caller_number}`),
     ring_timeout: process.env.RING_TIMEOUT || 30
   };
+  if (process.env.SIP_HEADERS && params.to.match(/^sip:/)) params.sip_headers = process.env.SIP_HEADERS
 
   if (process.env.NODE_ENV === 'development') console.error('CALLING', params)
   try{
@@ -661,6 +662,7 @@ app.post('/call_ended', async ({body, query}, res) => {
       hangup_url: res.locals.appUrl(`call_ended?campaign_id=${campaign.id}&callback=1&number=${caller.phone_number}`),
       ring_timeout: 30
     };
+    if (process.env.SIP_HEADERS && params.to.match(/^sip:/)) params.sip_headers = process.env.SIP_HEADERS
     try{
       await sleep(5000);
       await plivo_api('make_call', params);
