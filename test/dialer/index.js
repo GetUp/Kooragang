@@ -148,7 +148,7 @@ describe('.dial', () => {
   })
 
   context('with a predictive ratio dialer campaign', () => {
-    const campaign2 = Object.assign({ name: 'test campaign 2' }, defaultCampaign);
+    const campaign2 = Object.assign({}, defaultCampaign, { id: 3, name: 'test campaign 2' });
     let mockedApiCall;
     beforeEach(async () => {
       campaign = await Campaign.query().patchAndFetchById(campaign.id, {dialer: 'ratio', ratio: 1});
