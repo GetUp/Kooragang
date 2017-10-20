@@ -119,6 +119,35 @@ describe('.dial', () => {
       })
     });
 
+    context('with outbound dialing via an external SIP provider', () => {
+      beforeEach(() => process.env.OUTBOUND_SIP_SERVER = 'sip.example.com' )
+      afterEach(() => delete process.env.OUTBOUND_SIP_SERVER )
+
+      context('with a standard number', () => {
+        beforeEach(() => callee.$query().patch({phone_number: '61400000123'}))
+        it('will apply SIP formatting', async () => {
+          const mockedApiCall = nock('https://api.plivo.com')
+            .post(/Call/, body => body.to === 'sip:61400000123@sip.example.com')
+            .query(true)
+            .reply(200);
+          await dialer.dial(testUrl, campaign);
+          mockedApiCall.done();
+        })
+      })
+
+      context('with a SIP number', () => {
+        beforeEach(() => callee.$query().patch({phone_number: 'sip:234234234@sip.serverer:5080'}))
+        it('will not change the number', async () => {
+          const mockedApiCall = nock('https://api.plivo.com')
+            .post(/Call/, body => body.to === 'sip:234234234@sip.serverer:5080')
+            .query(true)
+            .reply(200);
+          await dialer.dial(testUrl, campaign);
+          mockedApiCall.done();
+        })
+      })
+    });
+
     context('with a name containing non-us-ascii characters and spaces', () => {
       beforeEach(async () => {
         await Callee.query().patch({first_name: 'Tîm Jamés 23', campaign_id: campaign.id})
