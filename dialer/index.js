@@ -4,6 +4,7 @@ const _ = require('lodash');
 const objection = require('objection')
 const transaction = objection.transaction
 const removeDiacritics = require('diacritics').remove
+const { sipFormatNumber } = require('../utils')
 
 const {
   Call,
@@ -96,13 +97,8 @@ const recalculateRatio = async (campaign) => {
 const formattedName = (callee) => removeDiacritics(callee.first_name  || '') .replace(/[^a-zA-Z]/g,'-')
 
 const updateAndCall = async (campaign, callee, appUrl) => {
-  let sip_formatted_number
-  if(process.env.OUTBOUND_SIP_SERVER && !callee.phone_number.match(/^sip:/)) {
-    sip_formatted_number = `sip:${callee.phone_number}@${process.env.OUTBOUND_SIP_SERVER}`
-  }
-
   const params = {
-    to: sip_formatted_number || callee.phone_number,
+    to: sipFormatNumber(callee.phone_number),
     from : campaign.outgoing_number || process.env.NUMBER || '1111111111',
     answer_url : `${appUrl}/answer?name=${formattedName(callee)}&callee_id=${callee.id}&campaign_id=${callee.campaign_id}`,
     hangup_url : `${appUrl}/hangup?callee_id=${callee.id}&campaign_id=${callee.campaign_id}`,

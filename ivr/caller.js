@@ -9,7 +9,8 @@ const {
   sipHeaderPresent,
   authenticationNeeded,
   isValidCallerNumber,
-  incomingCaller
+  incomingCaller,
+  sipFormatNumber,
 } = require('../utils');
 const {Call, Callee, Caller, Campaign, SurveyResult, Event, User, Team} = require('../models');
 
@@ -202,7 +203,7 @@ app.post('/connect_sms', async ({body, query}, res) => {
 
   const caller_number = extractCallerNumber(query, body);
   const params = {
-    to: caller_number,
+    to: sipFormatNumber(caller_number),
     from : campaign.phone_number || process.env.NUMBER || '1111111111',
     answer_url : res.locals.appUrl(`connect?campaign_id=${campaign.id}&sms_callback=1&number=${caller_number}`),
     hangup_url : res.locals.appUrl(`call_ended?campaign_id=${campaign.id}&sms_callback=1&number=${caller_number}`),

@@ -19,6 +19,13 @@ module.exports.extractCallerNumber = (query, body) => {
   }
 };
 
+module.exports.sipFormatNumber = number => {
+  if(process.env.OUTBOUND_SIP_SERVER && !number.match(/^sip:/)) {
+    return `sip:${number}@${process.env.OUTBOUND_SIP_SERVER}`
+  }
+  return number
+}
+
 module.exports.extractDialInNumber = body => {
   const dialInNumber = body.Direction === 'outbound' ? body.From : body.To
   return sipHeaderPresent(body) ? body['SIP-H-To'].match(/phone=(\w+)\D/)[1] : dialInNumber;
