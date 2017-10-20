@@ -8,6 +8,7 @@ const sinon = require('sinon');
 const { Callee, Caller, Call, Campaign, Event } = require('../../models');
 
 const defaultCampaign = {
+  id: 2,
   name: 'test',
   status: 'active',
   max_ratio: 3.0,
