@@ -7,7 +7,7 @@ const request = require('supertest')(app);
 const {Callee, Campaign, Redirect} = require('../../models');
 
 describe('/redirect', () => {
-  beforeEach(require('../util').dropFixtures);
+  beforeEach(require('../test_helper').dropFixtures);
 
   const call_uuid = '111';
   const payload = {CallUUID: call_uuid, To: '041111', From: '0468111111'};

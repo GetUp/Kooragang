@@ -10,7 +10,7 @@ describe('setup', () => {
   let numbers = [{region: 'SYDNEY, AUSTRALIA', application: null, number: '61212121212'}, {region: 'SYDNEY, AUSTRALIA', application: null, number: '6131311313'}];
   const app_id = '12121'
   const fieldsForInboundCampaign = {name: 'Test App', number_region: 'Sydney'}
-  beforeEach(require('../util').dropFixtures);
+  beforeEach(require('../test_helper').dropFixtures);
   beforeEach(() => {
     createApiCall = nock('https://api.plivo.com')
       .post(/Application/, body => {

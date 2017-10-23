@@ -28,7 +28,15 @@ module.exports.sipFormatNumber = number => {
 
 module.exports.extractDialInNumber = body => {
   const dialInNumber = body.Direction === 'outbound' ? body.From : body.To
-  return sipHeaderPresent(body) ? body['SIP-H-To'].match(/phone=(\w+)\D/)[1] : dialInNumber;
+  if (!sipHeaderPresent(body)) return dialInNumber
+
+  if (body['SIP-H-To'].match(/phone=(\w+)\D/)) {
+    return body['SIP-H-To'].match(/phone=(\w+)\D/)[1]
+  }
+  if (body['SIP-H-To'].match(/sip:(\w+)\D/)) {
+    return body['SIP-H-To'].match(/sip:(\w+)\D/)[1]
+  }
+  return dialInNumber
 }
 
 const sipHeaderPresent = module.exports.sipHeaderPresent = (body) => !!body['SIP-H-To']
