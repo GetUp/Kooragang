@@ -1251,6 +1251,18 @@ describe('/fallback', () => {
 });
 
 describe('/call_again', () => {
+  context('with an operational window campaign', () => {
+    beforeEach(async () => { await Campaign.query().delete() });
+    beforeEach(async () => campaign = await Campaign.query().insert(operationalWindowCampaign));
+    beforeEach(async () => { await Callee.query().insert(associatedCallee) });
+    const payload = { From: caller.phone_number };
+    it('plays the operational window briefing message', () => {
+      return request.post(`/call_again?campaign_id=${campaign.id}`)
+        .type('form')
+        .send(payload)
+        .expect(/finished for the day/);
+    });
+  });
   context('with a paused campaign', async () => {
     beforeEach(async () => { await Campaign.query().delete() });
     beforeEach(async () => campaign = await Campaign.query().insert(pausedCampaign));
