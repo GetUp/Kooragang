@@ -570,7 +570,11 @@ app.post('/call_again', async ({query}, res) => {
   const r = plivo.Response();
   const campaign = await Campaign.query().where({id: query.campaign_id}).first();
   if (campaign.calls_in_progress === 0) {
-    if (campaign.status === 'paused' || campaign.status === null) {
+    if (!campaign.isWithinDailyTimeOfOperation()) {
+      r.addWait({length: 1});
+      r.addSpeakAU(`The ${campaign.name} calling campaign has finished for the day. ${campaign.dailyTimeOfOperationInWords()} Thank you and have a great day!`);
+      return res.send(r.toXML());
+    } else if (campaign.status === 'paused' || campaign.status === null) {
       r.addWait({length: 1});
       r.addSpeakAU('The campaign is currently paused! Please contact the campaign coordinator for further instructions. Thank you and have a great day!');
       return res.send(r.toXML());
