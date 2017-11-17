@@ -5,7 +5,7 @@ const dialer = require('../dialer')
 const { plivo_api } = require('../api/plivo')
 const objection = require('objection')
 const transaction = objection.transaction
-const { Call, Callee, Caller, Campaign, Event } = require('../models')
+const { Call, Callee, Caller, Campaign, Event, QueuedCall } = require('../models')
 
 app.post('/answer', async ({body, query}, res) => {
   const r = plivo.Response();
@@ -29,6 +29,7 @@ app.post('/answer', async ({body, query}, res) => {
   let campaign = await Campaign.query().where({id: query.campaign_id}).first();
   const calls_in_progress = campaign.calls_in_progress;
   campaign = await dialer.decrementCallsInProgress(campaign);
+  await QueuedCall.query().where({callee_id: query.callee_id}).delete()
 
   if (!errorFindingCaller && caller) {
     const call = await Call.query().insert({
@@ -76,6 +77,7 @@ app.post('/answer', async ({body, query}, res) => {
 app.post('/hangup', async ({body, query}, res) => {
   let call = await Call.query().where({callee_call_uuid: body.CallUUID}).first();
   const status = body.Machine === 'true' ? 'machine_detection' : body.CallStatus;
+  await QueuedCall.query().where({callee_id: query.callee_id}).delete()
   if (call){
     await Call.query().where({callee_call_uuid: body.CallUUID})
       .patch({ended_at: new Date(), status, duration: body.Duration});

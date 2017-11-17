@@ -12,7 +12,7 @@ const work = async () => {
     const runningCampaigns = await Campaign.query().whereIn('status', ['active', 'pausing']);
     for (let campaign of runningCampaigns) {
       await campaign.recalculateCallersRemaining()
-      if (campaign.calledEveryone() || campaign.isPausing()) {
+      if ((await campaign.calledEveryone()) || campaign.isPausing()) {
         await notifyAgents(campaign);
         // TODO: callees being actively called at the time of pausing
         // this does not handle callees being actively called at the time of pausing

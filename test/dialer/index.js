@@ -5,7 +5,7 @@ const moment = require('moment');
 const _ = require('lodash');
 const sinon = require('sinon');
 
-const { Callee, Caller, Call, Campaign, Event } = require('../../models');
+const { QueuedCall, Callee, Caller, Call, Campaign, Event } = require('../../models');
 
 const defaultCampaign = {
   id: 2,
@@ -18,6 +18,7 @@ const defaultCampaign = {
 }
 
 const dropAll = async () => {
+  await QueuedCall.query().delete();
   await Event.query().delete();
   await Call.query().delete();
   await Callee.query().delete();
@@ -171,6 +172,16 @@ describe('.dial', () => {
         await dialer.dial(testUrl, campaign)
         const updatedCampaign = await Campaign.query().where({id: campaign.id}).first();
         expect(updatedCampaign.calls_in_progress).to.be(0);
+        mockedApiCall.done()
+      })
+
+      it ('should not create a QueuedCall', async () => {
+        const mockedApiCall = nock('https://api.plivo.com')
+          .post(/Call/, body => true)
+          .query(true)
+          .reply(404);
+        await dialer.dial(testUrl, campaign)
+        expect((await QueuedCall.query()).length).to.be(0);
         mockedApiCall.done()
       })
     });
@@ -473,7 +484,7 @@ describe('.dial', () => {
       });
     });
 
-    context('with more calls in progress than available callers', () => {
+    context('with more queued calls than available callers', () => {
       beforeEach(async () => {
         campaign = await Campaign.query().patchAndFetchById(campaign.id, {
           ratio: 1, max_ratio: 4, last_checked_ratio_at: new Date(), calls_in_progress: 6
@@ -481,6 +492,10 @@ describe('.dial', () => {
         await Callee.query().delete();
         const inserts = _.range(8).map(() => Callee.query().insert({phone_number: '61411111111', campaign_id: campaign.id}));
         await Promise.all(inserts);
+        const callees_to_mark_as_called = await Callee.query()
+        for (let callee_to_mark_as_called in callees_to_mark_as_called) {
+          await QueuedCall.query().insert({campaign_id: campaign.id, callee_id: callee_to_mark_as_called.id})
+        }
       });
 
       it('should not make any calls', async () => {
@@ -499,11 +514,12 @@ describe('.dial', () => {
           await dialer.dial(testUrl, campaign);
           const event = await Event.query().where({campaign_id: campaign.id, name: 'no-calling'}).first();
           expect(event).to.be.an(Event);
-          const {incall, calls_in_progress, callers, ratio} = JSON.parse(event.value)
+          const {incall, calls_in_progress, callers, ratio, queued_calls} = JSON.parse(event.value)
           expect(callers).to.be(1)
           expect(incall).to.be(1)
           expect(ratio).to.be(1)
           expect(calls_in_progress).to.be(6)
+          expect(queued_calls).to.be(8)
         });
 
       })
@@ -533,8 +549,11 @@ describe('.dial', () => {
         await Caller.query().insert({phone_number: '2', status: 'available', campaign_id: campaign.id});
         await Caller.query().insert({phone_number: '3', status: 'available', campaign_id: campaign.id});
         await dialer.dial(testUrl, campaign);
+        const answered_callee = await Callee.query().where({campaign_id: campaign.id}).whereNotNull('last_called_at').first()
+        await QueuedCall.query().where({callee_id: answered_callee.id}).delete()
         campaign = await dialer.decrementCallsInProgress(campaign);
         expect(campaign.calls_in_progress).to.be(2);
+        expect((await QueuedCall.query().where({campaign_id: campaign.id})).length).to.be(2);
         await dialer.dial(testUrl, campaign);
         mockedApiCall.done()
       });
@@ -560,6 +579,17 @@ describe('.dial', () => {
           .times(3)
           .reply(200);
         await dialer.dial(testUrl, campaign)
+        mockedApiCall.done()
+      });
+
+      it('should create an QueuedCall', async () => {
+        const mockedApiCall = nock('https://api.plivo.com')
+          .post(/Call/, body => body.to === '61411111111')
+          .query(true)
+          .times(3)
+          .reply(200);
+        await dialer.dial(testUrl, campaign)
+        expect((await QueuedCall.query().where({status: '200', campaign_id: campaign.id})).length).to.be(3)
         mockedApiCall.done()
       });
 
@@ -591,16 +621,17 @@ describe('.calledEveryone with recalculateCallersRemaining called beforehand', (
     });
     it('should return true', async () => {
       await campaign.recalculateCallersRemaining()
-      expect(campaign.calledEveryone()).to.be(true)
+      expect(await campaign.calledEveryone()).to.be(true)
     })
 
-    context('with calls_in_progress > 0', () => {
+    context('with queued calls', () => {
       beforeEach(async() => {
-        campaign = await Campaign.query().patchAndFetchById(campaign.id, {calls_in_progress: 1});
+        const callee = await Callee.query().insert({phone_number: '223456789', campaign_id: campaign.id, last_called_at: new Date()});
+        await QueuedCall.query().insert({campaign_id: campaign.id, callee_id: callee.id})
       });
       it('should return false', async () => {
         await campaign.recalculateCallersRemaining()
-        expect(campaign.calledEveryone()).to.be(false);
+        expect(await campaign.calledEveryone()).to.be(false);
       })
     })
   });
@@ -608,7 +639,7 @@ describe('.calledEveryone with recalculateCallersRemaining called beforehand', (
     beforeEach(async () => Callee.query().insert({phone_number: '123456789', campaign_id: campaign.id}));
     it('should return false', async () => {
       await campaign.recalculateCallersRemaining()
-      expect(campaign.calledEveryone()).to.be(false)
+      expect(await campaign.calledEveryone()).to.be(false)
     })
   });
 
@@ -622,7 +653,7 @@ describe('.calledEveryone with recalculateCallersRemaining called beforehand', (
         beforeEach(() => Call.query().insert({callee_id: callee.id, status: 'no-answer'}));
         it ('should be true', async() => {
           await campaign.recalculateCallersRemaining()
-          expect(campaign.calledEveryone()).to.be(true)
+          expect(await campaign.calledEveryone()).to.be(true)
         });
       });
     });
@@ -639,7 +670,7 @@ describe('.calledEveryone with recalculateCallersRemaining called beforehand', (
         beforeEach(() => Call.query().insert({callee_id: callee.id, status: 'no-answer'}));
         it ('should be false', async() => {
           await campaign.recalculateCallersRemaining()
-          expect(campaign.calledEveryone()).to.be(false)
+          expect(await campaign.calledEveryone()).to.be(false)
         });
       });
 
@@ -647,14 +678,14 @@ describe('.calledEveryone with recalculateCallersRemaining called beforehand', (
         beforeEach(() => Call.query().insert({callee_id: callee.id, status: 'completed'}));
         it ('should be true', async() => {
           await campaign.recalculateCallersRemaining()
-          expect(campaign.calledEveryone()).to.be(true)
+          expect(await campaign.calledEveryone()).to.be(true)
         });
 
         context('with a prexisting call', () => {
           beforeEach(() => Call.query().insert({callee_id: callee.id, status: 'busy'}));
           it ('should NOT reset the last_called_at', async() => {
             await campaign.recalculateCallersRemaining()
-            expect(campaign.calledEveryone()).to.be(true)
+            expect(await campaign.calledEveryone()).to.be(true)
           });
         });
       });
@@ -664,7 +695,7 @@ describe('.calledEveryone with recalculateCallersRemaining called beforehand', (
         beforeEach(() => Call.query().insert({callee_id: callee.id, status: 'busy'}));
         it ('should NOT reset the last_called_at', async() => {
           await campaign.recalculateCallersRemaining()
-          expect(campaign.calledEveryone()).to.be(true)
+          expect(await campaign.calledEveryone()).to.be(true)
         });
       });
     });

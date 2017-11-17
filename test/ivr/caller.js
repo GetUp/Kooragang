@@ -13,6 +13,7 @@ app.use(ivrCaller);
 const request = require('supertest')(app);
 
 const {
+  QueuedCall,
   Call,
   Callee,
   Caller,
@@ -98,6 +99,7 @@ const associatedTargetedCallee = Object.assign({}, associatedCallee, {target_num
 const associatedCaller = Object.assign({}, caller)
 
 beforeEach(async () => {
+  await QueuedCall.query().delete();
   await Redirect.query().delete();
   await Event.query().delete();
   await Call.query().delete();

@@ -27,9 +27,9 @@ class Campaign extends Base {
       'isDown',
       'isInactive',
       'isComplete',
+      'areCallsInProgress',
       'isWithinDailyTimeOfOperation',
       'dailyTimeOfOperationInWords',
-      'areCallsInProgress',
       'calledEveryone',
       'recalculateCallersRemaining',
       'isRatioDialing',
@@ -48,8 +48,8 @@ class Campaign extends Base {
   isInactive() {
     return this.status === "inactive"
   }
-  isComplete() {
-    return this.isInactive() || this.calledEveryone()
+  async isComplete() {
+    return this.isInactive() || (await this.calledEveryone())
   }
   timezone() {
     if (this.hours_of_operation_timezone && moment.tz.zone(this.hours_of_operation_timezone)) {
@@ -106,15 +106,15 @@ class Campaign extends Base {
     const callers = await Caller.knexQuery().where({campaign_id: this.id}).whereIn('status', ['available', 'in-call']).count().first();
     return callers.count >= this.min_callers_for_ratio
   }
-  areCallsInProgress() {
-    return this.calls_in_progress > 0
+  async areCallsInProgress() {
+    return parseInt((await QueuedCall.query().where({campaign_id: this.id}).count('id as count'))[0].count, 10) > 0
   }
   async recalculateCallersRemaining() {
     const {count} = await Callee.query().count('id as count').whereIn('id', this.callableCallees()).first()
     await this.$query().patch({callers_remaining: parseInt(count, 10)})
   }
-  calledEveryone() {
-    return !this.areCallsInProgress() && this.callers_remaining === 0
+  async calledEveryone() {
+    return !(await this.areCallsInProgress()) && this.callers_remaining === 0
   }
   callableCallees(callsToMakeExcludingCurrentCalls=1) {
     return Callee.query()
@@ -184,6 +184,10 @@ class Campaign extends Base {
     }
     return callers.count >= max_channels - process.env.CHANNEL_LIMIT_PADDING
   }
+}
+
+class QueuedCall extends Base {
+  static get tableName() { return 'queued_calls' }
 }
 
 class Call extends Base {
@@ -310,6 +314,7 @@ class Redirect extends Base {
 }
 
 module.exports = {
+  QueuedCall,
   Call,
   Callee,
   Caller,

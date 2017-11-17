@@ -12,6 +12,7 @@ app.use(ivrCallee);
 const request = require('supertest')(app);
 
 const {
+  QueuedCall,
   Call,
   Callee,
   Caller,
@@ -58,6 +59,7 @@ const unassociatedCallee = {
 };
 
 beforeEach(async () => {
+  await QueuedCall.query().delete();
   await Redirect.query().delete();
   await Event.query().delete();
   await Call.query().delete();
@@ -72,7 +74,7 @@ describe('/answer', () => {
     const CallStatus = 'in-progress';
     const conference_member_id = '1111';
     const call_uuid = '2222';
-    let callee, caller;
+    let callee, caller, queued_call;
     let mockedApiCall;
     beforeEach(async () => Event.query().delete());
     beforeEach(async () => Call.query().delete());
@@ -81,11 +83,13 @@ describe('/answer', () => {
     beforeEach(async () => {
       callee = await Callee.query().where({phone_number: associatedCallee.phone_number}).first();
       caller = await Caller.query().insert(callerTemplate);
+      queued_call  = await QueuedCall.query().insert({callee_id: callee.id, campaign_id: callee.campaign_id});
       campaign = await campaign.$query().patch({calls_in_progress: 1}).returning('*').first()
     });
 
     context('with no callers available', () => {
       beforeEach(async () => Caller.query().delete());
+
       it('returns hangup but drops the call', () => {
         return request.post(`/answer?name=Bridger&callee_id=${callee.id}&campaign_id=${callee.campaign_id}`)
           .type('form').send({CallStatus, CallUUID: call_uuid})
@@ -110,6 +114,12 @@ describe('/answer', () => {
         campaign = await campaign.$query()
         expect(campaign.calls_in_progress).to.be(0)
       });
+
+      it('should remove the QueuedCall for the callee', async () => {
+        await request.post(`/answer?name=Bridger&callee_id=${callee.id}&campaign_id=${callee.campaign_id}`)
+          .type('form').send({CallStatus, CallUUID: call_uuid})
+        expect((await QueuedCall.query()).length).to.be(0)
+      });
     });
 
     context('with available caller', () => {
@@ -129,6 +139,12 @@ describe('/answer', () => {
             .expect(/hangup/i)
             .expect(/drop/);
         });
+      });
+
+      it('should remove the QueuedCall for the callee', async () => {
+        await request.post(`/answer?name=Bridger&callee_id=${callee.id}&campaign_id=${callee.campaign_id}`)
+          .type('form').send({CallStatus, CallUUID: call_uuid})
+        expect((await QueuedCall.query()).length).to.be(0)
       });
 
       context('with the speak api mocked', () => {
@@ -267,6 +283,13 @@ describe('/hangup', () => {
     beforeEach(async () => Callee.query().delete());
     beforeEach(async () => {
       callee = await Callee.query().insert(associatedCallee);
+      await QueuedCall.query().insert({callee_id: callee.id, campaign_id: callee.campaign_id});
+    });
+
+    it('should remove the QueuedCall for the callee', async () => {
+      await request.post(`/hangup?name=Bridger&callee_id=${callee.id}`)
+        .type('form').send({CallStatus, CallUUID, Duration: '10'})
+      expect((await QueuedCall.query()).length).to.be(0)
     });
 
     it('should record the call was hungup with the status and duration', async () => {

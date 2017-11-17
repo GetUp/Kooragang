@@ -7,6 +7,7 @@ const removeDiacritics = require('diacritics').remove
 const { sipFormatNumber } = require('../utils')
 
 const {
+  QueuedCall,
   Call,
   Callee,
   Caller,
@@ -20,7 +21,8 @@ module.exports.dial = async (appUrl, campaign) => {
   const callers = await Caller.query().where({status: 'available', campaign_id: campaign.id});
   const incall = await Caller.query().where({status: 'in-call', campaign_id: campaign.id})
   const callsToMake = Math.floor(callers.length * campaign.ratio);
-  const callsToMakeExcludingCurrentCalls = callsToMake - campaign.calls_in_progress;
+  const queued_calls = parseInt((await QueuedCall.query().where({campaign_id: campaign.id}).count('id'))[0].count, 10)
+  const callsToMakeExcludingCurrentCalls = callsToMake - queued_calls;
   let callees = [];
   let trans
   if (callsToMakeExcludingCurrentCalls > 0) {
@@ -46,10 +48,10 @@ module.exports.dial = async (appUrl, campaign) => {
     await campaign.$query().increment('calls_in_progress', callees.length);
     await Promise.all(callees.map(callee => updateAndCall(campaign, callee, appUrl)))
     const callee_ids = _.map(callees, 'id')
-    const value = {ratio: campaign.ratio, incall: incall.length, callers: callers.length, callsToMake, callees: callees.length, callee_ids, callsToMakeExcludingCurrentCalls, calls_in_progress: campaign.calls_in_progress, updated_calls_in_progress, time: new Date() - timer}
+    const value = {ratio: campaign.ratio, incall: incall.length, callers: callers.length, callsToMake, callees: callees.length, callee_ids, callsToMakeExcludingCurrentCalls, calls_in_progress: campaign.calls_in_progress, updated_calls_in_progress, time: new Date() - timer, queued_calls}
     await Event.query().insert({campaign_id: campaign.id, name: 'calling', value});
   } else if (campaign.log_no_calls && callers.length) {
-    const value = {ratio: campaign.ratio, incall: incall.length, callers: callers.length, calls_in_progress: campaign.calls_in_progress, time: new Date() - timer}
+    const value = {ratio: campaign.ratio, incall: incall.length, callers: callers.length, calls_in_progress: campaign.calls_in_progress, time: new Date() - timer, queued_calls}
     await Event.query().insert({campaign_id: campaign.id, name: 'no-calling', value});
   }
 };
@@ -115,6 +117,7 @@ const updateAndCall = async (campaign, callee, appUrl) => {
   if (process.env.NODE_ENV === 'development') console.error('CALLING', params)
   try{
     const [status, response] = await plivo_api('make_call', params, {multiArgs: true});
+    await QueuedCall.query().insert({callee_id: callee.id, campaign_id: callee.campaign_id, response, status})
     await Event.query().insert({name: 'call_initiated', campaign_id: callee.campaign_id, value: {callee_id: callee.id, status, response}})
   }catch(e){
     await decrementCallsInProgress(campaign);

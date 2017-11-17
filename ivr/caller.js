@@ -72,7 +72,7 @@ app.post('/connect', async ({body, query}, res) => {
     return res.send(r.toXML());
   }
 
-  if (campaign.isComplete()) {
+  if (await campaign.isComplete()) {
     r.addWait({length: 2});
     r.addSpeakAU(`Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool.`);
     r.addWait({length: 1});
@@ -191,7 +191,7 @@ app.post('/connect_sms', async ({body, query}, res) => {
     return res.send(r.toXML())
   }
 
-  if (campaign.isComplete()) {
+  if (await campaign.isComplete()) {
     let content = `Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool. `
     content += `The ${campaign.name} campaign has been completed! Please contact the campaign coordinator for further instructions. Thank you and have a great day!`
     r.addMessage(`${content}`, {
@@ -310,7 +310,7 @@ app.post('/ready', async ({body, query}, res) => {
   } else {
     caller_id = query.caller_id;
   }
-  if (campaign.isComplete()) {
+  if (await campaign.isComplete()) {
     r.addSpeakAU('The campaign has been completed!');
     r.addRedirect(res.locals.appUrl('disconnect?completed=1'));
     return res.send(r.toXML());
@@ -571,7 +571,7 @@ app.post('/survey_result', async ({query, body}, res) => {
 app.post('/call_again', async ({query}, res) => {
   const r = plivo.Response();
   const campaign = await Campaign.query().where({id: query.campaign_id}).first();
-  if (campaign.calls_in_progress === 0) {
+  if (!(await campaign.areCallsInProgress())) {
     if (!campaign.isWithinDailyTimeOfOperation()) {
       r.addWait({length: 1});
       r.addSpeakAU(`The ${campaign.name} calling campaign has finished for the day. ${campaign.dailyTimeOfOperationInWords()} Thank you and have a great day!`);
