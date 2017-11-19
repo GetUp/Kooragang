@@ -6,38 +6,30 @@ const env = process.env.NODE_ENV || 'development'
 const promisify = require('es6-promisify')
 const config = require('./knexfile_read_only')
 const pg = require ('pg')
-const alert_window = process.env.ALERT_IF_WAIT_MORE_THAN || 180
+const delay_interval = '20 minutes'
 const IncomingWebhook = require('@slack/client').IncomingWebhook
 const webhook = new IncomingWebhook(process.env.ALERT_IF_WAIT_MORE_THAN_URL)
 const webhookp = promisify(webhook.send.bind(webhook))
 
-const query = `select ca.id, ca.phone_number, cam.name as campaign, cam.ratio, cam.calls_in_progress, (now() - ca.updated_at)::interval::text as time_waiting
-      from callers ca
-      inner join campaigns cam on cam.id = ca.campaign_id
-      where ca.status = 'available'
-      and now() - ca.updated_at > '${alert_window} seconds'::interval
-      and not exists (
-        select id from events e where e.campaign_id = cam.id and name in ('answered', 'filtered') and created_at > now() - '3 minutes'::interval
-      )
-      order by 5 desc`
+const query = `select qc.*, ca.phone_number, cp.name as name from queued_calls qc
+inner join callees ca on ca.id = qc.callee_id
+inner join campaigns cp on cp.id = ca.campaign_id
+where qc.created_at < now() - '${delay_interval}'::interval`
 let time_since_last_alert
 
 const work = async () => {
   const db = await pg.connect(config[env].connection)
   while (true) {
-    console.error('checking')
-    const callers = (await db.query(query)).rows
+    const queued_calls = (await db.query(query)).rows
     const now = new Date()
-    if (callers.length && (!time_since_last_alert || now - time_since_last_alert > 300000)) {
+    if (queued_calls.length && (!time_since_last_alert || now - time_since_last_alert > 300000)) {
       time_since_last_alert = now
-      let text = `*${callers.length} callers waiting more than ${alert_window} seconds:*\n`
-      text += callers.map(c => {
-        const waiting = c.time_waiting.replace(/\..*/, '')
-        return `  ID: ${c.id} - ${waiting}s (<tel:${c.phone_number}>) [_${c.campaign}_ with ratio ${c.ratio} & calls_in_progress ${c.calls_in_progress}]`
+      let text = `*Queued calls delayed more than 20 minutes:*\n\n`
+      text += queued_calls.map(c => {
+        return `  ID: ${c.id} - ${c.created_at} with ${c.status} - ${JSON.stringify(c.response)} with callee ${c.callee_id} (${c.phone_number}) on ${c.name}`
       }).join("\n")
       text += `\nSQL:\n\`\`\`\n${query}\n\`\`\`\n`
       text += '[Next alert in 5 minutes]'
-      console.error(text)
       await webhookp({text})
     }
     await sleep(period);
