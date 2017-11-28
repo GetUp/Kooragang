@@ -73,8 +73,6 @@ app.post('/connect', async ({body, query}, res) => {
 
   if ((await campaign.isComplete()) && campaign.next_campaign_id) {
     const next_campaign = await Campaign.query().where({id: campaign.next_campaign_id}).first()
-        console.log('^^^^^^^^^^^')
-        console.log((await next_campaign.isOperational()))
     if (next_campaign && (await next_campaign.isOperational())) {
       r.addWait({length: 2})
       r.addSpeakAU(`Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool.`)
