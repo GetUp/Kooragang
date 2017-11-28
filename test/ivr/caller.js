@@ -225,7 +225,7 @@ describe('/connect', () => {
   context('with a inactive campaign with a next campaign', () => {
     beforeEach(async () => { await Campaign.query().delete() });
     beforeEach(async () => campaign = await Campaign.query().insert(inactiveNextCampaign));
-    beforeEach(async () => await Campaign.query().insert(nextCampaign));
+    beforeEach(async () => next_campaign = await Campaign.query().insert(nextCampaign));
     const nextAssociatedCallee = Object.assign({}, associatedCallee, {campaign_id: 2})
     beforeEach(async () => { await Callee.query().insert(nextAssociatedCallee) });
     const payload = { From: caller.phone_number };
@@ -233,7 +233,8 @@ describe('/connect', () => {
       return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
         .type('form')
         .send(payload)
-        .expect(/please stay on the line/);
+        .expect(/please stay on the line/)
+        .expect(new RegExp(`connect.*campaign_id=${next_campaign.id}`));
     });
   });
 
@@ -1340,7 +1341,7 @@ describe('/call_again', () => {
   context('with a completed campaign with a next campaign', () => {
     beforeEach(async () => { await Campaign.query().delete() });
     beforeEach(async () => campaign = await Campaign.query().insert(inactiveNextCampaign));
-    beforeEach(async () => await Campaign.query().insert(nextCampaign));
+    beforeEach(async () => next_campaign = await Campaign.query().insert(nextCampaign));
     const nextAssociatedCallee = Object.assign({}, associatedCallee, {campaign_id: 2})
     beforeEach(async () => { await Callee.query().insert(nextAssociatedCallee) });
     const payload = { From: caller.phone_number };
@@ -1348,7 +1349,8 @@ describe('/call_again', () => {
       return request.post(`/call_again?campaign_id=${campaign.id}&call_id=1`)
         .type('form')
         .send(payload)
-        .expect(/please stay on the line/);
+        .expect(/please stay on the line/)
+        .expect(new RegExp(`connect.*campaign_id=${next_campaign.id}`));
     });
   });
 });
