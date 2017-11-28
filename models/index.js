@@ -36,6 +36,9 @@ class Campaign extends Base {
       'isWithinOptimalCallingTimes'
     ]
   }
+  isActive() {
+    return this.status === "active"
+  }
   isPausing() {
     return this.status === "pausing"
   }
@@ -50,6 +53,9 @@ class Campaign extends Base {
   }
   async isComplete() {
     return this.isInactive() || (await this.calledEveryone())
+  }
+  async isOperational(){
+    return this.isActive() && this.isWithinDailyTimeOfOperation() && !(await this.calledEveryone())
   }
   timezone() {
     if (this.hours_of_operation_timezone && moment.tz.zone(this.hours_of_operation_timezone)) {
