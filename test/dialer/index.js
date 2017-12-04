@@ -106,18 +106,6 @@ describe('.dial', () => {
           mockedApiCall.done();
         })
       })
-
-      context('with a SIP number', () => {
-        beforeEach(() => callee.$query().patch({phone_number: 'sip:234234234@sip.serverer:5080'}))
-        it('should use append the SIP headers', async () => {
-          const mockedApiCall = nock('https://api.plivo.com')
-            .post(/Call/, body => body.sip_headers === process.env.SIP_HEADERS)
-            .query(true)
-            .reply(200);
-          await dialer.dial(testUrl, campaign);
-          mockedApiCall.done();
-        })
-      })
     });
 
     context('with outbound dialing via an external SIP provider', () => {
@@ -129,18 +117,6 @@ describe('.dial', () => {
         it('will apply SIP formatting', async () => {
           const mockedApiCall = nock('https://api.plivo.com')
             .post(/Call/, body => body.to === 'sip:61400000123@sip.example.com')
-            .query(true)
-            .reply(200);
-          await dialer.dial(testUrl, campaign);
-          mockedApiCall.done();
-        })
-      })
-
-      context('with a SIP number', () => {
-        beforeEach(() => callee.$query().patch({phone_number: 'sip:234234234@sip.serverer:5080'}))
-        it('will not change the number', async () => {
-          const mockedApiCall = nock('https://api.plivo.com')
-            .post(/Call/, body => body.to === 'sip:234234234@sip.serverer:5080')
             .query(true)
             .reply(200);
           await dialer.dial(testUrl, campaign);

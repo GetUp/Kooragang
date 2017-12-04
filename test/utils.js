@@ -1,6 +1,6 @@
 const expect = require('expect.js')
 const {
-  extractDialInNumber
+  extractDialInNumber, sipFormatNumber
 } = require('../utils')
 
 describe('extractDialInNumber', () => {
@@ -18,6 +18,14 @@ describe('extractDialInNumber', () => {
     it('extracts the number', (done) => {
       expect(extractDialInNumber(payload)).to.eql('61413877188')
       done()
+    })
+  })
+})
+
+describe('sipFormatNumber', () => {
+  context('with a number with non-digit characters', () => {
+    it('should strip them out', () => {
+      expect(sipFormatNumber('+614 53453 3453')).to.eql('614534533453')
     })
   })
 })

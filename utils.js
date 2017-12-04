@@ -19,11 +19,14 @@ module.exports.extractCallerNumber = (query, body) => {
   }
 };
 
+const cleanNumber = number => number.replace(/[^\d]/g, '')
+
 module.exports.sipFormatNumber = number => {
-  if(process.env.OUTBOUND_SIP_SERVER && !number.match(/^sip:/)) {
-    return `sip:${number}@${process.env.OUTBOUND_SIP_SERVER}`
+  const cleanedNumber = cleanNumber(number)
+  if(process.env.OUTBOUND_SIP_SERVER && !cleanedNumber.match(/^sip:/)) {
+    return `sip:${cleanedNumber}@${process.env.OUTBOUND_SIP_SERVER}`
   }
-  return number
+  return cleanedNumber
 }
 
 module.exports.extractDialInNumber = body => {
