@@ -48,7 +48,6 @@ app.post('/connect', async ({body, query}, res) => {
     return res.send(r.toXML())
   }
 
-
   if (campaign.isPaused()){
     r.addWait({length: 2});
     r.addSpeakAU(`Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool.`);
@@ -70,6 +69,18 @@ app.post('/connect', async ({body, query}, res) => {
     r.addWait({length: 2});
     r.addSpeakAU('It appears you do not have caller ID enabled. Please enable it and call back. Don\'t worry, even when your caller ID is enabled the people you\'re talking to do not see your number. Thank you.');
     return res.send(r.toXML());
+  }
+
+  if ((await campaign.isComplete()) && campaign.next_campaign_id) {
+    const next_campaign = await Campaign.query().where({id: campaign.next_campaign_id}).first()
+    if (next_campaign && (await next_campaign.isOperational())) {
+      r.addWait({length: 2})
+      r.addSpeakAU(`Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool.`)
+      r.addWait({length: 1});
+      r.addSpeakAU(`The ${campaign.name}, campaign has been completed! But please stay on the line, we're transfering you to the, ${next_campaign.name}, campaign now.`)
+      r.addRedirect(res.locals.appUrl(`connect?campaign_id=${next_campaign.id}`));
+      return res.send(r.toXML());
+    }
   }
 
   if (await campaign.isComplete()) {
@@ -571,6 +582,17 @@ app.post('/survey_result', async ({query, body}, res) => {
 app.post('/call_again', async ({query}, res) => {
   const r = plivo.Response();
   const campaign = await Campaign.query().where({id: query.campaign_id}).first();
+
+  if ((await campaign.isComplete()) && campaign.next_campaign_id) {
+    const next_campaign = await Campaign.query().where({id: campaign.next_campaign_id}).first()
+    if (next_campaign && (await next_campaign.isOperational())) {
+      r.addWait({length: 1});
+      r.addSpeakAU(`The ${campaign.name}, campaign has been completed! But please stay on the line, we're transfering you to the, ${next_campaign.name}, campaign now.`)
+      r.addRedirect(res.locals.appUrl(`connect?campaign_id=${next_campaign.id}`));
+      return res.send(r.toXML());
+    }
+  }
+
   if (!(await campaign.areCallsInProgress())) {
     if (!campaign.isWithinDailyTimeOfOperation()) {
       r.addWait({length: 1});
