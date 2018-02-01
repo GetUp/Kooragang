@@ -1,8 +1,8 @@
 #!/bin/sh
 
-host="ec2-34-205-126-179.compute-1.amazonaws.com"
-database="d5vp9bs7fjegc2"
-user="ub926g4v0fta4f"
+host=""
+database=""
+user=""
 
 [ -z "$1" ] && echo "Usage: ./import_to_prod.sh /absolute/path/to/table_name.csv" && exit 1
 
