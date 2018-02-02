@@ -614,11 +614,12 @@ app.post('/call_again', async ({query}, res) => {
     }
   }
   const validDigits = ['1', '0'];
-  let message = 'Press 1 to continue calling, or 0 to end your session. ';
+  let message = ''
   if (query.call_id && campaign.use_reference_codes) {
     validDigits.push('7')
-    message += 'Press 7 to hear a reference code for this call.';
+    message += 'Press 7 to hear a reference code for this call. Otherwise ';
   }
+  message += 'Press 1 to continue calling, or 0 to end your session. ';
   if (query.call_id) {
     validDigits.push('8')
     message += 'Press, 8 to correct your entry, ';
