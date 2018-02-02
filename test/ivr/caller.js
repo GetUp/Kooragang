@@ -753,6 +753,24 @@ describe('/ready', () => {
     });
   });
 
+  context('with 7 pressed', () => {
+    let call, url, caller;
+    beforeEach(async () => {
+      call = await Call.query().insert({status: 'answered'});
+      url = `/ready?caller_id=4&campaign_id=${campaign.id}&call_id=${call.id}`
+    });
+    it('announce the reference code', async () => {
+      await request.post(url)
+        .type('form').send({Digits: '7'})
+        .expect(/reference code for this call is/);
+    });
+    it('should redirect to call again', async () => {
+      await request.post(url)
+        .type('form').send({Digits: '7'})
+        .expect(/call_again/)
+    });
+  });
+
   context('with 9 pressed', () => {
     let call, url, caller;
     beforeEach(async () => {
@@ -1329,13 +1347,26 @@ describe('/call_again', () => {
   context('with a call_id passed', async () => {
     beforeEach(async () => { await Campaign.query().delete() });
     beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign));
-     it ('should let the user press 8 to correct', () => {
+
+    it ('should let the user press 8 to correct', () => {
       return request.post(`/call_again?campaign_id=${campaign.id}&call_id=1`)
         .type('form').send()
         .expect(/8/)
         .expect(/call_id=1/)
         .expect(/Press, 8 to correct your entry/i);
     });
+
+    context('with a campaign with use_reference_codes enabled', async () => {
+      beforeEach(async() => await campaign.$query().patch({use_reference_codes: true}))
+
+      it ('should let the user press 7 to hear a reference code', () => {
+        return request.post(`/call_again?campaign_id=${campaign.id}&call_id=1`)
+          .type('form').send()
+          .expect(/7/)
+          .expect(/call_id=1/)
+          .expect(/press 7 to hear a reference code/i);
+      });
+    })
   });
 
   context('with a completed campaign with a next campaign', () => {
