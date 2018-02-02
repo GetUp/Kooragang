@@ -335,7 +335,7 @@ app.post('/ready', async ({body, query}, res) => {
   } else if (body.Digits === '7' && query.call_id) {
     const reference_code = query.call_id.toString().split('').join(' ')
     r.addSpeakAU(`The reference code for this call is ${reference_code}. I repeat ${reference_code}.`)
-    r.addRedirect(res.locals.appUrl(`call_again?caller_id=${caller_id}&campaign_id=${query.campaign_id}&call_id=${query.call_id}`));
+    r.addRedirect(res.locals.appUrl(`call_again?caller_id=${caller_id}&campaign_id=${query.campaign_id}&call_id=${query.call_id}&heard_reference_code=1`));
     return res.send(r.toXML());
   } else if (body.Digits === '9' && query.call_id) {
     await Event.query().insert({name: 'technical_issue_reported', campaign_id: campaign.id, caller_id, call_id: query.call_id, value: {query: query, body: body}})
@@ -617,7 +617,11 @@ app.post('/call_again', async ({query}, res) => {
   let message = ''
   if (query.call_id && campaign.use_reference_codes) {
     validDigits.push('7')
-    message += 'Press 7 to hear a reference code for this call. Otherwise ';
+    if (query.heard_reference_code) {
+      message += 'Press 7 to repeat the reference code for this call. Otherwise ';
+    } else {
+      message += 'Press 7 to hear a reference code for this call. Otherwise ';
+    }
   }
   message += 'Press 1 to continue calling, or 0 to end your session. ';
   if (query.call_id) {

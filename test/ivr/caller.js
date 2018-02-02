@@ -768,6 +768,7 @@ describe('/ready', () => {
       await request.post(url)
         .type('form').send({Digits: '7'})
         .expect(/call_again/)
+        .expect(/heard_reference_code/)
     });
   });
 
@@ -1365,6 +1366,14 @@ describe('/call_again', () => {
           .expect(/7/)
           .expect(/call_id=1/)
           .expect(/press 7 to hear a reference code/i);
+      });
+
+      it ('should use the work repeat if they reference code was listened to', () => {
+        return request.post(`/call_again?campaign_id=${campaign.id}&call_id=1&heard_reference_code=1`)
+          .type('form').send()
+          .expect(/7/)
+          .expect(/call_id=1/)
+          .expect(/press 7 to repeat the reference code/i);
       });
     })
   });
