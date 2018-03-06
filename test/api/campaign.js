@@ -11,7 +11,9 @@ const defaultCampaign = {
   redirect_number: '2222',
   max_call_attempts: 1,
   no_call_window: 120,
-  hours_of_operation: hours_of_operation_full
+  hours_of_operation: hours_of_operation_full,
+  biller: 'Environmental Justice',
+  owner: 'Sam Reg'
 }
 const secondaryCampaign = Object.assign({}, defaultCampaign, {name: 'test2'})
 process.env.KOORAGANG_API_HASH = 'xxxxxxxxxx'
@@ -57,6 +59,8 @@ describe('Campaign API Endpoints', ()=> {
         .expect(200)
       const newCampaign = await Campaign.query().first()
       expect(newCampaign).to.be.a(Campaign)
+      expect(newCampaign.biller).to.be('Environmental Justice')
+      expect(newCampaign.owner).to.be('Sam Reg')
       expect(newCampaign.name).to.be('test1')
     })
   })
