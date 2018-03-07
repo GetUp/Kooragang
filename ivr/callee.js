@@ -79,13 +79,22 @@ app.post('/hangup', async ({body, query}, res) => {
   const status = body.Machine === 'true' ? 'machine_detection' : body.CallStatus;
   await QueuedCall.query().where({callee_id: query.callee_id}).delete()
   if (call){
-    await Call.query().where({callee_call_uuid: body.CallUUID})
-      .patch({ended_at: new Date(), status, duration: body.Duration});
+    await Call.query().where({callee_call_uuid: body.CallUUID}).patch({
+      ended_at: new Date(),
+      status,
+      duration: body.Duration,
+      bill_duration: body.BillDuration,
+      total_cost: body.TotalCost
+    });
   }else{
     call = await Call.query().insert({
-      callee_call_uuid: body.CallUUID, callee_id: query.callee_id,
+      callee_call_uuid: body.CallUUID,
+      callee_id: query.callee_id,
       ended_at: new Date(),
-      status, duration: body.Duration
+      status,
+      duration: body.Duration,
+      bill_duration: body.BillDuration,
+      total_cost: body.TotalCost
     });
     let {campaign} = await Callee.query().eager('campaign').where({id: call.callee_id}).first();
     const calls_in_progress = campaign.calls_in_progress;

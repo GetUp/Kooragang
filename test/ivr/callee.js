@@ -292,24 +292,24 @@ describe('/hangup', () => {
       expect((await QueuedCall.query()).length).to.be(0)
     });
 
-    it('should record the call was hungup with the status and duration', async () => {
+    it('should record the call was hungup with the status, duration, bill duration and total cost of the call', async () => {
       return request.post(`/hangup?name=Bridger&callee_id=${callee.id}`)
-        .type('form').send({CallStatus, CallUUID, Duration: '10'})
+        .type('form').send({CallStatus, CallUUID, Duration: '10', BillDuration: '30', TotalCost: '0.01020'})
         .then(async () => {
           const call = await Call.query()
-            .where({status: CallStatus, callee_call_uuid: CallUUID, duration: 10})
+            .where({status: CallStatus, callee_call_uuid: CallUUID, duration: 10, bill_duration: 30, total_cost: 0.0102})
             .first();
           expect(call).to.be.an(Call);
         });
     });
 
     context('with answering machine detection', () => {
-      it('should record the call was hungup with the status and duration', async () => {
+      it('should record the call was hungup with the status, duration, bill duration and total cost of the call', async () => {
         return request.post(`/hangup?name=Bridger&callee_id=${callee.id}`)
-          .type('form').send({CallStatus, CallUUID, Duration: '10', Machine: 'true'})
+          .type('form').send({CallStatus, CallUUID, Duration: '10', Machine: 'true', BillDuration: '30', TotalCost: '0.01020'})
           .then(async () => {
             const call = await Call.query()
-              .where({status: 'machine_detection', callee_call_uuid: CallUUID, duration: 10})
+              .where({status: 'machine_detection', callee_call_uuid: CallUUID, duration: 10, bill_duration: 30, total_cost: 0.0102})
               .first();
             expect(call).to.be.an(Call);
           });
@@ -323,13 +323,13 @@ describe('/hangup', () => {
     beforeEach(async () => Call.query().delete());
     beforeEach(async () => Call.query().insert({callee_call_uuid: CallUUID, status: 'answered'}));
 
-    it('should record the call has ended with the status and duration', async () => {
+    it('should record the call has ended with the status, duration, bill duration and total cost of the call', async () => {
       return request.post(`/hangup?name=Bridger&callee_id=111`)
-        .type('form').send({CallStatus: 'completed', CallUUID, Duration: '10'})
+        .type('form').send({CallStatus: 'completed', CallUUID, Duration: '10', BillDuration: '30', TotalCost: '0.01020'})
         .expect(200)
         .then(async () => {
           const call = await Call.query()
-            .where({status: 'completed', callee_call_uuid: CallUUID, duration: 10})
+            .where({status: 'completed', callee_call_uuid: CallUUID, duration: 10, bill_duration: 30, total_cost: 0.0102})
             .first();
           expect(call).to.be.an(Call);
         });
