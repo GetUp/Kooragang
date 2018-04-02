@@ -1142,7 +1142,7 @@ describe('/survey', () => {
     it ('should return not mention that the call has ended', () => {
       const question = 'action';
       return request.post(`/survey?q=disposition&call_id=${call.id}&campaign_id=${campaign.id}&undo=1`)
-        .expect(/7,8"><Speak language="en-GB" voice="MAN">What was the Overall/)
+        .expect(/7,8"><Speak language="en-US" voice="MAN">What was the Overall/)
     });
   });
 

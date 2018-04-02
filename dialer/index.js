@@ -144,7 +144,7 @@ module.exports.notifyAgents = async (campaign) => {
         conference_id: `conference-${caller.id}`,
         member_id: caller.conference_member_id,
         text: 'Campaign ended. Press star to exit',
-        language: 'en-GB', voice: 'MAN'
+        language: 'en-US', voice: 'MAN'
       });
     }catch(e){}
   }
