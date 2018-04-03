@@ -44,7 +44,7 @@ app.post('/answer', async ({body, query}, res) => {
         conference_id: `conference-${caller.id}`,
         member_id: caller.conference_member_id,
         text: name,
-        language: 'en-GB', voice: 'MAN'
+        language: 'en-US', voice: 'MAN'
       }
       try{
         if (process.env.SPEAK_NAMES) await plivo_api('speak_conference_member', params);
