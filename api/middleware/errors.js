@@ -9,9 +9,11 @@ class BaseError extends Error {
 class BadRequestError extends BaseError {}
 class UnauthorizedError extends BaseError {}
 class NotFoundError extends BaseError {}
+class NoNumbersError extends BaseError {}
 
 module.exports = {
   BadRequestError,
   UnauthorizedError,
-  NotFoundError
+  NotFoundError,
+  NoNumbersError
 }

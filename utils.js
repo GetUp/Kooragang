@@ -11,7 +11,7 @@ module.exports.error_exit = error => {
 }
 
 module.exports.extractCallerNumber = (query, body) => {
-  if (query.callback === '1') {
+  if (query.callback === '1' || query.test === '1') {
     return query.number;
   } else {
     const sip = body.From.match(/sip:(\w+)@/);
