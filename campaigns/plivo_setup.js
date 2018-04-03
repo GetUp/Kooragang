@@ -11,11 +11,8 @@ const plivo_setup_campaigns = async () => {
 const setup = async (campaign) => {
   await campaign.$query().patch({plivo_setup_status: 'active'})
   if (!campaign.phone_number) {
-    console.log('###########')
     await setup_redirect(campaign)
-    console.log('###########')
     await setup_inbound(campaign)
-    console.log('###########')
   } else { 
     await campaign.$query().patch({plivo_setup_status: 'complete'})
   }
@@ -24,7 +21,7 @@ const setup = async (campaign) => {
 const setup_redirect = async (campaign) => {
   const base_url = process.env.BASE_URL || 'https://test'
   const payload = {
-    app_name: `robotargeter-${process.env.NODE_ENV || 'development'}-${campaign.id}-${campaign.name.replace(/\W/g, '_').toLowerCase()}-redirect`,
+    app_name: `kooragang-${process.env.NODE_ENV || 'development'}-${campaign.id}-${campaign.name.replace(/\W/g, '_').toLowerCase()}-redirect`,
     answer_url: `${base_url}/redirect?campaign_id=${campaign.id}`,
     fallback_answer_url: `${base_url}/log?event=redirect_fallback&campaign_id=${campaign.id}`,
     hangup_url: `${base_url}/log?event=redirect_hangup&campaign_id=${campaign.id}`
@@ -45,7 +42,7 @@ const setup_redirect = async (campaign) => {
 const setup_inbound = async (campaign) => {
   const base_url = process.env.BASE_URL || 'https://test'
   const payload = {
-    app_name: `robotargeter-${process.env.NODE_ENV || 'development'}-${campaign.id}-${campaign.name.replace(/\W/g, '_').toLowerCase()}`,
+    app_name: `kooragang-${process.env.NODE_ENV || 'development'}-${campaign.id}-${campaign.name.replace(/\W/g, '_').toLowerCase()}`,
     answer_url: `${base_url}/answer?campaign_id=${campaign.id}`,
     fallback_answer_url: `${base_url}/log?event=fallback&campaign_id=${campaign.id}`,
     hangup_url: `${base_url}/hangup?campaign_id=${campaign.id}`
