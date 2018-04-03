@@ -1,5 +1,6 @@
 const questions_json = require('./questions.example.json');
 const more_info_json = require('./more_info.example.json');
+const hours_of_operation_full = require('./hours_of_operation_full.example.json')
 exports.seed = function(knex, Promise) {
   return Promise.join(
     knex('calls').del(),
@@ -18,6 +19,7 @@ exports.seed = function(knex, Promise) {
         max_ratio: 1,
         questions: questions_json,
         more_info: more_info_json,
+        hours_of_operation: hours_of_operation_full,
         script_url: "https://docs.google.com/document/d/1_2uhubfXoW8zokuhKXdRAdz8_WMH7R0wAQM5YWZii-4/pub?embedded=true",
       }),
       knex('campaigns').insert({
@@ -29,6 +31,7 @@ exports.seed = function(knex, Promise) {
         max_ratio: 2,
         questions: questions_json,
         more_info: more_info_json,
+        hours_of_operation: hours_of_operation_full,
         script_url: "https://docs.google.com/document/d/1_2uhubfXoW8zokuhKXdRAdz8_WMH7R0wAQM5YWZii-4/pub?embedded=true",
         callers_remaining: 37,
       })
