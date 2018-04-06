@@ -2,6 +2,7 @@ const expect = require('expect.js');
 const nock = require('nock');
 const proxyquire = require('proxyquire');
 const moment = require('moment');
+const voice = require('../../ivr/voice');
 const ivrCallee = proxyquire('../../ivr/callee', {
   '../dialer': {
     dial: async (appUrl) => {}
@@ -151,7 +152,9 @@ describe('/answer', () => {
         beforeEach(() => {
           mockedApiCall = nock('https://api.plivo.com')
             .post(`/v1/Account/test/Conference/conference-${caller.id}/Member/1111/Speak/`, (body) => {
-               return body.text === 'Bridger';
+               return body.text === 'Bridger' &&
+                body.language === voice().language &&
+                body.voice === voice().voice;
             })
             .query(true)
             .reply(200);

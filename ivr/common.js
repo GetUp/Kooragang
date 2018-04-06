@@ -4,13 +4,14 @@ const app = require('express')();
 const plivo = require('plivo');
 const bodyParser = require('body-parser');
 const { plivo_signature } = require('../api/plivo')
+const voice = require('./voice')
 
 app.use(bodyParser.urlencoded({extended: true}));
 
 const response = Object.getPrototypeOf(plivo.Response());
 response.addSpeakAU = function(text) {
   text = text.replace(/[^\x00-\x7F]/g, "");//stripping non UTF8 chars
-  this.addSpeak(text, {language: 'en-GB', voice: 'MAN'});
+  this.addSpeak(text, voice())
 };
 
 app.use((req, res, next) => {

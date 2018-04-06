@@ -5,6 +5,7 @@ const objection = require('objection')
 const transaction = objection.transaction
 const removeDiacritics = require('diacritics').remove
 const { sipFormatNumber } = require('../utils')
+const voice = require('../ivr/voice')
 
 const {
   QueuedCall,
@@ -140,12 +141,11 @@ module.exports.notifyAgents = async (campaign) => {
   const availableCallers = await Caller.query().where({status: 'available', campaign_id: campaign.id});
   for (let caller of availableCallers) {
     try{
-      await plivo_api('speak_conference_member', {
+      await plivo_api('speak_conference_member', _.extend({
         conference_id: `conference-${caller.id}`,
         member_id: caller.conference_member_id,
-        text: 'Campaign ended. Press star to exit',
-        language: 'en-GB', voice: 'MAN'
-      });
+        text: 'Campaign ended. Press star to exit'
+      }, voice()));
     }catch(e){}
   }
 }

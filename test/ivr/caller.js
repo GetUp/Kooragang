@@ -122,6 +122,37 @@ describe('/connect', () => {
     });
   });
 
+  describe('the language of the robo voice', () => {
+    context('with no environment variable set', () => {
+      it('should default to en-GB man', () => {
+        return request.post('/connect')
+          .type('form')
+          .send({ From: caller.phone_number })
+          .expect(/en-GB/)
+          .expect(/voice="MAN"/)
+      })
+    })
+
+    context('with VOICE_LANG and VOICE_GENDER set', () => {
+      beforeEach(() => {
+        process.env.VOICE_LANG = 'en-US'
+        process.env.VOICE_GENDER = 'WOMAN'
+      })
+      afterEach(() => {
+        delete process.env.VOICE_LANG
+        delete process.env.VOICE_GENDER
+      })
+
+      it('should change the voice', () => {
+        return request.post('/connect')
+          .type('form')
+          .send({ From: caller.phone_number })
+          .expect(new RegExp(process.env.VOICE_LANG))
+          .expect(new RegExp(`voice="${process.env.VOICE_GENDER}"`))
+      })
+    })
+  })
+
   context('with a sip number', () => {
     beforeEach(async () => { await Callee.query().insert(associatedCallee) });
     beforeEach(async () => campaign.recalculateCallersRemaining() );

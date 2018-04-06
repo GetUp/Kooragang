@@ -1,6 +1,7 @@
 const app = require('express')()
 const plivo = require('plivo')
 const _ = require('lodash')
+const voice = require('./voice')
 const dialer = require('../dialer')
 const { plivo_api } = require('../api/plivo')
 const objection = require('objection')
@@ -40,12 +41,11 @@ app.post('/answer', async ({body, query}, res) => {
       callee_call_uuid: body.CallUUID
     });
     if (!_.isEmpty(name)) {
-      const params = {
+      const params = _.extend({
         conference_id: `conference-${caller.id}`,
         member_id: caller.conference_member_id,
         text: name,
-        language: 'en-GB', voice: 'MAN'
-      }
+      }, voice())
       try{
         if (process.env.SPEAK_NAMES) await plivo_api('speak_conference_member', params);
       }catch(e){
