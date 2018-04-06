@@ -671,7 +671,6 @@ describe('.calledEveryone with recalculateCallersRemaining called beforehand', (
         beforeEach(() => Call.query().insert({callee_id: callee.id, status: 'busy'}));
         it ('should NOT reset the last_called_at', async() => {
           await campaign.recalculateCallersRemaining()
-          await dialer.notifyAgents(campaign)
           expect(await campaign.calledEveryone()).to.be(true)
         });
       });
