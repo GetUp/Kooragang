@@ -11,8 +11,8 @@ const plivo_setup_campaigns = async () => {
 const setup = async (campaign) => {
   await campaign.$query().patch({plivo_setup_status: 'active'})
   if (!campaign.phone_number) {
-    await setup_redirect(campaign)
     await setup_inbound(campaign)
+    //await setup_redirect(campaign)
   } else { 
     await campaign.$query().patch({plivo_setup_status: 'complete'})
   }

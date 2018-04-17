@@ -208,7 +208,7 @@ class Campaign extends Base {
 
   async insert_clone(data) {
     let clone = await this.$clone().$toJson()
-    const strip_keys = _.concat(['id', 'created_at', 'updated_at', 'phone_number', 'redirect_numer', 'calls_in_progress'], campaign_virtual_attributes)
+    const strip_keys = _.concat(['id', 'created_at', 'updated_at', 'phone_number', 'redirect_number', 'calls_in_progress'], campaign_virtual_attributes)
     console.log('##########', strip_keys)
     strip_keys.forEach(key => delete clone[key])
     clone.name = await Campaign.nonExistantClonedName(clone.name, data ? data.name : null)
@@ -228,7 +228,7 @@ class Campaign extends Base {
     if (this.plivo_setup_payload_differ(payload)) {
       payload.plivo_setup_status = 'needed'
       payload.phone_number = null
-      payload.redirect_numer = null
+      payload.redirect_number = null
     }
     return await this.$query().patch(payload).returning('*').first()
   }

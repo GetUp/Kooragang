@@ -98,12 +98,12 @@ const recalculateRatio = async (campaign) => {
 
 const formattedName = (callee) => removeDiacritics(callee.first_name  || '') .replace(/[^a-zA-Z]/g,'-')
 
-module.exports.callerCallParams = (campaign, phone_number, appUrl, test=0) => {
+module.exports.callerCallParams = (campaign, phone_number, appUrl, assessment=0) => {
   return {
     to: phone_number,
     from: campaign.phone_number || '1111111111',
-    answer_url: `${appUrl}/connect?campaign_id=${campaign.id}&number=${phone_number}&test=${test}`,
-    hangup_url: `${appUrl}/call_ended?campaign_id=${campaign.id}&number=${phone_number}&test=${test}`,
+    answer_url: `${appUrl}/connect?campaign_id=${campaign.id}&number=${phone_number}&assessment=${assessment}`,
+    hangup_url: `${appUrl}/call_ended?campaign_id=${campaign.id}&number=${phone_number}&assessment=${assessment}`,
     ring_timeout: 30
   }
 }

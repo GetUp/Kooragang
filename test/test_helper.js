@@ -12,11 +12,13 @@ const {
   SurveyResult,
   Redirect,
   Team,
-  User
+  User,
+  Audience,
+  QueuedCall
 } = require('../models');
 
 module.exports.dropFixtures = async() => {
-  for (const model of [Event, SurveyResult, Call, Caller, User, Team, Redirect, Callee, Campaign]){
+  for (const model of [QueuedCall, Event, SurveyResult, Call, Caller, User, Team, Redirect, Callee, Audience, Campaign]){
     await model.query().delete();
   }
 }

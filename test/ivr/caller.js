@@ -12,6 +12,7 @@ const app = require('../../ivr/common');
 app.use(ivrCaller);
 const request = require('supertest')(app);
 
+const {dropFixtures} = require('../test_helper')
 const {
   QueuedCall,
   Call,
@@ -101,15 +102,9 @@ const associatedTargetedCallee = Object.assign({}, associatedCallee, {target_num
 const associatedCaller = Object.assign({}, caller)
 
 beforeEach(async () => {
-  await QueuedCall.query().delete();
-  await Redirect.query().delete();
-  await Event.query().delete();
-  await Call.query().delete();
-  await Callee.query().delete();
-  await Caller.query().delete();
-  await Campaign.query().delete();
+  await dropFixtures()
+  campaign = await Campaign.query().insert(activeCampaign)
 });
-beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign));
 
 describe('/connect', () => {
   context('with no campaign id specified', () => {
@@ -239,14 +234,28 @@ describe('/connect', () => {
   });
 
   context('with a inactive campaign', () => {
-    beforeEach(async () => { await Campaign.query().delete() });
-    beforeEach(async () => campaign = await Campaign.query().insert(inactiveCampaign));
-    const payload = { From: caller.phone_number };
-    it('plays the outside operational window briefing message', () => {
-      return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
-        .type('form')
-        .send(payload)
-        .expect(/has been completed/);
+    context('without an assessment session', () => {
+      beforeEach(async () => { await Campaign.query().delete() });
+      beforeEach(async () => campaign = await Campaign.query().insert(inactiveCampaign));
+      const payload = { From: caller.phone_number };
+      it('plays the outside operational window briefing message', () => {
+        return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
+          .type('form')
+          .send(payload)
+          .expect(/has been completed/);
+      });
+    });
+    context('with an assessment session', () => {
+      beforeEach(async () => { await Campaign.query().delete() });
+      beforeEach(async () => campaign = await Campaign.query().insert(inactiveCampaign));
+      const payload = { From: caller.phone_number };
+      it('should redirect to briefing', () => {
+        return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}&assessment=1`)
+          .type('form')
+          .send(payload)
+          .expect(/<Redirect/)
+          .expect(/briefing/);
+      });
     });
   });
 
@@ -514,6 +523,37 @@ describe('/connect', () => {
       });
     });
   });
+});
+
+describe('/briefing', () => {
+  context('with a briefing path', () => {
+    context('without an assessment session', () => {
+    let briefingPath
+    beforeEach(() => briefingPath = `/briefing?campaign_id=${campaign.id}&caller_number=${caller.phone_number}&start=1`)
+      const payload = { CallUUID: '1231', From: '1231' }
+      it('gives the option to assess the survey', async() => {
+        await request.post(briefingPath)
+          .type('form')
+          .send(payload)
+          .expect(/<GetDigits/)
+          .expect(/1,2,3,4,5,6,7,8/)
+      })
+    })
+
+    context('with an assessment session', () => {
+    let briefingPath
+    beforeEach(() => briefingPath = `/briefing?campaign_id=${campaign.id}&caller_number=${caller.phone_number}&start=1&assessment=1`)
+      const payload = { CallUUID: '1231', From: '1231' }
+      it('gives the option to assess the survey', async() => {
+        await request.post(briefingPath)
+          .type('form')
+          .send(payload)
+          .expect(/<GetDigits/)
+          .expect(/1,2,3,4,5,6,7,8,*/)
+          .expect(/As you are assessing the campaign setup/i)
+      })
+    })
+  })
 });
 
 describe('/ready', () => {
@@ -878,6 +918,14 @@ describe('/ready', () => {
     });
   });
 
+  context('with assessment key pressed', () => {
+    it('should redirect the user to the survey assessment path', async () => {
+      return request.post(`/ready?caller_number=${caller.phone_number}&start=1&campaign_id=${campaign.id}`)
+        .type('form').send({Digits: '*', CallUUID: '1333'})
+        .expect(/Ok, we\'ll take you to assess the survey now/i)
+        .expect(/survey_assessment\?q=disposition/)
+    });
+  });
 });
 
 describe('/transfer_to_target', () => {
@@ -1545,4 +1593,65 @@ describe('/connect_sms', () => {
       mockedApiCall.done()
     })
   })
+})
+
+describe('/survey_assessment', () => {
+  const conference_uuid = '222';
+  beforeEach(async () => {
+    await Call.query().delete();
+    await Campaign.query().delete();
+    await SurveyResult.query().delete();
+  });
+  beforeEach(async () => call = await Call.query().insert({callee_call_uuid: CallUUID, conference_uuid, status: 'answered'}));
+
+  context('after the first question', () => {
+    beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign));
+    it ('should return the question specified by the q param', () => {
+      const question = 'action';
+      return request.post(`/survey_assessment?q=${question}&call_id=${call.id}&campaign_id=${campaign.id}`)
+        .expect(new RegExp(`q=${question}`))
+        .expect(new RegExp(`${question}`, 'i'));
+    });
+  });
+});
+
+describe('/survey_result_assessment', () => {
+  const payload = { Digits: '2', To: '614000100'};
+  let call, caller;
+  beforeEach(async () => {
+    await dropFixtures()
+    const campaign = await Campaign.query().insert(defaultCampaign)
+    caller = await Caller.query().insert({phone_number: '1234', campaign_id: campaign.id})
+    const callee = await Callee.query().insert(associatedCallee)
+    call = await Call.query().insert({status: 'answered', updated_at: new Date(), callee_id: callee.id, caller_id: caller.id})
+  })
+
+  it('does not store the result', async () => {
+    await request.post(`/survey_result_assessment?q=disposition&campaign_id=1&call_id=${call.id}&caller_id=${caller.id}`)
+      .type('form').send(payload)
+      .expect(200)
+    const result = await SurveyResult.query()
+      .where({question: 'disposition', call_id: call.id}).first()
+    expect(result).to.not.exist
+  });
+
+  context('with a meaningful disposition', () => {
+    const payload = { Digits: '4', To: '614000100'};
+    it ('should announce the result & redirect to the next question assessment', () => {
+      return request.post(`/survey_result_assessment?q=disposition&campaign_id=1&call_id=${call.id}&caller_id=${caller.id}`)
+        .type('form').send(payload)
+        .expect(/meaningful/)
+        .expect(/survey_assessment\?q=/);
+    });
+  });
+
+  context('with a response to the last question', () => {
+    const payload = { Digits: '2', To: '614000100'};
+    it ('should redirect user back to briefing', () => {
+      return request.post(`/survey_result_assessment?q=action&campaign_id=1&call_id=${call.id}&caller_id=${caller.id}`)
+        .type('form').send(payload)
+        .expect(/will call member of parliament/)
+        .expect(/briefing\?campaign_id=\d+/);
+    });
+  });
 });
