@@ -1,12 +1,13 @@
 const expect = require('expect.js')
 const moment = require('../api/moment')
-const { Campaign } = require('../models')
+const {Campaign} = require('../models')
+const {dropFixtures} = require('./test_helper')
 const hours_of_operation_full_json = require('../seeds/hours_of_operation_full.example.json');
 const hours_of_operation_null_json = require('../seeds/hours_of_operation_null.example.json');
 
 describe('withinDailyTimeOfOperation', () => {
   beforeEach(async () => {
-    await Campaign.query().delete();
+    await dropFixtures()
   })
 
   let campaign
@@ -37,7 +38,7 @@ describe('withinDailyTimeOfOperation', () => {
 
 describe('dailyTimeOfOperationInWords', () => {
   beforeEach(async () => {
-    await Campaign.query().delete();
+    await dropFixtures()
   })
 
   context('with an on-the-hour time', () => {

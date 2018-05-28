@@ -12,6 +12,7 @@ const app = require('../../ivr/common');
 app.use(ivrCallee);
 const request = require('supertest')(app);
 
+const {dropFixtures} = require('../test_helper')
 const {
   QueuedCall,
   Call,
@@ -60,13 +61,7 @@ const unassociatedCallee = {
 };
 
 beforeEach(async () => {
-  await QueuedCall.query().delete();
-  await Redirect.query().delete();
-  await Event.query().delete();
-  await Call.query().delete();
-  await Callee.query().delete();
-  await Caller.query().delete();
-  await Campaign.query().delete();
+  await dropFixtures()
 });
 beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign));
 

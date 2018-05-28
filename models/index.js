@@ -6,6 +6,20 @@ const Model = objection.Model
 const _ = require('lodash')
 const Base = require('./base')
 
+const campaign_virtual_attributes = [
+  'isPaused',
+  'isDown',
+  'isInactive',
+  'isComplete',
+  'areCallsInProgress',
+  'isWithinDailyTimeOfOperation',
+  'dailyTimeOfOperationInWords',
+  'calledEveryone',
+  'recalculateCallersRemaining',
+  'isRatioDialing',
+  'isWithinOptimalCallingTimes'
+]
+
 class Campaign extends Base {
   static get tableName() { return 'campaigns' }
   static get relationMappings() {
@@ -22,19 +36,7 @@ class Campaign extends Base {
   }
 
   static get virtualAttributes() {
-    return [
-      'isPaused',
-      'isDown',
-      'isInactive',
-      'isComplete',
-      'areCallsInProgress',
-      'isWithinDailyTimeOfOperation',
-      'dailyTimeOfOperationInWords',
-      'calledEveryone',
-      'recalculateCallersRemaining',
-      'isRatioDialing',
-      'isWithinOptimalCallingTimes'
-    ]
+    return campaign_virtual_attributes
   }
   isActive() {
     return this.status === "active"
@@ -190,6 +192,46 @@ class Campaign extends Base {
     }
     return callers.count >= max_channels - process.env.CHANNEL_LIMIT_PADDING
   }
+
+  static async nameExistant(name) {
+    return !!(await this.query().where({name}).first())
+  }
+
+  static async nonExistantClonedName(original_name, new_name) {
+    const name = new_name ? new_name : original_name
+    if (!(await this.nameExistant(name))) return name
+    for (let i = 1; i < 999; i++) {
+      const appeneded_name = `${name} - (copy${i})`
+      if (!(await this.nameExistant(appeneded_name))) return appeneded_name
+    }
+  }
+
+  async insert_clone(data) {
+    let clone = await this.$clone().$toJson()
+    const strip_keys = _.concat(['id', 'created_at', 'updated_at', 'phone_number', 'redirect_number', 'calls_in_progress'], campaign_virtual_attributes)
+    console.log('##########', strip_keys)
+    strip_keys.forEach(key => delete clone[key])
+    clone.name = await Campaign.nonExistantClonedName(clone.name, data ? data.name : null)
+    clone.number_region = data && data.number_region ? data.number_region : clone.number_region
+    clone.target_number = data && data.target_number ? data.target_number : clone.target_number
+    clone.status = 'inactive'
+    clone.plivo_setup_status = 'needed'
+    return await Campaign.query().insert(clone).returning('*').first()
+  }
+
+  plivo_setup_payload_differ(payload) {
+    if (!payload.number_region) return false
+    return payload.number_region != this.number_region
+  }
+
+  async update_and_patch_jobs(payload) {
+    if (this.plivo_setup_payload_differ(payload)) {
+      payload.plivo_setup_status = 'needed'
+      payload.phone_number = null
+      payload.redirect_number = null
+    }
+    return await this.$query().patch(payload).returning('*').first()
+  }
 }
 
 class QueuedCall extends Base {
@@ -319,6 +361,10 @@ class Redirect extends Base {
   static get tableName() { return 'redirects' }
 }
 
+class Audience extends Base {
+  static get tableName() { return 'audiences' }
+}
+
 module.exports = {
   QueuedCall,
   Call,
@@ -330,5 +376,6 @@ module.exports = {
   Event,
   Team,
   User,
-  Redirect
+  Redirect,
+  Audience
 }
