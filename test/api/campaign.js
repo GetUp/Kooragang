@@ -3,7 +3,7 @@ const app = require('../../api/index')
 const request = require('supertest')(app)
 const { Campaign, Audience } = require('../../models')
 const nock = require('nock')
-const {dropFixtures} = require('../test_helper')
+const { dropFixtures, resetAutoIncrement } = require('../test_helper')
 const hours_of_operation_full = require('../../seeds/hours_of_operation_full.example.json')
 
 const defaultCampaign = {
@@ -38,6 +38,7 @@ describe('Campaign API Endpoints', ()=> {
   beforeEach(async () => {
     await dropFixtures()
     await Campaign.query().insert(defaultCampaign)
+    await resetAutoIncrement('campaigns')
   })
 
   describe('fetching campaigns', ()=> {

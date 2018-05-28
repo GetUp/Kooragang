@@ -209,7 +209,6 @@ class Campaign extends Base {
   async insert_clone(data) {
     let clone = await this.$clone().$toJson()
     const strip_keys = _.concat(['id', 'created_at', 'updated_at', 'phone_number', 'redirect_number', 'calls_in_progress'], campaign_virtual_attributes)
-    console.log('##########', strip_keys)
     strip_keys.forEach(key => delete clone[key])
     clone.name = await Campaign.nonExistantClonedName(clone.name, data ? data.name : null)
     clone.number_region = data && data.number_region ? data.number_region : clone.number_region
