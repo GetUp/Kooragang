@@ -119,8 +119,7 @@ const addAgent = async (count) => {
   console.log(`Adding ${count} agents; wait until all added before adding more`);
   const range = _.range(count)
   for (let _step of range) {
-    // NOTE: some didlogic numbers required that this is set to a realish number?? e.g. 61400000000??
-    const agent = 1 + agents++
+    const agent = 61400000001 + agents++
     const params = {
       to: selectTarget(),
       from : agent,
