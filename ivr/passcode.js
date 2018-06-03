@@ -9,14 +9,14 @@ app.post('/passcode', async ({query, body}, res) => {
 
   if (authenticatedCaller) {
     r.addWait({length: 1})
-    r.addSpeakAU('Thanks for that.')
+    r.addSpeakI18n('thanks')
     r.addWait({length: 1})
     r.addRedirect(res.locals.appUrl(`connect?campaign_id=${campaign.id}&authenticated=1`))
     return res.send(r.toXML())
   }
 
   r.addWait({length: 1})
-  r.addSpeakAU('You have entered the incorrect passcode. Please call back and try again.')
+  r.addSpeakI18n('incorrect_passcode')
   r.addWait({length: 1})
   r.addHangup()
   res.send(r.toXML())

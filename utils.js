@@ -1,4 +1,5 @@
 const _ = require('lodash');
+const i18n_module = require('i18n-nodejs')
 
 module.exports.sleep = (ms = 0) => {
   const timeout = process.env.NODE_ENV === "test" ? 0 : ms;
@@ -55,3 +56,12 @@ module.exports.isValidCallerNumber = (caller_number) => {
 };
 
 module.exports.modelsBoundReadOnly = _.partialRight(_.mapValues, m => m.bindReadOnly() )
+
+module.exports.languageBlock = (block, vars) => {
+  const config = {
+    'lang': process.env.LANGUAGE || 'en',
+    'langFile': './../../language/locale.json'
+  }
+  const i18n = new i18n_module(config.lang, config.langFile)
+  return i18n.__(block, vars)
+}

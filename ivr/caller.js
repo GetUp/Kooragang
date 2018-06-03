@@ -13,6 +13,7 @@ const {
   sipFormatNumber,
 } = require('../utils');
 const {Call, Callee, Caller, Campaign, SurveyResult, Event, User, Team} = require('../models');
+const { languageBlock } = require('../utils')
 
 app.post('/connect', async ({body, query}, res) => {
   if (body.CallStatus === 'completed') return res.sendStatus(200);
@@ -30,9 +31,9 @@ app.post('/connect', async ({body, query}, res) => {
 
   if (!campaign){
     r.addWait({length: 2});
-    r.addSpeakAU('An error has occurred. The number is not associated with a campaign');
+    r.addSpeakI18n('error_unassociated_number');
     r.addWait({length: 1});
-    r.addSpeakAU(`${process.env.ORG_NAME || ""} technical staff have been notified. Hanging up now.`);
+    r.addSpeakI18n('tech_staff_notified', {org_name: process.env.ORG_NAME || ''});
     return res.send(r.toXML());
   }
 
@@ -42,32 +43,32 @@ app.post('/connect', async ({body, query}, res) => {
 
   if (campaign.isDown()){
     r.addWait({length: 2})
-    r.addSpeakAU(`Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool.`)
+    r.addSpeakI18n('welcome', {org_name: process.env.ORG_NAME || ''});
     r.addWait({length: 1})
-    r.addSpeakAU('We apologise. The campaign is experiencing technical difficulties. We are working hard to try to fix it. Please try calling back later!')
+    r.addSpeakI18n('error_tech_issues')
     return res.send(r.toXML())
   }
 
   if (campaign.isPaused()){
     r.addWait({length: 2});
-    r.addSpeakAU(`Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool.`);
+    r.addSpeakI18n('welcome', {org_name: process.env.ORG_NAME || ''});
     r.addWait({length: 1});
-    r.addSpeakAU('The campaign is currently paused! Please contact the campaign coordinator for further instructions. Thank you and have a great day!');
+    r.addSpeakI18n('campaign_status_paused', {campaign_name: campaign.name});
     return res.send(r.toXML());
   }
 
   if (!campaign.isWithinDailyTimeOfOperation()) {
     r.addWait({length: 2});
-    r.addSpeakAU(`Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool.`);
+    r.addSpeakI18n('welcome', {org_name: process.env.ORG_NAME || ''});
     r.addWait({length: 1});
-    r.addSpeakAU(`The campaign is currently outside of it's hours of operation! ${campaign.dailyTimeOfOperationInWords()} Thank you and have a great day!`);
+    r.addSpeakI18n('campaign_outside_operating_hours', {campaign_name: campaign.name, campaign_daily_time_of_operation: campaign.dailyTimeOfOperationInWords()});
     return res.send(r.toXML());
   }
 
   const caller_number = extractCallerNumber(query, body);
   if (!isValidCallerNumber(caller_number)){
     r.addWait({length: 2});
-    r.addSpeakAU('It appears you do not have caller ID enabled. Please enable it and call back. Don\'t worry, even when your caller ID is enabled the people you\'re talking to do not see your number. Thank you.');
+    r.addSpeakI18n('error_caller_id')
     return res.send(r.toXML());
   }
 
@@ -75,9 +76,9 @@ app.post('/connect', async ({body, query}, res) => {
     const next_campaign = await Campaign.query().where({id: campaign.next_campaign_id}).first()
     if (next_campaign && (await next_campaign.isOperational())) {
       r.addWait({length: 2})
-      r.addSpeakAU(`Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool.`)
+      r.addSpeakI18n('welcome', {org_name: process.env.ORG_NAME || ''});
       r.addWait({length: 1});
-      r.addSpeakAU(`The ${campaign.name}, campaign has been completed! But please stay on the line, we're transfering you to the, ${next_campaign.name}, campaign now.`)
+      r.addSpeakI18n('campaign_status_completed_with_next', {campaign_name: campaign.name, next_campaign_name: next_campaign.name});
       r.addRedirect(res.locals.appUrl(`connect?campaign_id=${next_campaign.id}`));
       return res.send(r.toXML());
     }
@@ -85,9 +86,9 @@ app.post('/connect', async ({body, query}, res) => {
 
   if (await campaign.isComplete()) {
     r.addWait({length: 2});
-    r.addSpeakAU(`Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool.`);
+    r.addSpeakI18n('welcome', {org_name: process.env.ORG_NAME || ''});
     r.addWait({length: 1});
-    r.addSpeakAU('The campaign has been completed! Please contact the campaign coordinator for further instructions. Thank you and have a great day!');
+    r.addSpeakI18n('campaign_status_completed', {campaign_name: campaign.name});
     return res.send(r.toXML());
   }
 
@@ -97,15 +98,15 @@ app.post('/connect', async ({body, query}, res) => {
   const reached_dial_in_number_channel_limit = await campaign.reached_dial_in_number_channel_limit(dial_in_number, sip_header_present)
   if (body.Direction == 'inbound' && (campaign.revert_to_redundancy || reached_dial_in_number_channel_limit)) {
     r.addWait({length: 2})
-    r.addSpeakAU(`Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool.`)
+    r.addSpeakI18n('welcome', {org_name: process.env.ORG_NAME || ''});
     r.addWait({length: 1})
-    r.addSpeakAU('There are hundreds of people calling right now!')
+    r.addSpeakI18n('hundreds_calling');
     r.addWait({length: 1})
     if (process.env.DISABLE_REDUNDANCY) {
-      r.addSpeakAU('Unfortunately all our lines are full. Please try calling back later. Thanks for your patience.')
+      r.addSpeakI18n('lines_full');
       r.addHangup()
     }  else {
-      r.addSpeakAU('To handle this traffic we\'re going to have to call you back.')
+      r.addSpeakI18n('lines_full_calling_back');
       r.addRedirect(res.locals.appUrl(`ready?campaign_id=${campaign.id}&caller_number=${caller_number}&start=1&force_callback=1`))
     }
     await Event.query().insert({name: 'reached_channel_limit', campaign_id: campaign.id, value: {
@@ -124,7 +125,7 @@ app.post('/connect', async ({body, query}, res) => {
       retries: 10,
       numDigits: campaign.passcode.length
     });
-    passcodeAction.addSpeakAU('Please enter the campaign passcode on your keypad now.')
+    passcodeAction.addSpeakI18n('campaign_passcode_entry')
     r.addRedirect(res.locals.appUrl('passcode'));
     return res.send(r.toXML());
   }
@@ -143,14 +144,14 @@ app.post('/connect', async ({body, query}, res) => {
     })
     if (user && user.team_id) {
       const team = await Team.query().where({id: user.team_id}).first()
-      teamAction.addSpeakAU(`Press the one key to resume your membership to the ${team.name} calling team`)
+      teamAction.addSpeakI18n('campaign_team_resume_membership', {team_name: team.name});
       teamAction.addWait({length: 1})
-      teamAction.addSpeakAU('Press the two key if you\'re joining a new team.')
+      teamAction.addSpeakI18n('campaign_team_join_other');
     } else {
-      teamAction.addSpeakAU('Press the two key on your keypad if you\'re a member of a calling team.')
+      teamAction.addSpeakI18n('campaign_team_join')
     }
-    teamAction.addSpeakAU('Otherwise to continue without a team press the star key.')
-    r.addSpeakAU('No key pressed. Hanging up now')
+    teamAction.addSpeakI18n('campaign_team_no_join')
+    r.addSpeakI18n('error_no_key_pressed')
     return res.send(r.toXML())
   }
 
@@ -163,8 +164,7 @@ app.post('/connect_sms', async ({body, query}, res) => {
   const shortcode = _.lowerCase(_.trim(body.Text))
   const campaign = shortcode && await Campaign.query().where({shortcode: shortcode}).first()
   if (!campaign){
-    let content = 'Sorry we can\'t find the campaign you\'re after from the message you sent. '
-    content += `Check the message and try again later. `
+    content = languageBlock('error_sms_connect_message_not_found')
     r.addMessage(`${content}`, {
       src: body.To,
       dst: body.From
@@ -173,8 +173,8 @@ app.post('/connect_sms', async ({body, query}, res) => {
   }
 
   if (campaign.isPaused()){
-    let content = `Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool. `
-    content += `The ${campaign.name} campaign is currently paused! Please contact the campaign coordinator for further instructions. Thank you and have a great day!`
+    let content = languageBlock('error_sms_connect_message_not_found')
+    content += languageBlock('campaign_status_paused')
     r.addMessage(`${content}`, {
       src: body.To,
       dst: body.From
@@ -183,8 +183,8 @@ app.post('/connect_sms', async ({body, query}, res) => {
   }
 
   if (campaign.isDown()){
-    let content = `Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool. `
-    content += `We apologise. The ${campaign.name} campaign is experiencing technical difficulties. We are working hard to try to fix it. Please try calling back later!`
+    let content = languageBlock('welcome', {org_name: process.env.ORG_NAME || ''})
+    content += languageBlock('error_tech_issues')
     r.addMessage(`${content}`, {
       src: body.To,
       dst: body.From
@@ -193,8 +193,8 @@ app.post('/connect_sms', async ({body, query}, res) => {
   }
 
   if (!campaign.isWithinDailyTimeOfOperation()) {
-    let content = `Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool. `
-    content += `The ${campaign.name} campaign is currently outside of it's hours of operation! ${campaign.dailyTimeOfOperationInWords('sms')} Thank you and have a great day!`
+    let content = languageBlock('welcome', {org_name: process.env.ORG_NAME || ''})
+    content += languageBlock('campaign_outside_operating_hours', {campaign_name: campaign.name, campaign_daily_time_of_operation: campaign.dailyTimeOfOperationInWords()})
     r.addMessage(`${content}`, {
       src: body.To,
       dst: body.From
@@ -203,8 +203,8 @@ app.post('/connect_sms', async ({body, query}, res) => {
   }
 
   if (await campaign.isComplete()) {
-    let content = `Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool. `
-    content += `The ${campaign.name} campaign has been completed! Please contact the campaign coordinator for further instructions. Thank you and have a great day!`
+    let content = languageBlock('welcome', {org_name: process.env.ORG_NAME || ''})
+    content += languageBlock('campaign_status_completed', {campaign_name: campaign.name})
     r.addMessage(`${content}`, {
       src: body.To,
       dst: body.From
@@ -254,35 +254,36 @@ app.post('/briefing', async ({query}, res) => {
   briefing.addWait({length: 2});
   if (query.entry !== 'more_info') {
     if (query.callback === '1') {
-      briefing.addSpeakAU(`Hi! Welcome back.`);
+      briefing.addSpeakI18n('welcome_back');
     } else {
-      briefing.addSpeakAU(`Hi! Welcome to the ${process.env.ORG_NAME || ""} Dialer tool. Today you will be making calls for the ${campaign.name} campaign.`);
+      briefing.addSpeakI18n('welcome', {org_name: process.env.ORG_NAME || ''});
+      briefing.addSpeakI18n('calling_for', {campaign_name: campaign.name});
       briefing.addWait({length: 1});
-      briefing.addSpeakAU('If you cannot afford long phone calls and would like to be called back instead, please press the 2 key');
+      briefing.addSpeakI18n('recieve_callback');
     }
   }
   briefing.addWait({length: 1});
-  briefing.addSpeakAU('You should have a copy of the script and the disposition codes in front of you.');
+  briefing.addSpeakI18n('sheets');
   briefing.addWait({length: 1});
-  briefing.addSpeakAU('If not, please press the 3 key');
+  briefing.addSpeakI18n('recieve_sheets');
   briefing.addWait({length: 1});
 
   if (query.entry_key != "4") {
-    briefing.addSpeakAU('For info on the dialing tool you are using, please press the 4 key');
+    briefing.addSpeakI18n('tool_information');
     briefing.addWait({length: 1});
   }
 
   for (let key in campaign.more_info) {
     if (query.entry_key != key) {
       let info_item = campaign.more_info[key];
-      briefing.addSpeakAU('For info on '+ info_item.title +' please press the '+ key + 'key');
+      briefing.addSpeakI18n('more_information', {info_item_title: info_item.title, key});
       briefing.addWait({length: 1});
     }
   }
 
-  briefing.addSpeakAU('Otherwise, press 1 to get started!');
+  briefing.addSpeakI18n('get_started');
   briefing.addWait({length: 8});
-  briefing.addSpeakAU('This message will automatically replay until you select a number on your phone\'s key pad.');
+  briefing.addSpeakI18n('message_repeat');
   res.send(r.toXML());
 });
 
@@ -292,10 +293,11 @@ app.post('/ready', async ({body, query}, res) => {
   let caller_id, caller, caller_params;
   if (query.start) {
     if (body.Digits === '3') {
-      r.addMessage(`Please print or download the script and disposition codes from ${_.escape(campaign.script_url)}. When you are ready, call again!`, {
+      let content = languageBlock('script_message', {campaign_script_url: _.escape(campaign.script_url)})
+      r.addMessage(content, {
         src: process.env.NUMBER || '1111111111', dst: query.caller_number
       });
-      r.addSpeakAU('Sending an sms with instructions to your number. Thank you and speak soon!')
+      r.addSpeakI18n('sms_instruction');
       return res.send(r.toXML());
     }
 
@@ -322,7 +324,7 @@ app.post('/ready', async ({body, query}, res) => {
     caller_id = query.caller_id;
   }
   if (await campaign.isComplete()) {
-    r.addSpeakAU('The campaign has been completed!');
+    r.addSpeakI18n('campaign_status_completed_short');
     r.addRedirect(res.locals.appUrl('disconnect?completed=1'));
     return res.send(r.toXML());
   }
@@ -334,12 +336,12 @@ app.post('/ready', async ({body, query}, res) => {
     return res.send(r.toXML());
   } else if (body.Digits === '7' && query.call_id) {
     const reference_code = query.call_id.toString().split('').join(' ')
-    r.addSpeakAU(`The reference code for this call is ${reference_code}. I repeat ${reference_code}.`)
+    r.addSpeakI18n('call_reference_code');
     r.addRedirect(res.locals.appUrl(`call_again?caller_id=${caller_id}&campaign_id=${query.campaign_id}&call_id=${query.call_id}&heard_reference_code=1`));
     return res.send(r.toXML());
   } else if (body.Digits === '9' && query.call_id) {
     await Event.query().insert({name: 'technical_issue_reported', campaign_id: campaign.id, caller_id, call_id: query.call_id, value: {query: query, body: body}})
-    r.addSpeakAU('The technical issue has been reported. The team will investigate. Thank you!')
+    r.addSpeakI18n('tech_issue_reported');
     r.addRedirect(res.locals.appUrl(`call_again?caller_id=${caller_id}&campaign_id=${query.campaign_id}&tech_issue_reported=1&call_id=${query.call_id}`));
     return res.send(r.toXML());
   } else if (body.Digits === '0') {
@@ -347,16 +349,16 @@ app.post('/ready', async ({body, query}, res) => {
     return res.send(r.toXML());
   } else if (body.Digits === '2' || query.force_callback) {
     await Caller.query().where({id: caller_id}).patch({callback: true});
-    r.addSpeakAU('We will call you back immediately. Please hang up now!');
+    r.addSpeakI18n('immediate_callback');
     return res.send(r.toXML());
   } else if (body.Digits === '4') {
-    r.addSpeakAU("Welcome to the Get Up dialer tool! This system works by dialing a number of people and patching them through to you when they pick up. Until they pick up, you'll hear music playing. When the music stops, that's your queue to start talking. Then you can attempt to have a conversation with them. At the end of the conversation, you'll be prompted to enter numbers into your phone to indicate the outcome of the call. It's important to remember that you never have to hang up your phone to end a call. If you need to end a call, just press star.");
+    r.addSpeakI18n('dialer_tool_explainer', {org_name: process.env.ORG_NAME || ''});
     r.addRedirect(res.locals.appUrl(`briefing?campaign_id=${campaign.id}&caller_number=${query.caller_number}&entry=more_info&entry_key=4&authenticated=${query.authenticated}`));
     return res.send(r.toXML());
   }
 
   if(Object.keys(campaign.more_info).length > 0 && Object.keys(campaign.more_info).includes(body.Digits)) {
-    r.addSpeakAU(campaign.more_info[body.Digits].content);
+    r.addSpeakI18n('_transparent', {var: campaign.more_info[body.Digits].content})
     r.addRedirect(res.locals.appUrl(`briefing?campaign_id=${campaign.id}&caller_number=${query.caller_number}&entry=more_info&entry_key=${body.Digits}&authenticated=${query.authenticated}`));
     return res.send(r.toXML());
   }
@@ -381,44 +383,43 @@ app.post('/ready', async ({body, query}, res) => {
         timeout: 10,
         validDigits: [1, 2],
       });
-      resumeIVR.addSpeakAU('It appears your last call ended before you could record the overall outcome.')
-      resumeIVR.addSpeakAU('Press 1 to enter the overall outcome for your last call. Otherwise, press 2 to continue.')
+      resumeIVR.addSpeakI18n('last_call_ended_without_outcome')
       return res.send(r.toXML());
     }
   }
 
   if ((query.start || query.resumed) && campaign.hud) {
     const code = caller_id.toString().split('').join(' ');
-    r.addSpeakAU(`If you are using a computer to preview the callees details, your session code is ${code}. I repeat ${code}`)
+    r.addSpeakI18n('hud_code', {code})
     const sessionCodePause = r.addGetDigits({
       retries: 4,
       numDigits: 1,
       timeout: 30,
       validDigits: [1],
     })
-    sessionCodePause.addSpeakAU('Press 1 when you are ready to continue')
+    sessionCodePause.addSpeakI18n('resume_paused_session')
   }
 
   if (query.start || body.Digits === '1') {
-    r.addSpeakAU('You are now in the call queue.')
+    r.addSpeakI18n('within_call_queue')
     if (!campaign.isWithinOptimalCallingTimes()) {
       r.addWait({length: 1});
-      r.addSpeakAU('You may experience *longer* than normal wait times between calls as you\'re dialing during the *day*');
+      r.addSpeakI18n('long_wait_time_daytime');
       r.addWait({length: 1});
     } else if (!(await campaign.isRatioDialing())) {
       r.addWait({length: 1});
-      r.addSpeakAU('You may experience *longer* than normal wait times between calls as you\'re dialing with only a *few* other volunteers at the moment.');
+      r.addSpeakI18n('long_wait_time_caller_number');
       r.addWait({length: 1});
     }
   } else {
-    r.addSpeakAU('You have been placed back in the call queue.')
+    r.addSpeakI18n('back_in_call_queue')
   }
 
   let callbackUrl = `conference_event/caller?caller_id=${caller_id}&campaign_id=${query.campaign_id}`;
   if (query.start) {
-    r.addSpeakAU('We will connect you to a call shortly.')
+    r.addSpeakI18n('call_connect_shortly')
     r.addWait({length: 1});
-    r.addSpeakAU('Remember, don\'t hangup *your* phone. Press star to end a call. Or wait for the other person to hang up.');
+    r.addSpeakI18n('final_calling_instructions');
     callbackUrl += '&start=1';
   }
 
@@ -442,11 +443,11 @@ app.post('/resume_survey', async ({query, body}, res) => {
     const call = await Call.query().where({id: query.last_call_id}).first()
     const original_caller_id = call.caller_id
     await call.$query().patch({caller_id: query.caller_id})
-    r.addSpeakAU('You have decided to enter the outcome for your last call.')
+    r.addSpeakI18n('last_call_outcome')
     r.addRedirect(res.locals.appUrl(`survey?call_id=${call.id}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&q=disposition&undo=1`));
     await Event.query().insert({name: 'resume calling', campaign_id: query.campaign_id, caller_id: query.caller_id, call_id: call.id, value: {original_caller_id}})
   } else {
-    r.addSpeakAU('Continuing with calling.')
+    r.addSpeakI18n('continue_calling')
     r.addRedirect(res.locals.appUrl(`ready?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&resumed=1`));
   }
   res.send(r.toXML());
@@ -521,13 +522,13 @@ app.post('/survey', async ({query, body}, res) => {
     call = await Call.query().where({conference_uuid: (body.ConferenceUUID || "")}).first();
   }
   if (!call) {
-    r.addSpeakAU('You have left the call queue.')
+    r.addSpeakI18n('left_call_queue')
     await Event.query().insert({campaign_id: query.campaign_id, name: 'left queue without call', value: body, caller_id})
     r.addRedirect(res.locals.appUrl(`call_again?caller_id=${caller_id}&campaign_id=${query.campaign_id}`));
     return res.send(r.toXML());
   }
   if (call.status === 'machine_detection') {
-    r.addSpeakAU('Answering machine detected.')
+    r.addSpeakI18n('answering_machine_detected')
     r.addRedirect(res.locals.appUrl(`ready?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`));
     return res.send(r.toXML());
   }
@@ -540,9 +541,9 @@ app.post('/survey', async ({query, body}, res) => {
     validDigits: Object.keys(questionData.answers),
   });
   if (question === 'disposition' && !query.undo) {
-    surveyResponse.addSpeakAU('The call has ended.');
+    surveyResponse.addSpeakI18n('call_ended');
   }
-  surveyResponse.addSpeakAU(`${questionData.name}`);
+  surveyResponse.addSpeakI18n('_transparent', {var: questionData.name});
   res.send(r.toXML());
 });
 
@@ -554,7 +555,7 @@ app.post('/survey_result', async ({query, body}, res) => {
   const disposition = question.answers[body.Digits || query.digit].value;
   const next = question.answers[body.Digits || query.digit].next;
 
-  r.addSpeakAU(disposition);
+  r.addSpeakI18n('_transparent', {var: disposition});
 
   const type = question.type;
   const deliver = question.answers[body.Digits || query.digit].deliver;
@@ -592,7 +593,7 @@ app.post('/call_again', async ({query}, res) => {
     const next_campaign = await Campaign.query().where({id: campaign.next_campaign_id}).first()
     if (next_campaign && (await next_campaign.isOperational())) {
       r.addWait({length: 1});
-      r.addSpeakAU(`The ${campaign.name}, campaign has been completed! But please stay on the line, we're transfering you to the, ${next_campaign.name}, campaign now.`)
+      r.addSpeakI18n('campaign_status_completed_with_next', {campaign_name: campaign.name, next_campaign_name: next_campaign.name});
       r.addRedirect(res.locals.appUrl(`connect?campaign_id=${next_campaign.id}`));
       return res.send(r.toXML());
     }
@@ -601,15 +602,15 @@ app.post('/call_again', async ({query}, res) => {
   if (!(await campaign.areCallsInProgress())) {
     if (!campaign.isWithinDailyTimeOfOperation()) {
       r.addWait({length: 1});
-      r.addSpeakAU(`The ${campaign.name} calling campaign has finished for the day. ${campaign.dailyTimeOfOperationInWords()} Thank you and have a great day!`);
+      r.addSpeakI18n('campaign_outside_operating_hours_in_session', {campaign_name: campaign.name, campaign_daily_time_of_operation: campaign.dailyTimeOfOperationInWords()});
       return res.send(r.toXML());
     } else if (campaign.status === 'paused' || campaign.status === null) {
       r.addWait({length: 1});
-      r.addSpeakAU('The campaign is currently paused! Please contact the campaign coordinator for further instructions. Thank you and have a great day!');
+      r.addSpeakI18n('campaign_status_paused', {campaign_name: campaign.name});
       return res.send(r.toXML());
     } else if (campaign.status === 'inactive') {
       r.addWait({length: 1});
-      r.addSpeakAU('The campaign has been completed! Please contact the campaign coordinator for further instructions. Thank you and have a great day!');
+      r.addSpeakI18n('campaign_status_completed', {campaign_name: campaign.name});
       return res.send(r.toXML());
     }
   }
@@ -618,19 +619,19 @@ app.post('/call_again', async ({query}, res) => {
   if (query.call_id && campaign.use_reference_codes) {
     validDigits.push('7')
     if (query.heard_reference_code) {
-      message += 'Press 7 to repeat the reference code for this call. Otherwise ';
+      message += languageBlock('hear_reference_code_repeat');
     } else {
-      message += 'Press 7 to hear a reference code for this call. Otherwise ';
+      message += languageBlock('hear_reference_code');
     }
   }
-  message += 'Press 1 to continue calling, or 0 to end your session. ';
+  message += languageBlock('continue_or_end_session');
   if (query.call_id) {
     validDigits.push('8')
-    message += 'Press, 8 to correct your entry, ';
+    message += languageBlock('correct_entry');
   }
   if (!query.tech_issue_reported) {
     validDigits.push('9')
-    message += 'or 9 to report a technical issue. ';
+    message += languageBlock('report_tech_issue');
   }
 
   let readyUrl = `ready?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`
@@ -642,7 +643,7 @@ app.post('/call_again', async ({query}, res) => {
     numDigits: 1,
     validDigits
   });
-  callAgain.addSpeakAU(message);
+  callAgain.addSpeakLanguage(message);
   r.addRedirect(res.locals.appUrl('disconnect'));
   res.send(r.toXML());
 });
@@ -650,34 +651,34 @@ app.post('/call_again', async ({query}, res) => {
 app.post('/disconnect', (req, res) => {
   const r = plivo.Response();
 
-  r.addSpeakAU('Thank you very much for volunteering on this campaign.');
+  r.addSpeakI18n('thank_you_volunteer');
 
   const feedback = r.addGetDigits({
     action: res.locals.appUrl('feedback'),
     timeout: 5,
     retries: 2
   });
-  feedback.addSpeakAU('To give feedback about your calling session, press 1. Otherwise, you can hang up - thanks again for calling. We hope to see you again soon!');
+  feedback.addSpeakI18n('feedback_goodbye');
 
   res.send(r.toXML());
 });
 
 app.post('/feedback', (req, res) => {
   const r = plivo.Response();
-  r.addSpeakAU('Please leave a short 30 second message after the beep. If you\'d like a response, be sure to leave your name and number.');
+  r.addSpeakI18n('feedback_instructions');
   r.addRecord({
     action: res.locals.appUrl('log'),
     maxLength: 60,
     redirect: false
   });
-  r.addSpeakAU('Thanks again for calling. We hope to see you again soon!');
+  r.addSpeakI18n('gave_feedback_goodbye');
   res.send(r.toXML());
 });
 
 app.post('/fallback', async ({body, query}, res) => {
   await Event.query().insert({campaign_id: query.campaign_id, name: 'caller fallback', value: body})
   const r = plivo.Response()
-  r.addSpeakAU('Dreadfully sorry; an error has occurred. Please call back to continue.')
+  r.addSpeakI18n('error_fallback')
   res.send(r.toXML())
 });
 

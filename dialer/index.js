@@ -4,7 +4,7 @@ const _ = require('lodash');
 const objection = require('objection')
 const transaction = objection.transaction
 const removeDiacritics = require('diacritics').remove
-const { sipFormatNumber } = require('../utils')
+const { sipFormatNumber, languageBlock } = require('../utils')
 
 const {
   QueuedCall,
@@ -143,8 +143,9 @@ module.exports.notifyAgents = async (campaign) => {
       await plivo_api('speak_conference_member', {
         conference_id: `conference-${caller.id}`,
         member_id: caller.conference_member_id,
-        text: 'Campaign ended. Press star to exit',
-        language: 'en-GB', voice: 'MAN'
+        text: languageBlock('notify_agents_campaign_ended'),
+        language: process.env.LANGUAGE_VOICE || 'en-GB',
+        voice: process.env.LANGUAGE_VOICE_GENDER || 'MAN'
       });
     }catch(e){}
   }

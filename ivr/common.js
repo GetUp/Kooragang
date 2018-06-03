@@ -4,13 +4,19 @@ const app = require('express')();
 const plivo = require('plivo');
 const bodyParser = require('body-parser');
 const { plivo_signature } = require('../api/plivo')
-
+const { languageBlock } = require('../utils')
 app.use(bodyParser.urlencoded({extended: true}));
 
 const response = Object.getPrototypeOf(plivo.Response());
-response.addSpeakAU = function(text) {
+response.addSpeakLanguage = function(text) {
   text = text.replace(/[^\x00-\x7F]/g, "");//stripping non UTF8 chars
-  this.addSpeak(text, {language: 'en-GB', voice: 'MAN'});
+  this.addSpeak(text, {language: process.env.LANGUAGE_VOICE || 'en-GB', voice: process.env.LANGUAGE_VOICE_GENDER || 'MAN'});
+};
+
+response.addSpeakI18n = function(block, vars) {
+  text = languageBlock(block, vars)
+  text = text.replace(/[^\x00-\x7F]/g, "");//stripping non UTF8 chars
+  this.addSpeak(text, {language: process.env.LANGUAGE_VOICE || 'en-GB', voice: process.env.LANGUAGE_VOICE_GENDER || 'MAN'});
 };
 
 app.use((req, res, next) => {

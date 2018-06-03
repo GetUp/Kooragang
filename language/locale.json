@@ -1,0 +1,278 @@
+{
+    "_transparent": {
+        "en": "{{var}}",
+        "de": "{{var}}"
+    },
+    "error_unassociated_number": {
+        "en": "An error has occurred. The number is not associated with a campaign.",
+        "de": "Ein Fehler ist aufgetreten. Die Nummer ist nicht mit einer Kampagne verbunden."
+    },
+    "tech_staff_notified": {
+        "en": "{{org_name}} technical staff have been notified. Hanging up now.",
+        "de": "{{org_name}} "
+    },
+    "welcome": {
+        "en": "Hi! Welcome to the {{org_name}}} Dialer tool.",
+        "de": "Hallo! Willkommen zum {{org_name}} Dialer tool."
+    },
+    "error_tech_issues": {
+        "en": "We apologise. The campaign is experiencing technical difficulties. We are working hard to try to fix it. Please try calling back later!",
+        "de": "Es tut uns Leid. Die Kampagne hat vorübergehende technische probleme. Wir bemühen uns daran, sie zu beheben. Bitte versuchen Sie es später erneut anzurufen!"
+    },
+    "campaign_outside_operating_hours": {
+        "en": "The {{campaign_name}} campaign is currently outside of it's hours of operation! {{campaign_daily_time_of_operation}} Thank you and have a great day!",
+        "de": ""
+    },
+    "campaign_status_paused": {
+        "en": "The {{campaign_name}} campaign is currently paused! Please contact the campaign coordinator for further instructions. Thank you and have a great day!",
+        "de": ""
+    },
+    "error_caller_id": {
+        "en": "It appears you do not have caller ID enabled. Please enable it and call back. Don't worry, even when your caller ID is enabled the people you're talking to do not see your number. Thank you.",
+        "de": ""
+    },
+    "campaign_status_completed_with_next": {
+        "en": "The {{campaign_name}}, campaign has been completed! But please stay on the line, we're transfering you to the, {{next_campaign_name}, campaign now",
+        "de": ""
+    },
+    "campaign_status_completed": {
+        "en": "The {{campaign_name}}, campaign has been completed! Please contact the campaign coordinator for further instructions. Thank you and have a great day!",
+        "de": "Die {{campaign_name}}, Kampagne ist vorbei! Wenn Sie Fragen haben, wenden Sie sich an den Kampagnenkoordinator. Vielen Dank und einen schönen Tag!"
+    },
+    "hundreds_calling": {
+        "en": "There are hundreds of people calling right now!",
+        "de": ""
+    },
+    "lines_full": {
+        "en": "Unfortunately all our lines are full. Please try calling back later. Thanks for your patience",
+        "de": ""
+    },
+    "lines_full_calling_back": {
+        "en": "To handle this traffic we're going to have to call you back.",
+        "de": ""
+    },
+    "campaign_passcode_entry": {
+        "en": "Please enter the campaign passcode on your keypad now.",
+        "de": ""
+    },
+    "campaign_team_resume_membership": {
+        "en": "Press the one key to resume your membership to the {{team_name}} calling team",
+        "de": ""
+    },
+    "campaign_team_join_other": {
+        "en": "Press the two key if you're joining a new team.",
+        "de": ""
+    },
+    "campaign_team_join": {
+        "en": "Press the two key on your keypad if you're a member of a calling team.",
+        "de": ""
+    },
+    "campaign_team_no_join": {
+        "en": "Otherwise to continue without a team press the star key.",
+        "de": ""
+    },
+    "error_no_key_pressed": {
+        "en": "No key pressed. Hanging up now",
+        "de": ""
+    },
+    "error_sms_connect_message_not_found": {
+        "en": "Sorry we can't find the campaign you're after from the message you sent. Check the message and try again later.",
+        "de": ""
+    },
+    "welcome_back": {
+        "en": "Hi! Welcome back.",
+        "de": "Hallo! Willkommen zurück."
+    },
+    "calling_for": {
+        "en": "Today you will be making calls for the {{campaign_name}} campaign.",
+        "de": "Heute werden Sie Anrufe für die {{campaign_name}} Kampagne machen."
+    },
+    "recieve_callback": {
+        "en": "If you cannot afford long phone calls and would like to be called back instead, please press the 2 key",
+        "de": "Wenn Sie sich keine langen Telefonate leisten können und stattdessen zurückgerufen werden möchten, drücken Sie bitte die Taste 2"
+    },
+    "sheets": {
+        "en": "You should have a copy of the script and the disposition codes in front of you.",
+        "de": "Sie sollten eine Kopie des Skripts und der Antwort-Codes vor sich haben."
+    },
+    "recieve_sheets": {
+        "en": "If not, please press the 3 key",
+        "de": "Wenn nicht, drücken Sie bitte die Taste 3."
+    },
+    "tool_information": {
+        "en": "For info on the dialing tool you are using, please press the 4 key",
+        "de": "Um Informationen über dieses Wählwerkzeug zu erhalten, drücken Sie bitte die Taste 4"
+    },
+    "more_information": {
+        "en": "For info on {{info_item_title}} please press the {{key}} key",
+        "de": "Um Informationen über {{info_item_title}} zu erhalten, drücken Sie bitte die Taste {{key}}"
+    },
+    "get_started": {
+        "en": "Otherwise, press 1 to get started!",
+        "de": "Andernfalls drücken Sie die Taste 1, um loszulegen!"
+    },
+    "message_repeat": {
+        "en": "This message will automatically replay until you select a number on your phone's key pad.",
+        "de": ""
+    },
+    "script_message": {
+        "en": "Please print or download the script and disposition codes from {{script_url}. When you are ready, call again!",
+        "de": ""
+    },
+    "sms_instruction": {
+        "en": "Sending an sms with instructions to your number. Thank you and speak soon!",
+        "de": ""
+    },
+    "campaign_status_completed_short": {
+        "en": "The campaign has been completed.",
+        "de": "Die Kampagne wurde abgeschlossen."
+    },
+    "call_reference_code": {
+        "en": "The reference code for this call is {{reference_code}}. I repeat {{reference_code}}.",
+        "de": ""
+    },
+    "tech_issue_reported": {
+        "en": "The technical issue has been reported. The team will investigate. Thank you!",
+        "de": ""
+    },
+    "immediate_callback": {
+        "en": "We will call you back immediately. Please hang up now!",
+        "de": ""
+    },
+    "dialer_tool_explainer": {
+        "en": "Welcome to the {{org_name}} dialer tool! This system works by dialing a number of people and patching them through to you when they pick up. Until they pick up, you'll hear music playing. When the music stops, that's your queue to start talking. Then you can attempt to have a conversation with them. At the end of the conversation, you'll be prompted to enter numbers into your phone to indicate the outcome of the call. It's important to remember that you never have to hang up your phone to end a call. If you need to end a call, just press star.",
+        "de": ""
+    },
+    "last_call_ended_without_outcome": {
+        "en": "It appears your last call ended before you could record the overall outcome. Press 1 to enter the overall outcome for your last call. Otherwise, press 2 to continue.",
+        "de": ""
+    },
+    "hud_code": {
+        "en": "If you are using a computer to preview the callees details, your session code is {{code}}. I repeat {{code}}",
+        "de": ""
+    },
+    "resume_paused_session": {
+        "en": "Press 1 when you are ready to continue",
+        "de": "Wenn Sie bereit sind fortzufahren, drücken Sie bitte die Taste 1"
+    },
+    "within_call_queue": {
+        "en": "You are now in the call queue.",
+        "de": "Sie sind jetzt in der Anrufwarteschlange."
+    },
+    "long_wait_time_daytime": {
+        "en": "You may experience *longer* than normal wait times between calls as you're dialing during the *day*",
+        "de": ""
+    },
+    "long_wait_time_caller_number": {
+        "en": "You may experience *longer* than normal wait times between calls as you're dialing with only a *few* other volunteers at the moment.",
+        "de": ""
+    },
+    "back_in_call_queue": {
+        "en": "You have been placed back in the call queue.",
+        "de": "Sie sind jetzt wieder in der Anrufwarteschlange"
+    },
+    "call_connect_shortly": {
+        "en": "We will connect you to a call shortly.",
+        "de": "Wir werden Sie in Kürze mit einem Anruf verbinden."
+    },
+    "final_calling_instructions": {
+        "en": "Remember, don't hangup *your* phone. Press star to end a call. Or wait for the other person to hang up.",
+        "de": "Denken Sie daran, hängen Sie *Ihr* Telefon nicht auf. Drücken Sie Sternchen, um einen Anruf zu beenden. Oder warten Sie darauf, dass die andere Person auflegt."
+    },
+    "last_call_outcome": {
+        "en": "You have decided to enter the outcome for your last call.",
+        "de": ""
+    },
+    "continuing_calling": {
+        "en": "Continuing with calling.",
+        "de": ""
+    },
+    "left_call_queue": {
+        "en": "You have left the call queue.",
+        "de": ""
+    },
+    "answering_machine_detected": {
+        "en": "Answering machine detected.",
+        "de": ""
+    },
+    "call_ended": {
+        "en": "The call has ended.",
+        "de": "Der Anruf ist beendet."
+    },
+    "campaign_outside_operating_hours_in_session": {
+        "en": "The {{campaign_name}} calling campaign has finished for the day. {{campaign_daily_time_of_operation}} Thank you and have a great day!",
+        "de": ""
+    },
+    "hear_reference_code_repeat": {
+        "en": "Press 7 to repeat the reference code for this call. Otherwise ",
+        "de": ""
+    },
+    "hear_reference_code": {
+        "en": "Press 7 to hear a reference code for this call. Otherwise ",
+        "de": ""
+    },
+    "continue_or_end_session": {
+        "en": "Press 1 to continue calling, or 0 to end your session. ",
+        "de": "Drücken Sie 1, um den Anruf fortzusetzen, oder 0, um die Sitzung zu beenden. "
+    },
+    "correct_entry": {
+        "en": "Press, 8 to correct your entry, ",
+        "de": "Drücken Sie 8, um Ihre Eingabe zu korrigieren, "
+    },
+    "report_tech_issue": {
+        "en": "or 9 to report a technical issue. ",
+        "de": "oder 9 um ein technisches Problem zu melden. "
+    },
+    "thank_you_volunteer": {
+        "en": "Thank you very much for volunteering on this campaign.",
+        "de": "Vielen Dank für Ihre Teilnahme an dieser Kampagne."
+    },
+    "feedback_goodbye": {
+        "en": "To give feedback about your calling session, press 1. Otherwise, you can hang up - thanks again for calling. We hope to see you again soon!",
+        "de": "Um eine Rückmeldung zu Ihrer Sitzung zu geben, drücken Sie 1. Andernfalls können Sie auflegen - nochmals Danke für Ihren Anruf. Wir hoffen, Sie bald wieder zu sehen!"
+    },
+    "feedback_instructions": {
+        "en": "Please leave a short 30 second message after the beep. If you'd like a response, be sure to leave your name and number.",
+        "de": ""
+    },
+    "gave_feedback_goodbye": {
+        "en": "Thanks again for calling. We hope to see you again soon!",
+        "de": "Danke nochmal für den Anruf. Wir hoffen, Sie bald wieder zu sehen!"
+    },
+    "error_fallback": {
+        "en": "Dreadfully sorry; an error has occurred. Please call back to continue.",
+        "de": ""
+    },
+    "thanks": {
+        "en": "Thanks for that",
+        "de": ""
+    },
+    "incorrect_passcode": {
+        "en": "You have entered the incorrect passcode. Please call back and try again.",
+        "de": ""
+    },
+    "rejoined_team": {
+        "en": "Thanks for that, you've rejoined team {{team_name}}.",
+        "de": ""
+    },
+    "enter_passcode": {
+        "en": "Please enter in your teams passcode on your keypad now.",
+        "de": ""
+    },
+    "no_team": {
+        "en": "Thanks for that, you're calling without a team this time.",
+        "de": ""
+    },
+    "joined_team": {
+        "en": "Thanks for that, you've joined team {{team_name}}",
+        "de": ""
+    },
+    "incorrect_passcode": {
+        "en": "You have entered an incorrect team passcode. Please try again.",
+        "de": ""
+    },
+    "notify_agents_campaign_ended": {
+        "en": "Campaign ended. Press star to exit",
+        "de": "Der Kampagne ist beendet. Drücke Stern um zu beenden."
+    }
+}
