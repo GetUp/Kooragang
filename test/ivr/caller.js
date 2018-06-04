@@ -209,7 +209,6 @@ describe('/connect', () => {
     });
   });
 
-
   context('with a statusless campaign', () => {
     beforeEach(async () => { await Campaign.query().delete() });
     beforeEach(async () => campaign = await Campaign.query().insert(statuslessCampaign));
@@ -511,6 +510,56 @@ describe('/connect', () => {
           .send(payload)
           .expect(/<Redirect/)
           .expect(/briefing/);
+      });
+    });
+  });
+
+
+  context('with ', () => {
+    beforeEach(async () => { await Campaign.query().delete() });
+    beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign));
+    beforeEach(async () => { await Callee.query().insert(associatedCallee) });
+    const payload = { From: caller.phone_number };
+
+    context('with no language, voice language, nor voice gender set', () => {
+      it('say welcome in english in a man\'s voice', () => {
+      return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
+        .type('form')
+        .send(payload)
+        .expect(/Welcome/)
+        .expect(/en-GB/)
+        .expect(/MAN/);
+      });
+    });
+
+    context('with english language, voice language and female voice gender set', () => {
+      it('say welcome in english in a mans voice', () => {
+        process.env.LANGUAGE = 'en'
+        process.env.LANGUAGE_VOICE = 'en-GB'
+        process.env.LANGUAGE_VOICE_GENDER = 'WOMAN'
+        return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
+          .type('form')
+          .send(payload)
+          .expect(/Welcome/)
+          .expect(/en-GB/)
+          .expect(/WOMAN/);
+        delete process.env.LANGUAGE_VOICE_GENDER
+        delete process.env.LANGUAGE_VOICE
+        delete process.env.LANGUAGE
+      });
+    });
+
+    context('with german language, voice language gender set', () => {
+      it('say welcome in english in a mans voice', () => {
+        process.env.LANGUAGE = 'de'
+        process.env.LANGUAGE_VOICE = 'de-DE'
+        return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
+          .type('form')
+          .send(payload)
+          .expect(/Willkommen/)
+          .expect(/de-DE/);
+        delete process.env.LANGUAGE_VOICE
+        delete process.env.LANGUAGE
       });
     });
   });

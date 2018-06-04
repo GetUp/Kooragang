@@ -12,7 +12,7 @@
         "de": "{{org_name}} "
     },
     "welcome": {
-        "en": "Hi! Welcome to the {{org_name}}} Dialer tool.",
+        "en": "Hi! Welcome to the {{org_name}} Dialer tool.",
         "de": "Hallo! Willkommen zum {{org_name}} Dialer tool."
     },
     "error_tech_issues": {
@@ -116,7 +116,7 @@
         "de": ""
     },
     "script_message": {
-        "en": "Please print or download the script and disposition codes from {{script_url}. When you are ready, call again!",
+        "en": "Please print or download the script and disposition codes from {{campaign_script_url}}. When you are ready, call again!",
         "de": ""
     },
     "sms_instruction": {

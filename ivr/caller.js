@@ -174,7 +174,7 @@ app.post('/connect_sms', async ({body, query}, res) => {
 
   if (campaign.isPaused()){
     let content = languageBlock('error_sms_connect_message_not_found')
-    content += languageBlock('campaign_status_paused')
+    content += languageBlock('campaign_status_paused', {campaign_name: campaign.name})
     r.addMessage(`${content}`, {
       src: body.To,
       dst: body.From
@@ -336,7 +336,7 @@ app.post('/ready', async ({body, query}, res) => {
     return res.send(r.toXML());
   } else if (body.Digits === '7' && query.call_id) {
     const reference_code = query.call_id.toString().split('').join(' ')
-    r.addSpeakI18n('call_reference_code');
+    r.addSpeakI18n('call_reference_code', { reference_code });
     r.addRedirect(res.locals.appUrl(`call_again?caller_id=${caller_id}&campaign_id=${query.campaign_id}&call_id=${query.call_id}&heard_reference_code=1`));
     return res.send(r.toXML());
   } else if (body.Digits === '9' && query.call_id) {
