@@ -128,13 +128,13 @@ describe('/connect', () => {
       })
     })
 
-    context('with VOICE_LANG and VOICE_GENDER set', () => {
+    context('with VOICE_LANGUAGE and VOICE_GENDER set', () => {
       beforeEach(() => {
-        process.env.VOICE_LANG = 'en-US'
+        process.env.VOICE_LANGUAGE = 'en-US'
         process.env.VOICE_GENDER = 'WOMAN'
       })
       afterEach(() => {
-        delete process.env.VOICE_LANG
+        delete process.env.VOICE_LANGUAGE
         delete process.env.VOICE_GENDER
       })
 
@@ -142,7 +142,7 @@ describe('/connect', () => {
         return request.post('/connect')
           .type('form')
           .send({ From: caller.phone_number })
-          .expect(new RegExp(process.env.VOICE_LANG))
+          .expect(new RegExp(process.env.VOICE_LANGUAGE))
           .expect(new RegExp(`voice="${process.env.VOICE_GENDER}"`))
       })
     })
@@ -575,13 +575,13 @@ describe('/connect', () => {
     context('with german language, voice language gender set', () => {
       it('say welcome in english in a mans voice', () => {
         process.env.LANGUAGE = 'de'
-        process.env.LANGUAGE_VOICE = 'de-DE'
+        process.env.VOICE_LANGUAGE = 'de-DE'
         return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
           .type('form')
           .send(payload)
           .expect(/Willkommen/)
           .expect(/de-DE/);
-        delete process.env.LANGUAGE_VOICE
+        delete process.env.VOICE_LANGUAGE
         delete process.env.LANGUAGE
       });
     });
@@ -589,16 +589,16 @@ describe('/connect', () => {
     context('with english language, voice language and female voice gender set', () => {
       it('say welcome in english in a mans voice', () => {
         process.env.LANGUAGE = 'en'
-        process.env.LANGUAGE_VOICE = 'en-GB'
-        process.env.LANGUAGE_VOICE_GENDER = 'WOMAN'
+        process.env.VOICE_LANGUAGE = 'en-GB'
+        process.env.VOICE_GENDER = 'WOMAN'
         return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
           .type('form')
           .send(payload)
           .expect(/Welcome/)
           .expect(/en-GB/)
           .expect(/WOMAN/);
-        delete process.env.LANGUAGE_VOICE_GENDER
-        delete process.env.LANGUAGE_VOICE
+        delete process.env.VOICE_GENDER
+        delete process.env.VOICE_LANGUAGE
         delete process.env.LANGUAGE
       });
     });
@@ -606,16 +606,16 @@ describe('/connect', () => {
     context('with english language, voice language and female voice gender set', () => {
       it('say welcome in english in a mans voice', () => {
         process.env.LANGUAGE = 'en'
-        process.env.LANGUAGE_VOICE = 'en-GB'
-        process.env.LANGUAGE_VOICE_GENDER = 'MAN'
+        process.env.VOICE_LANGUAGE = 'en-GB'
+        process.env.VOICE_GENDER = 'MAN'
         return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
           .type('form')
           .send(payload)
           .expect(/Welcome/)
           .expect(/en-GB/)
           .expect(/MAN/);
-        delete process.env.LANGUAGE_VOICE_GENDER
-        delete process.env.LANGUAGE_VOICE
+        delete process.env.VOICE_GENDER
+        delete process.env.VOICE_LANGUAGE
         delete process.env.LANGUAGE
       });
     });

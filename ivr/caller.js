@@ -617,7 +617,7 @@ app.post('/survey_assessment', async ({query, body}, res) => {
     timeout: 10,
     validDigits: Object.keys(questionData.answers),
   })
-  surveyResponse.addSpeakI18n('_transparent', {var: questionData.name)
+  surveyResponse.addSpeakI18n('_transparent', {var: questionData.name})
   res.send(r.toXML())
 })
 
