@@ -2,6 +2,7 @@ const expect = require('expect.js');
 const nock = require('nock');
 const proxyquire = require('proxyquire');
 const moment = require('moment');
+const voice = require('../../ivr/voice');
 const ivrCallee = proxyquire('../../ivr/callee', {
   '../dialer': {
     dial: async (appUrl) => {}
@@ -11,6 +12,7 @@ const app = require('../../ivr/common');
 app.use(ivrCallee);
 const request = require('supertest')(app);
 
+const {dropFixtures} = require('../test_helper')
 const {
   QueuedCall,
   Call,
@@ -59,13 +61,7 @@ const unassociatedCallee = {
 };
 
 beforeEach(async () => {
-  await QueuedCall.query().delete();
-  await Redirect.query().delete();
-  await Event.query().delete();
-  await Call.query().delete();
-  await Callee.query().delete();
-  await Caller.query().delete();
-  await Campaign.query().delete();
+  await dropFixtures()
 });
 beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign));
 
@@ -151,7 +147,9 @@ describe('/answer', () => {
         beforeEach(() => {
           mockedApiCall = nock('https://api.plivo.com')
             .post(`/v1/Account/test/Conference/conference-${caller.id}/Member/1111/Speak/`, (body) => {
-               return body.text === 'Bridger';
+               return body.text === 'Bridger' &&
+                body.language === voice().language &&
+                body.voice === voice().voice;
             })
             .query(true)
             .reply(200);

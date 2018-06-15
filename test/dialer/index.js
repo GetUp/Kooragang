@@ -5,6 +5,7 @@ const moment = require('moment');
 const _ = require('lodash');
 const sinon = require('sinon');
 
+const {dropFixtures} = require('../test_helper')
 const { QueuedCall, Callee, Caller, Call, Campaign, Event } = require('../../models');
 
 const defaultCampaign = {
@@ -17,15 +18,6 @@ const defaultCampaign = {
   ratio_window: 600
 }
 
-const dropAll = async () => {
-  await QueuedCall.query().delete();
-  await Event.query().delete();
-  await Call.query().delete();
-  await Callee.query().delete();
-  await Caller.query().delete();
-  await Campaign.query().delete();
-}
-
 const insertMinNumberOfCallers = async (campaign) => {
   for (let i of Array(campaign.min_callers_for_ratio)) {
     await Caller.query().insert({campaign_id: campaign.id, status: 'in-call'})
@@ -35,8 +27,8 @@ const insertMinNumberOfCallers = async (campaign) => {
 describe('.dial', () => {
   let callee, campaign;
   const testUrl = 'http://test'
-  beforeEach(dropAll);
   beforeEach(async () => {
+    await dropFixtures()
     campaign = await Campaign.query().insert(defaultCampaign);
     callee = await Callee.query().insert({phone_number: '123456789', campaign_id: campaign.id});
   });
@@ -584,8 +576,8 @@ describe('.dial', () => {
 
 describe('.calledEveryone with recalculateCallersRemaining called beforehand', () => {
   let campaign;
-  beforeEach(dropAll);
   beforeEach(async () => {
+    await dropFixtures()
     campaign = await Campaign.query().insert({name: 'test'}).returning('*');
   });
 

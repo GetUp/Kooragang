@@ -107,6 +107,10 @@
         "en": "For info on {{info_item_title}} please press the {{key}} key",
         "de": "Um Informationen über {{info_item_title}} zu erhalten, drücken Sie bitte die Taste {{key}}"
     },
+    "campaign_assessment_intro": {
+        "en": "As you are assessing the campaign setup you can also press the star key to hear an example of the survey questions. Normally calling volunteers will not hear this option. Press the star key to assess the survey.",
+        "de": ""
+    },
     "get_started": {
         "en": "Otherwise, press 1 to get started!",
         "de": "Andernfalls drücken Sie die Taste 1, um loszulegen!"
@@ -141,6 +145,10 @@
     },
     "dialer_tool_explainer": {
         "en": "Welcome to the {{org_name}} dialer tool! This system works by dialing a number of people and patching them through to you when they pick up. Until they pick up, you'll hear music playing. When the music stops, that's your queue to start talking. Then you can attempt to have a conversation with them. At the end of the conversation, you'll be prompted to enter numbers into your phone to indicate the outcome of the call. It's important to remember that you never have to hang up your phone to end a call. If you need to end a call, just press star.",
+        "de": ""
+    },
+    "assessment_redirection": {
+        "en": "Ok, we'll take you to assess the survey now.",
         "de": ""
     },
     "last_call_ended_without_outcome": {
@@ -198,6 +206,10 @@
     "call_ended": {
         "en": "The call has ended.",
         "de": "Der Anruf ist beendet."
+    },
+    "end_assessment_survey": {
+        "en": "Ok. that is the end of the survey taking you back to the main menu.",
+        "de": ""
     },
     "campaign_outside_operating_hours_in_session": {
         "en": "The {{campaign_name}} calling campaign has finished for the day. {{campaign_daily_time_of_operation}} Thank you and have a great day!",

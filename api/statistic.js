@@ -25,7 +25,7 @@ app.get('/api/campaigns/:id/statistics', wrap(async (req, res, next) => {
       .count('callers.id as count')
       .whereRaw("created_at >= NOW() - INTERVAL '60 minutes'")
       .where({campaign_id: campaign.id})
-      .groupBy('status');
+      .groupBy('status')
     const status_counts = await Call.knexQuery().select('dropped')
       .innerJoin('callees', 'calls.callee_id', 'callees.id')
       .count('calls.id as count')
@@ -40,13 +40,14 @@ app.get('/api/campaigns/:id/statistics', wrap(async (req, res, next) => {
       .whereIn('name', ['caller_complete', 'answered'])
       .where({campaign_id: campaign.id})
       .whereRaw("created_at >= NOW() - INTERVAL '10 minutes'");
-    const callee_total = await campaign.callee_total();
-    const callee_remaining = await campaign.callableCallees(999999);
-    const callee_called = await Callee.knexQuery()
+    let callee_total = await campaign.callee_total()
+    callee_total = callee_total ? parseInt(callee_total[0].count, 10) : 0
+    const callee_remaining = await campaign.callableCallees(999999).length
+    let callee_called = await Callee.knexQuery()
       .count('callees.id as count')
       .where({campaign_id: campaign.id})
-      .whereNotNull('last_called_at');
-
+      .whereNotNull('last_called_at')
+    callee_called = parseInt(callee_called[0].count)
     const average_wait_time = wait_events.length ? Math.round(_.sumBy(wait_events, event => JSON.parse(event.value).seconds_waiting) / wait_events.length) : 0;
     const total_calls = _.sumBy(status_counts, ({count}) => parseInt(count, 10));
     const drop_status = _.find(status_counts, ({dropped}) => dropped);
@@ -56,10 +57,7 @@ app.get('/api/campaigns/:id/statistics', wrap(async (req, res, next) => {
       const record = _.find(caller_counts, (record) => record.status === status);
       return record ? parseInt(record.count, 10) : 0;
     }
-    const callee_total_count = callee_total ? parseInt(callee_total[0].count, 10) : 0;
-    const callee_remaining_count = callee_remaining.length;
-    const callee_called_count = parseInt(callee_called[0].count);
-    const calls_count = parseInt(callee_called[0].count);
+    
     const data = {
       timestamp: moment().format('HH:mm:ss'),
       average_wait_time,
@@ -71,11 +69,10 @@ app.get('/api/campaigns/:id/statistics', wrap(async (req, res, next) => {
       callers_complete: getCountForStatus('complete'),
       tech_issues_reported,
       validation_errors,
-      callee_total_count,
-      callee_remaining_count,
-      callee_called_count,
-      calls_count
-    };
+      callee_total,
+      callee_remaining,
+      callee_called
+    }
 
     const time_period_in_hours = 24;
     const calls_in_progress = await Event.raw(`

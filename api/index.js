@@ -1,7 +1,7 @@
 const app = require('express')()
 const cors = require('cors')
 const body_parser = require('body-parser')
-const { cors_options, headers, authentication, error_handler } = require('./middleware')
+const { cors_options, headers, authentication, log, error_handler } = require('./middleware')
 
 if (process.env.NODE_ENV !== 'development') {
   const compression = require('compression')
@@ -11,6 +11,7 @@ if (process.env.NODE_ENV !== 'development') {
 app.use(body_parser.json())
 app.use(cors(cors_options))
 app.use(headers)
+app.use(log)
 app.use(authentication)
 app.use(require('./campaign'))
 app.use(require('./team'))

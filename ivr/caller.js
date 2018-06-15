@@ -37,6 +37,7 @@ app.post('/connect', async ({body, query}, res) => {
     return res.send(r.toXML());
   }
 
+  const assessment = query.assessment ? query.assessment === "1" : false;
   const callback = query.callback ? query.callback === "1" : false;
   const authenticated = query.authenticated ? query.authenticated === "1" : false;
   const promptAuth = authenticationNeeded(callback, campaign.passcode, authenticated);
@@ -49,7 +50,7 @@ app.post('/connect', async ({body, query}, res) => {
     return res.send(r.toXML())
   }
 
-  if (campaign.isPaused()){
+  if (!assessment && campaign.isPaused()){
     r.addWait({length: 2});
     r.addSpeakI18n('welcome', {org_name: process.env.ORG_NAME || ''});
     r.addWait({length: 1});
@@ -57,7 +58,7 @@ app.post('/connect', async ({body, query}, res) => {
     return res.send(r.toXML());
   }
 
-  if (!campaign.isWithinDailyTimeOfOperation()) {
+  if (!assessment && !campaign.isWithinDailyTimeOfOperation()) {
     r.addWait({length: 2});
     r.addSpeakI18n('welcome', {org_name: process.env.ORG_NAME || ''});
     r.addWait({length: 1});
@@ -72,7 +73,7 @@ app.post('/connect', async ({body, query}, res) => {
     return res.send(r.toXML());
   }
 
-  if ((await campaign.isComplete()) && campaign.next_campaign_id) {
+  if (!assessment && (await campaign.isComplete()) && campaign.next_campaign_id) {
     const next_campaign = await Campaign.query().where({id: campaign.next_campaign_id}).first()
     if (next_campaign && (await next_campaign.isOperational())) {
       r.addWait({length: 2})
@@ -84,7 +85,7 @@ app.post('/connect', async ({body, query}, res) => {
     }
   }
 
-  if (await campaign.isComplete()) {
+  if (!assessment && await campaign.isComplete()) {
     r.addWait({length: 2});
     r.addSpeakI18n('welcome', {org_name: process.env.ORG_NAME || ''});
     r.addWait({length: 1});
@@ -136,7 +137,7 @@ app.post('/connect', async ({body, query}, res) => {
     let valid_team_digits = ['2', '*']
     if (user && user.team_id) { valid_team_digits.push('1') }
     const teamAction = r.addGetDigits({
-      action: res.locals.appUrl(`team?campaign_id=${query.campaign_id}&callback=${query.callback ? query.callback : 0}&authenticated=${query.authenticated ? '1' : '0'}`),
+      action: res.locals.appUrl(`team?campaign_id=${query.campaign_id}&callback=${query.callback ? query.callback : 0}&authenticated=${query.authenticated ? '1' : '0'}&assessment=${query.assessment ? '1' : '0'}`),
       timeout: 10,
       retries: 10,
       numDigits: 1,
@@ -155,7 +156,7 @@ app.post('/connect', async ({body, query}, res) => {
     return res.send(r.toXML())
   }
 
-  r.addRedirect(res.locals.appUrl(`briefing?campaign_id=${campaign.id}&caller_number=${caller_number}&start=1&callback=${query.callback ? query.callback : 0}&authenticated=${query.authenticated ? '1' : '0'}`));
+  r.addRedirect(res.locals.appUrl(`briefing?campaign_id=${campaign.id}&caller_number=${caller_number}&start=1&callback=${query.callback ? query.callback : 0}&authenticated=${query.authenticated ? '1' : '0'}&assessment=${query.assessment ? '1' : '0'}`));
   res.send(r.toXML())
 });
 
@@ -236,14 +237,18 @@ app.post('/briefing', async ({query}, res) => {
   const r = plivo.Response();
   const campaign = await Campaign.query().where({id: (query.campaign_id || "")}).first();
   let valid_briefing_digits = ['1', '2', '3', '4'];
+  const assessment = query.assessment ? query.assessment === "1" : false;
 
   if(Object.keys(campaign.more_info).length > 0) {
     let more_info_digits = Object.keys(campaign.more_info);
     valid_briefing_digits = valid_briefing_digits.concat(more_info_digits);
   }
+  if (assessment){
+    valid_briefing_digits = valid_briefing_digits.concat('*');
+  }
 
   const briefing = r.addGetDigits({
-    action: res.locals.appUrl(`ready?campaign_id=${campaign.id}&caller_number=${query.caller_number}&start=1&authenticated=${query.authenticated ? '1' : '0'}`),
+    action: res.locals.appUrl(`ready?campaign_id=${campaign.id}&caller_number=${query.caller_number}&start=1&authenticated=${query.authenticated ? '1' : '0'}&assessment=${query.assessment ? '1' : '0'}`),
     method: 'POST',
     timeout: 5,
     numDigits: 1,
@@ -281,6 +286,10 @@ app.post('/briefing', async ({query}, res) => {
     }
   }
 
+  if (assessment) {
+    briefing.addSpeakI18n('campaign_assessment_intro');
+  }
+
   briefing.addSpeakI18n('get_started');
   briefing.addWait({length: 8});
   briefing.addSpeakI18n('message_repeat');
@@ -290,7 +299,9 @@ app.post('/briefing', async ({query}, res) => {
 app.post('/ready', async ({body, query}, res) => {
   const r = plivo.Response();
   const campaign = await Campaign.query().where({id: query.campaign_id}).first();
-  let caller_id, caller, caller_params;
+  let caller_id, caller, caller_params
+  const assessment = query.assessment ? query.assessment === "1" : false
+
   if (query.start) {
     if (body.Digits === '3') {
       let content = languageBlock('script_message', {campaign_script_url: _.escape(campaign.script_url)})
@@ -323,7 +334,8 @@ app.post('/ready', async ({body, query}, res) => {
   } else {
     caller_id = query.caller_id;
   }
-  if (await campaign.isComplete()) {
+
+  if (!assessment && await campaign.isComplete()) {
     r.addSpeakI18n('campaign_status_completed_short');
     r.addRedirect(res.locals.appUrl('disconnect?completed=1'));
     return res.send(r.toXML());
@@ -354,6 +366,10 @@ app.post('/ready', async ({body, query}, res) => {
   } else if (body.Digits === '4') {
     r.addSpeakI18n('dialer_tool_explainer', {org_name: process.env.ORG_NAME || ''});
     r.addRedirect(res.locals.appUrl(`briefing?campaign_id=${campaign.id}&caller_number=${query.caller_number}&entry=more_info&entry_key=4&authenticated=${query.authenticated}`));
+    return res.send(r.toXML());
+  } else if (body.Digits === '*') {
+    r.addSpeakI18n('assessment_redirection');
+    r.addRedirect(res.locals.appUrl(`survey_assessment?q=disposition&caller_id=${caller_id}&campaign_id=${query.campaign_id}&assessment=${query.assessment ? '1' : '0'}`));
     return res.send(r.toXML());
   }
 
@@ -447,7 +463,7 @@ app.post('/resume_survey', async ({query, body}, res) => {
     r.addRedirect(res.locals.appUrl(`survey?call_id=${call.id}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&q=disposition&undo=1`));
     await Event.query().insert({name: 'resume calling', campaign_id: query.campaign_id, caller_id: query.caller_id, call_id: call.id, value: {original_caller_id}})
   } else {
-    r.addSpeakI18n('continue_calling')
+    r.addSpeakI18n('continuing_calling')
     r.addRedirect(res.locals.appUrl(`ready?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&resumed=1`));
   }
   res.send(r.toXML());
@@ -584,6 +600,56 @@ app.post('/survey_result', async ({query, body}, res) => {
   }
   res.send(r.toXML());
 });
+
+app.post('/survey_assessment', async ({query, body}, res) => {
+  const r = plivo.Response()
+  const campaign = await Campaign.query().where({id: query.campaign_id}).first()
+  const questions = campaign.questions
+  const question = query.q
+  const caller_id = query.caller_id;
+  const questionData = questions[question]
+  const assessment = query.assessment ? query.assessment === "1" : false
+  const surveyResponse = r.addGetDigits({
+    action: res.locals.appUrl(`survey_result_assessment?q=${question}&caller_id=${caller_id}&campaign_id=${query.campaign_id}&assessment=1`),
+    redirect: true,
+    retries: 10,
+    numDigits: 1,
+    timeout: 10,
+    validDigits: Object.keys(questionData.answers),
+  })
+  surveyResponse.addSpeakI18n('_transparent', {var: questionData.name)
+  res.send(r.toXML())
+})
+
+app.post('/survey_result_assessment', async ({query, body}, res) => {
+  const r = plivo.Response()
+  const caller = await Caller.query().where({id: query.caller_id}).first()
+  const campaign = await Campaign.query().where({id: query.campaign_id}).first()
+  const questions = campaign.questions
+  const question = questions[query.q]
+  const disposition = question.answers[body.Digits || query.digit].value
+  const next = question.answers[body.Digits || query.digit].next
+
+  r.addSpeakI18n('_transparent', {var: disposition})
+
+  const type = question.type
+  const deliver = question.answers[body.Digits || query.digit].deliver
+  if (type === 'SMS' && deliver) {
+    const content = question.answers[body.Digits || query.digit].content
+    r.addMessage(`${content}`, {
+      src: campaign.sms_number || process.env.NUMBER || '1111111111',
+      dst: caller.phone_number
+    })
+  }
+
+  if (next) {
+    r.addRedirect(res.locals.appUrl(`survey_assessment?q=${next}&call_id=${query.call_id}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&assessment=1`))
+  } else {
+    r.addSpeakI18n('end_assessment_survey')
+    r.addRedirect(res.locals.appUrl(`briefing?campaign_id=${campaign.id}&caller_number=${caller.phone_number}&start=1&callback=0&authenticated=${query.authenticated ? '1' : '0'}&assessment=1`))
+  }
+  res.send(r.toXML())
+})
 
 app.post('/call_again', async ({query}, res) => {
   const r = plivo.Response();

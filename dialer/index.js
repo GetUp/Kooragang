@@ -5,6 +5,7 @@ const objection = require('objection')
 const transaction = objection.transaction
 const removeDiacritics = require('diacritics').remove
 const { sipFormatNumber, languageBlock } = require('../utils')
+const voice = require('../ivr/voice')
 
 const {
   QueuedCall,
@@ -98,8 +99,18 @@ const recalculateRatio = async (campaign) => {
 
 const formattedName = (callee) => removeDiacritics(callee.first_name  || '') .replace(/[^a-zA-Z]/g,'-')
 
-const updateAndCall = async (campaign, callee, appUrl) => {
-  const params = {
+module.exports.callerCallParams = (campaign, phone_number, appUrl, assessment=0) => {
+  return {
+    to: phone_number,
+    from: campaign.phone_number || '1111111111',
+    answer_url: `${appUrl}/connect?campaign_id=${campaign.id}&number=${phone_number}&assessment=${assessment}`,
+    hangup_url: `${appUrl}/call_ended?campaign_id=${campaign.id}&number=${phone_number}&assessment=${assessment}`,
+    ring_timeout: 30
+  }
+}
+
+const calleeCallParams = (campaign, callee, appUrl) => {
+  return {
     to: sipFormatNumber(callee.phone_number),
     from : campaign.outgoing_number || process.env.NUMBER || '1111111111',
     answer_url : `${appUrl}/answer?name=${formattedName(callee)}&callee_id=${callee.id}&campaign_id=${callee.campaign_id}`,
@@ -107,7 +118,11 @@ const updateAndCall = async (campaign, callee, appUrl) => {
     fallback_url : `${appUrl}/callee_fallback?callee_id=${callee.id}&campaign_id=${callee.campaign_id}`,
     time_limit: 30 * 60,
     ring_timeout: process.env.RING_TIMEOUT || 15
-  };
+  }
+}
+
+const updateAndCall = async (campaign, callee, appUrl) => {
+  const params = calleeCallParams(campaign, callee, appUrl)
   if (process.env.SIP_HEADERS && params.to.match(/^sip:/)) params.sip_headers = process.env.SIP_HEADERS
   if (campaign.detect_answering_machine) {
     params.machine_detection = 'true';
@@ -140,13 +155,11 @@ module.exports.notifyAgents = async (campaign) => {
   const availableCallers = await Caller.query().where({status: 'available', campaign_id: campaign.id});
   for (let caller of availableCallers) {
     try{
-      await plivo_api('speak_conference_member', {
+      await plivo_api('speak_conference_member', _.extend({
         conference_id: `conference-${caller.id}`,
         member_id: caller.conference_member_id,
-        text: languageBlock('notify_agents_campaign_ended'),
-        language: process.env.LANGUAGE_VOICE || 'en-GB',
-        voice: process.env.LANGUAGE_VOICE_GENDER || 'MAN'
-      });
+        text: languageBlock('notify_agents_campaign_ended')
+      }, voice()));
     }catch(e){}
   }
 }

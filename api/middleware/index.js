@@ -7,8 +7,24 @@ const {
 
 const wrap = fn => (...args) => fn(...args).catch(args[2])
 
-const log = async ({url, body, query, params, headers}, res, next) => {
+const log = async ({method, url, body, query, params, headers}, res, next) => {
   await Log.query().insert({url, body, query, params, headers})
+  if (process.env.NODE_ENV !== 'development') return next()
+
+  console.log('~~~ API REQUEST > ', {method, url, body, query, params})
+  let oldWrite = res.write
+      oldEnd = res.end,
+      chunks = []
+  res.write = function (chunk) {
+    chunks.push(chunk)
+    oldWrite.apply(res, arguments)
+  }
+  res.end = function (chunk) {
+    if (chunk) chunks.push(chunk)
+    var body = Buffer.concat(chunks).toString('utf8')
+    console.log('~~~ API RESPONSE > ', {body})
+    oldEnd.apply(res, arguments)
+  }
   next()
 }
 
@@ -25,7 +41,7 @@ const headers = (req, res, next) => {
 const authentication = (req, res, next) => {
   const token = req.headers['authorization']
   if (token) {
-    if (token === process.env.KOORAGANG_API_HASH || (req.method == 'GET' && token === process.env.KOORAGANG_READONLY_API_HASH)) {
+    if (token === process.env.KOORAGANG_API_HASH) {
       next()
     } else {
       next(new UnauthorizedError('Failed to authenticate token.'))
@@ -35,9 +51,8 @@ const authentication = (req, res, next) => {
   }
 }
 
-const error_handler = (err, req, res) => {
-  console.error(err.stack)
-  const returned_error = {errors: {message: err.message}}
+const error_handler = (err, req, res, next) => {
+  const returned_error = {errors: {message: err.message || err}}
   switch(err.constructor) {
       case BadRequestError:
           returned_error.errors.type = "Bad Request"
@@ -56,6 +71,7 @@ const error_handler = (err, req, res) => {
           res.status(500)
   }
   console.error(res.statusCode + " " + returned_error.errors.type)
+  if (err.stack) console.error(err.stack)
   return res.json(returned_error)
 }
 

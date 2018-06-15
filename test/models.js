@@ -1,12 +1,11 @@
-const {Campaign, Callee, Caller} = require('../models');
+const {Campaign, Callee, Caller, Audience} = require('../models');
 const expect = require('expect.js');
 const objection = require('objection');
+const {dropFixtures} = require('./test_helper')
 
 describe('Campaign', () => {
   beforeEach(async () => {
-    await Callee.query().delete();
-    await Caller.query().delete();
-    await Campaign.query().delete();
+    await dropFixtures()
   });
 
   const expectInvalidQuestion = (questions, message) => {
