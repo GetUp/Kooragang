@@ -380,17 +380,8 @@ app.post('/ready', async ({body, query}, res) => {
   }
 
   if (query.start && !process.env.DISABLE_CALL_RESUME) {
-    const last_caller = await Caller.query()
-      .where({campaign_id: campaign.id, phone_number: caller.phone_number})
-      .whereNot({id: caller.id})
-      .orderBy('updated_at', 'desc')
-      .limit(1).first();
-    const last_call = last_caller && await Call.query().where({caller_id: last_caller.id})
-      .whereRaw("calls.created_at > now() - '30 minutes'::interval")
-      .eager('survey_results')
-      .orderBy('created_at', 'desc')
-      .limit(1).first();
-    if (last_call && !last_call.survey_results.length) {
+    const last_call = await caller.last_call_today_with_no_survey_result()
+    if (last_call) {
       const resumeIVR = r.addGetDigits({
         action: res.locals.appUrl(`resume_survey?caller_id=${caller_id}&last_call_id=${last_call.id}&campaign_id=${query.campaign_id}`),
         redirect: true,

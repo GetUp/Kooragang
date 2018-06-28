@@ -289,6 +289,25 @@ class Callee extends Base {
 class Caller extends Base {
   static get tableName() { return 'callers' }
 
+  async last_call_today_with_no_survey_result() {
+    const callers = await Caller.query()
+      .whereRaw("created_at >= now()::date")
+      .where({campaign_id: this.campaign_id, phone_number: this.phone_number})
+      .whereNot({id: this.id})
+      .orderBy('updated_at', 'desc')
+      .select('callers.id')
+    const caller_ids = _.map(callers, (caller) => caller.id)
+    if (_.isEmpty(caller_ids)) return
+    const last_call = await Call.query()
+      .whereIn('caller_id', caller_ids)
+      .orderBy('created_at', 'desc')
+      .limit(1).first();
+    if (!last_call) return
+    return last_call.$query()
+      .leftOuterJoin('survey_results', 'calls.id', 'survey_results.call_id')
+      .whereNull('survey_results.id')
+  }
+
   static get relationMappings() {
     return {
       calls: {

@@ -799,17 +799,35 @@ describe('/ready', () => {
     it('should give extra instructions',
       () => request.post(`/ready?caller_number=12333&start=1&campaign_id=${campaign.id}`).type('form').send({CallUUID: '1'}).expect(/press star/i));
 
-    context('with a call that on the same campaign and phone number that has no survey result', () => {
+    context('with the last call that on the same campaign and phone number that has no survey result', () => {
       let previous_caller, previous_call;
       beforeEach(async () => {
         previous_caller = await Caller.query().insert({phone_number: '1234', campaign_id: campaign.id});
         previous_call = await Call.query().insert({status: 'answered', caller_id: previous_caller.id});
+        last_caller = await Caller.query().insert({phone_number: '1234', campaign_id: campaign.id});
       })
 
       it ('should ask if they want to resume', async () => {
-        await request.post(`/ready?caller_number=${previous_caller.phone_number}&campaign_id=${campaign.id}&start=1`)
+        await request.post(`/ready?caller_number=${last_caller.phone_number}&campaign_id=${campaign.id}&start=1`)
           .type('form').send({CallUUID: '1'})
           .expect(new RegExp(`resume_survey.*caller_id=.*last_call_id=${previous_call.id}.*campaign_id=${campaign.id}`));
+      })
+    })
+
+    context('with a previous call that on the same campaign and phone number that has no survey result', () => {
+      let previous_caller, previous_call;
+      beforeEach(async () => {
+        previous_caller = await Caller.query().insert({phone_number: '1234', campaign_id: campaign.id});
+        previous_call = await Call.query().insert({status: 'answered', caller_id: previous_caller.id});
+        last_caller = await Caller.query().insert({phone_number: '1234', campaign_id: campaign.id});
+        last_call = await Call.query().insert({status: 'answered', caller_id: previous_caller.id});
+        await SurveyResult.query().insert({call_id: last_call.id, question: 'test', answer: 'test'})
+      })
+
+      it ('should not ask if they want to resume', async () => {
+        await request.post(`/ready?caller_number=${last_caller.phone_number}&campaign_id=${campaign.id}&start=1`)
+          .type('form').send({CallUUID: '1'})
+          .expect(/call queue/i)
       })
     })
   });
