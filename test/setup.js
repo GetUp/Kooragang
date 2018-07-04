@@ -40,9 +40,9 @@ describe('plivo_setup_campaigns', () => {
         createApplicationCall = nock('https://api.plivo.com')
           .post(/Application/, body => {
             return body.app_name === `kooragang-test-${numberSetupCampaign.id}-${numberSetupCampaign.name}` &&
-              body.answer_url.match(/https:\/\/test\/answer\?campaign_id=\d+/) &&
+              body.answer_url.match(/https:\/\/test\/connect\?campaign_id=\d+/) &&
               body.fallback_answer_url.match(/https:\/\/test\/log\?event=fallback&campaign_id=\d+/) &&
-              body.hangup_url.match(/https:\/\/test\/hangup\?campaign_id=\d+/)
+              body.hangup_url.match(/https:\/\/test\/call_ended\?campaign_id=\d+/)
           })
           .query(true)
           .reply(200, {app_id})

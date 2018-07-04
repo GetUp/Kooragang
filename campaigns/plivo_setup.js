@@ -43,9 +43,9 @@ const setup_inbound = async (campaign) => {
   const base_url = process.env.BASE_URL || 'https://test'
   const payload = {
     app_name: `kooragang-${process.env.NODE_ENV || 'development'}-${campaign.id}-${campaign.name.replace(/\W/g, '_').toLowerCase()}`,
-    answer_url: `${base_url}/answer?campaign_id=${campaign.id}`,
+    answer_url: `${base_url}/connect?campaign_id=${campaign.id}`,
     fallback_answer_url: `${base_url}/log?event=fallback&campaign_id=${campaign.id}`,
-    hangup_url: `${base_url}/hangup?campaign_id=${campaign.id}`
+    hangup_url: `${base_url}/call_ended?campaign_id=${campaign.id}`
   }
   try {
     const inbound_number = await create_app_and_link_number(payload, campaign.number_region)
