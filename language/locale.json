@@ -286,5 +286,13 @@
     "notify_agents_campaign_ended": {
         "en": "Campaign ended. Press star to exit",
         "de": "Der Kampagne ist beendet. Drücke Stern um zu beenden."
+    },
+    "call_back_later_disposition": {
+        "en": "call back later",
+        "de": "call back later"
+    },
+    "answering_machine_disposition": {
+        "en": "answering machine",
+        "de": "answering machine"
     }
 }
