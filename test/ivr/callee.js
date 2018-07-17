@@ -301,6 +301,18 @@ describe('/hangup', () => {
         });
     });
 
+    it('should trigger a recalculation of call fields', async () => {
+      return request.post(`/hangup?name=Bridger&callee_id=${callee.id}`)
+        .type('form').send({CallStatus, CallUUID, Duration: '10', BillDuration: '30', TotalCost: '0.01020'})
+        .then(async () => {
+          const call = await Call.query()
+            .eager('callee')
+            .where({status: CallStatus, callee_call_uuid: CallUUID, duration: 10, bill_duration: 30, total_cost: 0.0102})
+            .first();
+          expect(call.callee.callable_recalculated_at).to.not.be(null)
+        });
+    });
+
     context('with answering machine detection', () => {
       it('should record the call was hungup with the status, duration, bill duration and total cost of the call', async () => {
         return request.post(`/hangup?name=Bridger&callee_id=${callee.id}`)
@@ -317,12 +329,16 @@ describe('/hangup', () => {
 
   context('with an existing call', () => {
     const CallStatus = 'completed';
+    let callee;
     beforeEach(async () => Event.query().delete());
     beforeEach(async () => Call.query().delete());
-    beforeEach(async () => Call.query().insert({callee_call_uuid: CallUUID, status: 'answered'}));
+    beforeEach(async () => {
+      callee = await Callee.query().insert(associatedCallee);
+      Call.query().insert({callee_call_uuid: CallUUID, status: 'answered', callee_id: callee.id})
+    })
 
     it('should record the call has ended with the status, duration, bill duration and total cost of the call', async () => {
-      return request.post(`/hangup?name=Bridger&callee_id=111`)
+      return request.post(`/hangup?name=Bridger&callee_id=${callee.id}`)
         .type('form').send({CallStatus: 'completed', CallUUID, Duration: '10', BillDuration: '30', TotalCost: '0.01020'})
         .expect(200)
         .then(async () => {

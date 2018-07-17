@@ -570,6 +570,7 @@ app.post('/survey_result', async ({query, body}, res) => {
   const question = questions[query.q];
   const disposition = question.answers[body.Digits || query.digit].value;
   const next = question.answers[body.Digits || query.digit].next;
+  const call = await Call.query().where({id: query.call_id}).eager('callee').first();
 
   r.addSpeakI18n('_transparent', {var: disposition});
 
@@ -577,7 +578,6 @@ app.post('/survey_result', async ({query, body}, res) => {
   const deliver = question.answers[body.Digits || query.digit].deliver;
   if (type === 'SMS' && deliver) {
     const content = question.answers[body.Digits || query.digit].content;
-    const call = await Call.query().where({id: query.call_id}).eager('callee').first();
     r.addMessage(`${content}`, {
       src: campaign.sms_number || process.env.NUMBER || '1111111111',
       dst: call.callee.phone_number
@@ -590,8 +590,11 @@ app.post('/survey_result', async ({query, body}, res) => {
     question: query.q,
     answer: disposition,
   }
-  await SurveyResult.query().insert(data);
-  await Call.query().where({id: query.call_id}).patch({updated_at: new Date()})
+  const survey_result = await SurveyResult.query().insert(data);
+  await call.$query().patch({updated_at: new Date()})
+  if (data.question === 'disposition') {
+    await call.callee.trigger_callable_recalculation(call, survey_result.answer)
+  }
 
   if (next) {
     r.addRedirect(res.locals.appUrl(`survey?q=${next}&call_id=${query.call_id}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`));

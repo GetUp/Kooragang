@@ -54,7 +54,6 @@ const defaultCampaign = {
   max_call_attempts: 1
 }
 const malformedCampaign = {
-  id: 1,
   name: 'test',
   questions: malformedQuestion,
   more_info: more_info,
@@ -1292,10 +1291,11 @@ describe('/survey', () => {
   });
 
   context('with invalid xml characters', () => {
-    beforeEach(async () => campaign = await Campaign.query().insert(malformedCampaign));
+    let malformed_campaign;
+    beforeEach(async () => malformed_campaign = await Campaign.query().insert(malformedCampaign));
     it('should be spripped out to valid xml', async () => {
       const question = 'disposition';
-      return request.post(`/survey?q=${question}&call_id=${call.id}&campaign_id=${campaign.id}`)
+      return request.post(`/survey?q=${question}&call_id=${call.id}&campaign_id=${malformed_campaign.id}`)
         .expect(new RegExp('testing', 'i'));
     });
   });
@@ -1341,10 +1341,12 @@ describe('/survey', () => {
 });
 
 describe('/survey_result', () => {
-  beforeEach(async () => await SurveyResult.query().delete());
   const payload = { Digits: '2', To: '614000100'};
-  let call;
-  beforeEach(async() => call = await Call.query().insert({status: 'answered', updated_at: new Date()}) )
+  let call, callee;
+  beforeEach(async() => {
+    callee = await Callee.query().insert({phone_number: '6133242342', campaign_id: campaign.id});
+    call = await Call.query().insert({status: 'answered', updated_at: new Date(), callee_id: callee.id})
+  })
 
   it('stores the result', () => {
     return request.post(`/survey_result?q=disposition&campaign_id=1&call_id=${call.id}`)
@@ -1385,9 +1387,18 @@ describe('/survey_result', () => {
     });
   });
 
+  context('with a disposition question', () => {
+    const payload = { Digits: '4', To: '614000100'};
+    it ('should call calee.trigger_callable_recalculation', async () => {
+      await request.post(`/survey_result?q=disposition&campaign_id=1&call_id=${call.id}`)
+        .type('form').send(payload)
+      const updated_callee = await callee.$query()
+      expect(updated_callee.callable_recalculated_at).to.not.be(null)
+    });
+  });
+
   context('with invalid xml characters', () => {
     beforeEach(async () => {
-      await Campaign.query().delete();
       campaign = await Campaign.query().insert(malformedCampaign)
     });
     const payload = { Digits: '2', To: '614000100'};
