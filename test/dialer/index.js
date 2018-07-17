@@ -6,7 +6,7 @@ const _ = require('lodash');
 const sinon = require('sinon');
 
 const {dropFixtures} = require('../test_helper')
-const { QueuedCall, Callee, Caller, Call, Campaign, Event, SurveyResult } = require('../../models');
+const { QueuedCall, Callee, Caller, Call, Campaign, Event } = require('../../models');
 
 const defaultCampaign = {
   id: 2,
@@ -639,68 +639,6 @@ describe('.calledEveryone with recalculateCallersRemaining called beforehand', (
         it ('should be false', async() => {
           await campaign.recalculateCallersRemaining()
           expect(await campaign.calledEveryone()).to.be(false)
-        });
-      });
-
-      context('with the call completed but dropped', () => {
-        beforeEach(() => Call.query().insert({callee_id: callee.id, status: 'completed', dropped: true}));
-        it ('should be false', async() => {
-          await campaign.recalculateCallersRemaining()
-          expect(await campaign.calledEveryone()).to.be(false)
-        });
-
-        context('with a subsequent completed but not dropped call', () => {
-          beforeEach(() => Call.query().insert({callee_id: callee.id, status: 'completed'}));
-          it ('should be true', async() => {
-            await campaign.recalculateCallersRemaining()
-            expect(await campaign.calledEveryone()).to.be(true)
-          });
-        })
-      });
-
-      context('with the completed call and "call back later" call', () => {
-        beforeEach(async() => {
-          await campaign.$query().patch({max_call_attempts: 3})
-          const call = await Call.query().insert({callee_id: callee.id, status: 'completed'})
-          await SurveyResult.query().insert({call_id: call.id, question: 'disposition', answer: 'call back later'})
-          await Call.query().insert({callee_id: callee.id, status: 'completed'})
-        })
-        it ('should be true', async() => {
-          await campaign.recalculateCallersRemaining()
-          expect(await campaign.calledEveryone()).to.be(true)
-        });
-      });
-
-      context('with the call completed and with disposition survey result of "call back later"', () => {
-        beforeEach(async() => {
-          const call = await Call.query().insert({callee_id: callee.id, status: 'completed'})
-          await SurveyResult.query().insert({call_id: call.id, question: 'disposition', answer: 'call back later'})
-        })
-        it ('should be false', async() => {
-          await campaign.recalculateCallersRemaining()
-          expect(await campaign.calledEveryone()).to.be(false)
-        });
-      });
-
-      context('with the call completed and with disposition survey result of "answering machine"', () => {
-        beforeEach(async() => {
-          const call = await Call.query().insert({callee_id: callee.id, status: 'completed'})
-          await SurveyResult.query().insert({call_id: call.id, question: 'disposition', answer: 'answering machine'})
-        })
-        it ('should be true', async() => {
-          await campaign.recalculateCallersRemaining()
-          expect(await campaign.calledEveryone()).to.be(true)
-        });
-
-        context('call campaigns.callback_answering_machines true', () => {
-          beforeEach(async () => {
-            await campaign.$query().patch({callback_answering_machines: true})
-          })
-
-          it ('should be false', async() => {
-            await campaign.recalculateCallersRemaining()
-            expect(await campaign.calledEveryone()).to.be(false)
-          });
         });
       });
 
