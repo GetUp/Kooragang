@@ -237,6 +237,13 @@ class Campaign extends Base {
     }
     return callback_dispositions
   }
+
+  async recalculate_callable() {
+    const callees = await this.$relatedQuery('callees').whereRaw('last_called_at is not null')
+    for (let callee of callees) {
+      await callee.recalculate_callable()
+    }
+  }
 }
 
 class QueuedCall extends Base {
@@ -294,6 +301,7 @@ class Callee extends Base {
   async trigger_callable_recalculation(last_call, disposition) {
     const campaign = this.campaign || (await this.$query().eager('campaign')).campaign
     const callable = !!(
+      !last_call ||
       last_call.dropped ||
       ['busy', 'no-answer'].includes(last_call.status) ||
       campaign.callback_dispositions().includes(disposition)

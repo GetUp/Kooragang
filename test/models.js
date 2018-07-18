@@ -43,4 +43,18 @@ describe('Campaign', () => {
       it('should throw a validation error', expectInvalidQuestion({disposition: {name: 'test', answers: {'2': {value: 'test'}}}, noreach: {name: 'no reach', answers: {'2': {value: 'test'}}}}, /no references to noreach/))
     })
   })
+
+  describe('#recalculate_callable', () => {
+    let campaign, callee;
+    beforeEach(async () => {
+      campaign = await Campaign.query().insert({name: 'test'});
+      callee = await Callee.query().insert({phone_number: '1', campaign_id: campaign.id, last_called_at: new Date()})
+    })
+
+    it('should call callee.recalculate_callable on every callee that has been called', async () => {
+      await campaign.recalculate_callable()
+      const updated_callee = await callee.$query()
+      expect(updated_callee.callable_recalculated_at).to.not.be(null)
+    })
+  })
 })
