@@ -288,7 +288,7 @@
         "de": "Der Kampagne ist beendet. Drücke Stern um zu beenden."
     },
     "survey_iphone_help": {
-        "en": "If you're on an iPhone, and it's not responding to presses, tap the green bar at the top of the screen to return to the call first.",
+        "en": "On an iPhone, you might need to tap the green bar at the top of the screen to return to the call first",
         "de": ""
     }
 }
