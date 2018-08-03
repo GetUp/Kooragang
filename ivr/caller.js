@@ -551,6 +551,8 @@ app.post('/survey', async ({query, body}, res) => {
     surveyResponse.addSpeakI18n('call_ended');
   }
   surveyResponse.addSpeakI18n('_transparent', {var: questionData.name});
+  surveyResponse.addWait({length: 8});  
+  surveyResponse.addSpeakI18n('survey_iphone_help');
   res.send(r.toXML());
 });
 

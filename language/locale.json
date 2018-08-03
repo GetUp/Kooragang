@@ -286,5 +286,9 @@
     "notify_agents_campaign_ended": {
         "en": "Campaign ended. Press star to exit",
         "de": "Der Kampagne ist beendet. Drücke Stern um zu beenden."
+    },
+    "survey_iphone_help": {
+        "en": "If you're on an iPhone, and it's not responding to presses, tap the green bar at the top of the screen to return to the call first.",
+        "de": ""
     }
 }
