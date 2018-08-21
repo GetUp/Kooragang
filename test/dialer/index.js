@@ -6,7 +6,7 @@ const _ = require('lodash');
 const sinon = require('sinon');
 
 const {dropFixtures} = require('../test_helper')
-const { QueuedCall, Callee, Caller, Call, Campaign, Event } = require('../../models');
+const { QueuedCall, Callee, Caller, Call, Campaign, Event, SurveyResult } = require('../../models');
 
 const defaultCampaign = {
   id: 2,
@@ -304,8 +304,10 @@ describe('.dial', () => {
         completedCallee   = await Callee.query().insert({id: 1, campaign_id: campaign.id, phone_number: 1}).returning('*')
         busyCallee = await Callee.query().insert({id: 2, campaign_id: campaign.id, phone_number: 1}).returning('*')
         uncalledCallee = await Callee.query().insert({id: 3, campaign_id: campaign.id, phone_number: 1}).returning('*')
-        await Call.query().insert({callee_id: 1, status: 'complete'})
-        await Call.query().insert({callee_id: 2, status: 'busy'})
+        const complete_call = await Call.query().insert({callee_id: completedCallee.id, status: 'complete'})
+        const busy_call = await Call.query().insert({callee_id: busyCallee.id, status: 'busy'})
+        await completedCallee.trigger_callable_recalculation(complete_call)
+        await busyCallee.trigger_callable_recalculation(busy_call)
       })
 
       context('with exhaust_callees_before_recycling == false', () => {
@@ -362,8 +364,10 @@ describe('.dial', () => {
             recentDate = moment().toDate()
             recentlyCalledCallee = await Callee.query().insert({id: 1, campaign_id: campaign.id, phone_number: 1, last_called_at: recentDate}).returning('*')
             pastCalledCallee   = await Callee.query().insert({id: 2, campaign_id: campaign.id, phone_number: 1, last_called_at: pastDate}).returning('*')
-            await Call.query().insert({callee_id: 1, status: 'busy'})
-            await Call.query().insert({callee_id: 2, status: 'no-answer'})
+            const busy_call = await Call.query().insert({callee_id: recentlyCalledCallee.id, status: 'busy'})
+            const no_answer_call = await Call.query().insert({callee_id: pastCalledCallee.id, status: 'no-answer'})
+            await recentlyCalledCallee.trigger_callable_recalculation(busy_call)
+            await pastCalledCallee.trigger_callable_recalculation(no_answer_call)
           })
 
           context('with dissimilar last_called_at', () => {
@@ -618,7 +622,10 @@ describe('.calledEveryone with recalculateCallersRemaining called beforehand', (
       beforeEach(async() => callee = await Callee.query().insert({campaign_id: campaign.id, last_called_at: moment().subtract(5, 'hours').toDate()}));
 
       context('with the call busy or no-answer', () => {
-        beforeEach(() => Call.query().insert({callee_id: callee.id, status: 'no-answer'}));
+        beforeEach(async () => {
+          const no_answer_call = await Call.query().insert({callee_id: callee.id, status: 'no-answer'})
+          await callee.trigger_callable_recalculation(no_answer_call)
+        });
         it ('should be true', async() => {
           await campaign.recalculateCallersRemaining()
           expect(await campaign.calledEveryone()).to.be(true)
@@ -635,22 +642,103 @@ describe('.calledEveryone with recalculateCallersRemaining called beforehand', (
       beforeEach(async() => callee = await Callee.query().insert({campaign_id: campaign.id, last_called_at: moment().subtract(5, 'hours').toDate()}));
 
       context('with the call busy or no-answer', () => {
-        beforeEach(() => Call.query().insert({callee_id: callee.id, status: 'no-answer'}));
+        beforeEach(async () => {
+          const no_answer_call = await Call.query().insert({callee_id: callee.id, status: 'no-answer'})
+          await callee.trigger_callable_recalculation(no_answer_call)
+        });
         it ('should be false', async() => {
           await campaign.recalculateCallersRemaining()
           expect(await campaign.calledEveryone()).to.be(false)
         });
       });
 
+      context('with the call completed but dropped', () => {
+        beforeEach(async () => {
+          const completed_call = await Call.query().insert({callee_id: callee.id, status: 'completed', dropped: true})
+          await callee.trigger_callable_recalculation(completed_call)
+        })
+        it ('should be false', async() => {
+          await campaign.recalculateCallersRemaining()
+          expect(await campaign.calledEveryone()).to.be(false)
+        });
+
+        context('with a subsequent completed but not dropped call', () => {
+          beforeEach(async () => {
+            const completed_call = await Call.query().insert({callee_id: callee.id, status: 'completed'})
+            await callee.trigger_callable_recalculation(completed_call)
+          });
+          it ('should be true', async() => {
+            await campaign.recalculateCallersRemaining()
+            expect(await campaign.calledEveryone()).to.be(true)
+          });
+        })
+      });
+
+      context('with the completed call and "call back later" call', () => {
+        beforeEach(async() => {
+          await campaign.$query().patch({max_call_attempts: 3})
+          const call = await Call.query().insert({callee_id: callee.id, status: 'completed'})
+          await SurveyResult.query().insert({call_id: call.id, question: 'disposition', answer: 'call back later'})
+          const completed_call = await Call.query().insert({callee_id: callee.id, status: 'completed'})
+          await callee.trigger_callable_recalculation(completed_call)
+        })
+        it ('should be true', async() => {
+          await campaign.recalculateCallersRemaining()
+          expect(await campaign.calledEveryone()).to.be(true)
+        });
+      });
+
+      context('with the call completed and with disposition survey result of "call back later"', () => {
+        beforeEach(async() => {
+          const call = await Call.query().insert({callee_id: callee.id, status: 'completed'})
+          const survey_result = await SurveyResult.query().insert({call_id: call.id, question: 'disposition', answer: 'call back later'})
+          await callee.trigger_callable_recalculation(call, survey_result.answer)
+        })
+        it ('should be false', async() => {
+          await campaign.recalculateCallersRemaining()
+          expect(await campaign.calledEveryone()).to.be(false)
+        });
+      });
+
+      context('with the call completed and with disposition survey result of "answering machine"', () => {
+        beforeEach(async() => {
+          const call = await Call.query().insert({callee_id: callee.id, status: 'completed'})
+          const survey_result = await SurveyResult.query().insert({call_id: call.id, question: 'disposition', answer: 'answering machine'})
+          await callee.trigger_callable_recalculation(call, survey_result.answer)
+        })
+        it ('should be true', async() => {
+          await campaign.recalculateCallersRemaining()
+          expect(await campaign.calledEveryone()).to.be(true)
+        });
+
+        context('call campaigns.callback_answering_machines true', () => {
+          beforeEach(async () => {
+            await campaign.$query().patch({callback_answering_machines: true})
+            await callee.recalculate_callable()
+          })
+
+          it ('should be false', async() => {
+            await campaign.recalculateCallersRemaining()
+            expect(await campaign.calledEveryone()).to.be(false)
+          });
+        });
+      });
+
       context('with the call completed', () => {
-        beforeEach(() => Call.query().insert({callee_id: callee.id, status: 'completed'}));
+        beforeEach(async () => {
+          const completed_call = await Call.query().insert({callee_id: callee.id, status: 'completed'})
+          await callee.recalculate_callable()
+        });
         it ('should be true', async() => {
           await campaign.recalculateCallersRemaining()
           expect(await campaign.calledEveryone()).to.be(true)
         });
 
         context('with a prexisting call', () => {
-          beforeEach(() => Call.query().insert({callee_id: callee.id, status: 'busy'}));
+          beforeEach(async () => {
+            const busy_call = await Call.query().insert({callee_id: callee.id, status: 'busy'})
+            await callee.trigger_callable_recalculation(busy_call)
+          });
           it ('should NOT reset the last_called_at', async() => {
             await campaign.recalculateCallersRemaining()
             expect(await campaign.calledEveryone()).to.be(true)
@@ -659,8 +747,11 @@ describe('.calledEveryone with recalculateCallersRemaining called beforehand', (
       });
 
       context('with max_call_attempts already made with status', () => {
-        beforeEach(() => Call.query().insert({callee_id: callee.id, status: 'busy'}));
-        beforeEach(() => Call.query().insert({callee_id: callee.id, status: 'busy'}));
+        beforeEach(async () => {
+          await Call.query().insert({callee_id: callee.id, status: 'busy'})
+          const busy_call = await Call.query().insert({callee_id: callee.id, status: 'busy'})
+          await callee.trigger_callable_recalculation(busy_call)
+        })
         it ('should NOT reset the last_called_at', async() => {
           await campaign.recalculateCallersRemaining()
           expect(await campaign.calledEveryone()).to.be(true)

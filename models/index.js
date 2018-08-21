@@ -5,6 +5,7 @@ const objection = require('objection')
 const Model = objection.Model
 const _ = require('lodash')
 const Base = require('./base')
+const { languageBlock } = require('../utils')
 
 const campaign_virtual_attributes = [
   'isPaused',
@@ -126,14 +127,11 @@ class Campaign extends Base {
   }
   callableCallees(callsToMakeExcludingCurrentCalls=1) {
     return Callee.query()
-      .leftOuterJoin('calls', 'callee_id', 'callees.id')
       .where('campaign_id', this.id)
       .whereRaw(`(last_called_at is null or last_called_at < NOW() - INTERVAL '${this.no_call_window} minutes')`)
-      .groupByRaw(`
-        1 having sum(case when status in ('busy', 'no-answer') then 1 else 0 end) < ${this.max_call_attempts}
-        and sum(case when status not in ('busy', 'no-answer') then 1 else 0 end) = 0
-      `)
-      .orderByRaw(this.exhaust_callees_before_recycling ? 'count(calls.id), max(last_called_at), 1' : '1')
+      .where({callable: true})
+      .whereRaw('call_count < ?', this.max_call_attempts)
+      .orderByRaw(this.exhaust_callees_before_recycling ? 'call_count, last_called_at, 1' : '1')
       .limit(callsToMakeExcludingCurrentCalls)
       .select('callees.id')
   }
@@ -231,6 +229,21 @@ class Campaign extends Base {
     }
     return await this.$query().patch(payload).returning('*').first()
   }
+
+  callback_dispositions() {
+    let callback_dispositions = [languageBlock('call_back_later_disposition')]
+    if (this.callback_answering_machines) {
+      callback_dispositions.push(languageBlock('answering_machine_disposition'))
+    }
+    return callback_dispositions
+  }
+
+  async recalculate_callable() {
+    const callees = await this.$relatedQuery('callees').whereRaw('last_called_at is not null')
+    for (let callee of callees) {
+      await callee.recalculate_callable()
+    }
+  }
 }
 
 class QueuedCall extends Base {
@@ -283,6 +296,33 @@ class Callee extends Base {
         }
       }
     }
+  }
+
+  async trigger_callable_recalculation(last_call, disposition) {
+    const campaign = this.campaign || (await this.$query().eager('campaign')).campaign
+    const callable = !!(
+      !last_call ||
+      last_call.dropped ||
+      ['busy', 'no-answer'].includes(last_call.status) ||
+      campaign.callback_dispositions().includes(disposition)
+    )
+    const count_result = await Call.knexQuery().count('id').where({callee_id: this.id})
+    const call_count = count_result[0].count
+    return this.$query().patch({
+      call_count,
+      callable,
+      callable_recalculated_at: new Date()
+    })
+  }
+
+  async recalculate_callable() {
+    const last_call = await Call.query().where({callee_id: this.id})
+                          .orderBy('created_at', 'desc')
+                          .limit(1).first()
+    const last_call_disposition = last_call && (
+      await SurveyResult.query().where({call_id: last_call.id, question: 'disposition'}).first()
+    )
+    await this.trigger_callable_recalculation(last_call, last_call_disposition && last_call_disposition.answer)
   }
 }
 

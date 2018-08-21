@@ -75,7 +75,8 @@ app.post('/answer', async ({body, query}, res) => {
 });
 
 app.post('/hangup', async ({body, query}, res) => {
-  let call = await Call.query().where({callee_call_uuid: body.CallUUID}).first();
+  let callee;
+  let call = await Call.query().eager('callee').where({callee_call_uuid: body.CallUUID}).first();
   const status = body.Machine === 'true' ? 'machine_detection' : body.CallStatus;
   await QueuedCall.query().where({callee_id: query.callee_id}).delete()
   if (call){
@@ -86,6 +87,7 @@ app.post('/hangup', async ({body, query}, res) => {
       bill_duration: body.BillDuration,
       total_cost: body.TotalCost
     });
+    callee = call.callee;
   }else{
     call = await Call.query().insert({
       callee_call_uuid: body.CallUUID,
@@ -96,11 +98,13 @@ app.post('/hangup', async ({body, query}, res) => {
       bill_duration: body.BillDuration,
       total_cost: body.TotalCost
     });
-    let {campaign} = await Callee.query().eager('campaign').where({id: call.callee_id}).first();
+    callee = await Callee.query().eager('campaign').where({id: call.callee_id}).first();
+    let campaign = callee.campaign
     const calls_in_progress = campaign.calls_in_progress;
     campaign = await dialer.decrementCallsInProgress(campaign);
     await Event.query().insert({name: 'filter', campaign_id: campaign.id, call_id: call.id, value: {status, calls_in_progress, updated_calls_in_progress: campaign.calls_in_progress}})
   }
+  await callee.trigger_callable_recalculation(call);
   res.sendStatus(200);
 });
 
