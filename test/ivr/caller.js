@@ -1356,6 +1356,15 @@ describe('/survey', () => {
         .expect(/ready\?caller_id=1/)
     })
   })
+
+  context('after any question', () => {
+    beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign));
+    it ('should wait and play a help message', async () => {
+      const question = 'action';
+      return request.post(`/survey?q=${question}&call_id=${call.id}&campaign_id=${campaign.id}`)
+        .expect(/<Wait length="8"\/><Speak language="en-GB" voice="MAN">.+<\/Speak>/)
+    });
+  });
 });
 
 describe('/survey_result', () => {

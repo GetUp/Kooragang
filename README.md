@@ -13,7 +13,7 @@ Kooragang uses a predictive dialer to speed up calling. The aggressiveness of th
 
 *Where's the admin interface?*
 
-GetUp is working on this and will be releasing something soon. In the meantime, almost everything can be configured through fields on `campaigns` recoreds.
+GetUp is working on this and will be releasing something soon. In the meantime, almost everything can be configured through fields on `campaigns` records.
 
 *How much does it cost?*
 

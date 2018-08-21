@@ -294,5 +294,9 @@
     "answering_machine_disposition": {
         "en": "answering machine",
         "de": "answering machine"
+    },
+    "survey_iphone_help": {
+        "en": "On an iPhone, you might need to tap the green bar at the top of the screen to return to the call first",
+        "de": ""
     }
 }
