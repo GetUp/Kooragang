@@ -33,12 +33,13 @@ describe('/redirect', () => {
 
   context('with a campaign with a target number', () => {
     let campaign;
-    beforeEach(async() => { campaign = await Campaign.query().insert({name: 'test', target_number: '0290000000'}) })
+    beforeEach(async() => { campaign = await Campaign.query().insert({name: 'test', target_numbers: ['0290000000']}) })
+
     it('should redirect to the target number', async() => {
       await request.post(`/redirect?campaign_id=${campaign.id}`)
         .type('form').send(payload)
         .expect(200)
-        .expect(new RegExp(campaign.target_number))
+        .expect(new RegExp(campaign.target_numbers[0]))
     })
 
     it('should record a redirect', async() => {
@@ -47,7 +48,7 @@ describe('/redirect', () => {
         .expect(200)
       expect(await Redirect.query().where({
         campaign_id: campaign.id, phone_number: payload.From, redirect_number: payload.To,
-        target_number: campaign.target_number, call_uuid
+        target_number: campaign.target_numbers[0], call_uuid
       }).first()).to.be.a(Redirect);
     })
 
@@ -59,7 +60,7 @@ describe('/redirect', () => {
           .expect(200)
         expect(await Redirect.query().where({
           campaign_id: campaign.id, phone_number: payload.From, redirect_number: payload.To,
-          target_number: campaign.target_number, call_uuid,
+          target_number: campaign.target_numbers[0], call_uuid,
           callee_id: callee.id
         }).first()).to.be.a(Redirect);
       })

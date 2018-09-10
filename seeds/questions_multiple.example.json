@@ -1,0 +1,41 @@
+{
+  "disposition": {
+    "name": "What was the Overall Outcome?",
+    "answers": {
+      "2": {
+        "value": "answering machine"
+      },
+      "3": {
+        "value": "not interested"
+      },
+      "4": {
+        "value": "meaningful conversation",
+        "next": "event_rsvp"
+      },
+      "5": {
+        "value": "can’t talk now, call back later"
+      },
+      "6": {
+        "value": "do not call"
+      },
+      "7": {
+        "value": "no answer"
+      },
+      "8": {
+        "value": "wrong number"
+      }
+    }
+  },
+  "event_rsvp": {
+    "name": "What dates can they make?",
+    "multiple": true,
+    "answers": {
+      "2": {
+        "value": "September 5"
+      },
+      "3": {
+        "value": "September 19"
+      }
+    }
+  }
+}

@@ -210,7 +210,7 @@ class Campaign extends Base {
     strip_keys.forEach(key => delete clone[key])
     clone.name = await Campaign.nonExistantClonedName(clone.name, data ? data.name : null)
     clone.number_region = data && data.number_region ? data.number_region : clone.number_region
-    clone.target_number = data && data.target_number ? data.target_number : clone.target_number
+    clone.target_numbers = data && data.target_numbers ? data.target_numbers : clone.target_numbers
     clone.status = 'inactive'
     clone.plivo_setup_status = 'needed'
     return await Campaign.query().insert(clone).returning('*').first()

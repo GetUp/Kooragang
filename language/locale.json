@@ -298,5 +298,9 @@
     "survey_iphone_help": {
         "en": "On an iPhone, you might need to tap the green bar at the top of the screen to return to the call first",
         "de": ""
+    },
+    "survey_multiple_others": {
+        "en": "Do you have any other responses to this question? Please, Press the Star Key, to go to the next question.",
+        "de": ""
     }
 }

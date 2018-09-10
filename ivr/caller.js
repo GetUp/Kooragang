@@ -509,7 +509,8 @@ app.post('/transfer_to_target', async ({query, body}, res) => {
   const campaign = await Campaign.query().where({id: query.campaign_id}).first();
   const call = await Call.query().where({id: query.call_id}).first();
   const callee = await Callee.query().where({id: call.callee_id}).first();
-  const target_number = callee.target_number ? callee.target_number : campaign.target_number
+  const campaign_target_number = _.isArray(campaign.target_numbers) ? _.sample(campaign.target_numbers) : campaign.target_numbers
+  const target_number = callee.target_number ? callee.target_number : campaign_target_number
   r.addDial().addNumber(target_number);
   await Event.query().insert({campaign_id: query.campaign_id, call_id: call.id, caller_id: call.caller_id, name: 'transfer_to_target', value: {callee_id: callee.id, call_uuid: body.CallUUID, target_number: target_number, target_origin: (callee.target_number ? 'callee' : 'campaign')}});
   return res.send(r.toXML());
@@ -564,6 +565,16 @@ app.post('/survey_result', async ({query, body}, res) => {
   const disposition = question.answers[body.Digits || query.digit].value;
   const next = question.answers[body.Digits || query.digit].next;
   const call = await Call.query().where({id: query.call_id}).eager('callee').first();
+  const answers = question.answers
+  const previous_survey_results = await SurveyResult.query().where({call_id: query.call_id, question})
+
+  if (query.multiple === 1 && (body.Digits  === '#' || query.digit  === '#')) {
+    if (next) {
+      r.addRedirect(res.locals.appUrl(`survey?q=${next}&call_id=${query.call_id}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`));
+    } else {
+      r.addRedirect(res.locals.appUrl(`call_again?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&call_id=${query.call_id}`));
+    }
+  }
 
   r.addSpeakI18n('_transparent', {var: disposition});
 
@@ -589,6 +600,10 @@ app.post('/survey_result', async ({query, body}, res) => {
     await call.callee.trigger_callable_recalculation(call, survey_result.answer)
   }
 
+  if (data.question != 'disposition' && question.multiple && previous_survey_results.length < Object.keys(answers).length) {
+    r.addRedirect(res.locals.appUrl(`survey_multiple?q=${query.q}&call_id=${query.call_id}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`));
+  }
+
   if (next) {
     r.addRedirect(res.locals.appUrl(`survey?q=${next}&call_id=${query.call_id}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`));
   } else {
@@ -597,57 +612,30 @@ app.post('/survey_result', async ({query, body}, res) => {
   res.send(r.toXML());
 });
 
-app.post('/survey_assessment', async ({query, body}, res) => {
-  const r = plivo.Response()
-  const campaign = await Campaign.query().where({id: query.campaign_id}).first()
-  const questions = campaign.questions
-  const question = query.q
-  const caller_id = query.caller_id;
-  const questionData = questions[question]
-  const assessment = query.assessment ? query.assessment === "1" : false
+app.post('/survey_multiple', async ({query, body}, res) => {
+  const r = plivo.Response();
+  const call = await Call.query().where({id: query.call_id}).eager('callee').first();
+  const campaign = await Campaign.query().where({id: query.campaign_id}).first();
+  const questions = campaign.questions;
+  const question = query.q;
+  const questionData = questions[question];
+  const previous_survey_results = await SurveyResult.query().where({call_id: query.call_id, question})
+  const previous_survey_result_answers = _.map(previous_survey_results, (survey_result) => survey_result.answer);
+  const matched_previous_response_keys =_.remove(_.map(questionData.answers, (answer, key) => _.includes(previous_survey_result_answers, answer.value) ? key : null), null);
+  let validDigits = Object.keys(questionData.answers)
+  _.remove(validDigits, (digit) => _.includes(matched_previous_response_keys, digit))
+  validDigits.push('#')
   const surveyResponse = r.addGetDigits({
-    action: res.locals.appUrl(`survey_result_assessment?q=${question}&caller_id=${caller_id}&campaign_id=${query.campaign_id}&assessment=1`),
+    action: res.locals.appUrl(`survey_result?q=${question}&caller_id=${query.caller_id}&call_id=${call.id}&campaign_id=${query.campaign_id}&multiple=1`),
     redirect: true,
     retries: 10,
     numDigits: 1,
     timeout: 10,
-    validDigits: Object.keys(questionData.answers),
-  })
-  surveyResponse.addSpeakI18n('_transparent', {var: questionData.name})
-  surveyResponse.addWait({length: 5});
-  surveyResponse.addSpeakI18n('survey_iphone_help');
-  res.send(r.toXML())
-})
-
-app.post('/survey_result_assessment', async ({query, body}, res) => {
-  const r = plivo.Response()
-  const caller = await Caller.query().where({id: query.caller_id}).first()
-  const campaign = await Campaign.query().where({id: query.campaign_id}).first()
-  const questions = campaign.questions
-  const question = questions[query.q]
-  const disposition = question.answers[body.Digits || query.digit].value
-  const next = question.answers[body.Digits || query.digit].next
-
-  r.addSpeakI18n('_transparent', {var: disposition})
-
-  const type = question.type
-  const deliver = question.answers[body.Digits || query.digit].deliver
-  if (type === 'SMS' && deliver) {
-    const content = question.answers[body.Digits || query.digit].content
-    r.addMessage(`${content}`, {
-      src: campaign.sms_number || process.env.NUMBER || '1111111111',
-      dst: caller.phone_number
-    })
-  }
-
-  if (next) {
-    r.addRedirect(res.locals.appUrl(`survey_assessment?q=${next}&call_id=${query.call_id}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&assessment=1`))
-  } else {
-    r.addSpeakI18n('end_assessment_survey')
-    r.addRedirect(res.locals.appUrl(`briefing?campaign_id=${campaign.id}&caller_number=${caller.phone_number}&start=1&callback=0&authenticated=${query.authenticated ? '1' : '0'}&assessment=1`))
-  }
-  res.send(r.toXML())
-})
+    validDigits: validDigits,
+  });
+  surveyResponse.addSpeakI18n('survey_multiple_others');
+  res.send(r.toXML());
+});
 
 app.post('/call_again', async ({query}, res) => {
   const r = plivo.Response();
