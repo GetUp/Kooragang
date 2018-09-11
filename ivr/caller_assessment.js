@@ -38,7 +38,6 @@ app.post('/survey_result_assessment', async ({query, body}, res) => {
   const answers = question.answers
 
   if (query.multiple === 1 && (body.Digits  === '*' || query.digit  === '*')) {
-    console.log('@@@@@@@@@@@@')
     if (next) {
       r.addRedirect(res.locals.appUrl(`survey_assessment?q=${next}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&assessment=1`))
     } else {
@@ -68,7 +67,6 @@ app.post('/survey_result_assessment', async ({query, body}, res) => {
   const responses = previous_survey_results ? previous_survey_results.push(disposition) : [disposition]
   await storage.setItem(response_cache_key,responses)
   const current_survey_results = await storage.getItem(response_cache_key)
-  console.log(`current ~~~ ${response_cache_key}`)
 
   if (query.q != 'disposition' && question.multiple && current_survey_results.length < Object.keys(answers).length) {
     r.addRedirect(res.locals.appUrl(`survey_multiple_assessment?q=${query.q}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`))
@@ -102,11 +100,9 @@ app.post('/survey_multiple_assessment', async ({query, body}, res) => {
   const response_cache_key = `assessment_responses_caller_${caller.id}_question_${query.q}`
   const previous_survey_result_answers = await storage.getItem(response_cache_key)
   const matched_previous_response_keys =_.remove(_.map(questionData.answers, (answer, key) => _.includes(previous_survey_result_answers, answer.value) ? key : null), null)
-  console.log(`matched_previous_response_keys ~~~ ${matched_previous_response_keys}`)
   let validDigits = Object.keys(questionData.answers)
   _.remove(validDigits, (digit) => _.includes(matched_previous_response_keys, digit))
   validDigits.push('*')
-  console.log(validDigits)
   const surveyResponse = r.addGetDigits({
     action: res.locals.appUrl(`survey_result_assessment?q=${question}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&multiple=1`),
     redirect: true,
@@ -120,4 +116,3 @@ app.post('/survey_multiple_assessment', async ({query, body}, res) => {
 })
 
 module.exports = app
-

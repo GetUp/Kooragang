@@ -8,8 +8,10 @@ const ivrCaller = proxyquire('../../ivr/caller', {
     dial: async (appUrl) => {}
   }
 });
+const ivrCallerAssessment = require('../../ivr/caller_assessment')
 const app = require('../../ivr/common');
 app.use(ivrCaller);
+app.use(ivrCallerAssessment);
 const request = require('supertest')(app);
 
 const {dropFixtures} = require('../test_helper')
@@ -1487,7 +1489,7 @@ describe('/survey_result', () => {
       callee = await Callee.query().insert(associatedCallee);
       call = await Call.query().insert({callee_id: callee.id});
     });
-    context('with not responses', () => {
+    context('with no current responses', () => {
       it ('should announce the result & redirect to multiple survey', () => {
         return request.post(`/survey_result?q=event_rsvp&campaign_id=1&call_id=${call.id}`)
           .type('form').send(payload)
