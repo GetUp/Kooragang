@@ -3,7 +3,6 @@ const plivo = require('plivo')
 const _ = require('lodash')
 const {Caller, Campaign} = require('../models')
 const { languageBlock } = require('../utils')
-const storage = require('node-persist')
 
 app.post('/survey_assessment', async ({query, body}, res) => {
   const r = plivo.Response()
@@ -58,25 +57,13 @@ app.post('/survey_result_assessment', async ({query, body}, res) => {
     })
   }
 
-  await storage.init({
-    ttl: '10000',
-    expiredInterval: 2 * 60 * 1000
-  });
-  const response_cache_key = `assessment_responses_caller_${caller.id}_question_${query.q}`
-  const previous_survey_results = await storage.getItem(response_cache_key)
-  const responses = previous_survey_results ? previous_survey_results.push(disposition) : [disposition]
-  await storage.setItem(response_cache_key,responses)
-  const current_survey_results = await storage.getItem(response_cache_key)
-
+  const previous_survey_results = query.assessment_responses
+  const current_survey_results = previous_survey_results ? _.split(previous_survey_results, ',').push(disposition) : [disposition]
+  const current_survey_results_string = _.join(current_survey_results, ',')
   if (query.q != 'disposition' && question.multiple && current_survey_results.length < Object.keys(answers).length) {
-    r.addRedirect(res.locals.appUrl(`survey_multiple_assessment?q=${query.q}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`))
+    r.addRedirect(res.locals.appUrl(`survey_multiple_assessment?q=${query.q}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&assessment_responses=${current_survey_results_string}`))
     return res.send(r.toXML())
   }
-
-  await storage.removeItem(
-    `assessment_responses_caller_${caller.id}_question_${question}`
-  ) 
-
   if (next) {
     r.addRedirect(res.locals.appUrl(`survey_assessment?q=${next}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&assessment=1`))
   } else {
@@ -93,23 +80,19 @@ app.post('/survey_multiple_assessment', async ({query, body}, res) => {
   const questions = campaign.questions
   const question = query.q
   const questionData = questions[question]
-  await storage.init({
-    ttl: '10000',
-    expiredInterval: 2 * 60 * 1000
-  });
-  const response_cache_key = `assessment_responses_caller_${caller.id}_question_${query.q}`
-  const previous_survey_result_answers = await storage.getItem(response_cache_key)
-  const matched_previous_response_keys =_.remove(_.map(questionData.answers, (answer, key) => _.includes(previous_survey_result_answers, answer.value) ? key : null), null)
+  const current_survey_results = _.split(query.assessment_responses, ',')
+  const current_survey_results_string = _.join(current_survey_results, ',')
+  const matched_previous_response_keys =_.remove(_.map(questionData.answers, (answer, key) => _.includes(current_survey_results, answer.value) ? key : null), null)
   let validDigits = Object.keys(questionData.answers)
   _.remove(validDigits, (digit) => _.includes(matched_previous_response_keys, digit))
   validDigits.push('*')
   const surveyResponse = r.addGetDigits({
-    action: res.locals.appUrl(`survey_result_assessment?q=${question}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&multiple=1`),
+    action: res.locals.appUrl(`survey_result_assessment?q=${question}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&multiple=1&assessment_responses=${current_survey_results_string}`),
     redirect: true,
     retries: 10,
     numDigits: 1,
     timeout: 10,
-    validDigits: validDigits,
+    validDigits: validDigits
   })
   surveyResponse.addSpeakI18n('survey_multiple_others')
   res.send(r.toXML())
