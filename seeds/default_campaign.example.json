@@ -1,0 +1,8 @@
+{
+  "name": "test",
+  "phone_number": "1111",
+  "sms_number": "22222222",
+  "shortcode": "test",
+  "no_call_window": 240,
+  "max_call_attempts": 1
+}

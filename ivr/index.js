@@ -6,4 +6,5 @@ app.use(require('./team'))
 app.use(require('./caller'))
 app.use(require('./callee'))
 app.use(require('./redirect'))
+app.use(require('./caller_assessment'))
 module.exports = app
