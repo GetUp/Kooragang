@@ -562,19 +562,21 @@ app.post('/survey_result', async ({query, body}, res) => {
   const campaign = await Campaign.query().where({id: query.campaign_id}).first();
   const questions = campaign.questions;
   const question = questions[query.q];
-  const disposition = question.answers[body.Digits || query.digit].value;
-  const next = question.answers[body.Digits || query.digit].next;
   const call = await Call.query().where({id: query.call_id}).eager('callee').first();
   const answers = question.answers
   const previous_survey_results = await SurveyResult.query().where({call_id: query.call_id, question})
+  const multiple = query.multiple === '1'
 
-  if (query.multiple === 1 && (body.Digits  === '*' || query.digit  === '*')) {
-    if (next) {
-      r.addRedirect(res.locals.appUrl(`survey?q=${next}&call_id=${query.call_id}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`));
+  if (multiple && (body.Digits  === '*' || query.digit  === '*')) {
+    if (question.next) {
+      r.addRedirect(res.locals.appUrl(`survey?q=${question.next}&call_id=${query.call_id}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`));
     } else {
       r.addRedirect(res.locals.appUrl(`call_again?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&call_id=${query.call_id}`));
     }
+    return res.send(r.toXML());
   }
+  const disposition = question.answers[body.Digits || query.digit].value;
+  const next = question.answers[body.Digits || query.digit].next;
 
   r.addSpeakI18n('_transparent', {var: disposition});
 
@@ -595,13 +597,19 @@ app.post('/survey_result', async ({query, body}, res) => {
     answer: disposition,
   }
   const survey_result = await SurveyResult.query().insert(data);
+  const current_survey_results = await SurveyResult.query().where({call_id: query.call_id, question: query.q})
+  const all_possible_responses_entered = current_survey_results.length >= Object.keys(answers).length
+
   await call.$query().patch({updated_at: new Date()})
   if (data.question === 'disposition') {
     await call.callee.trigger_callable_recalculation(call, survey_result.answer)
   }
 
-  if (data.question != 'disposition' && question.multiple && previous_survey_results.length < Object.keys(answers).length) {
+  if (data.question!= 'disposition' && question.multiple && !all_possible_responses_entered) {
     r.addRedirect(res.locals.appUrl(`survey_multiple?q=${query.q}&call_id=${query.call_id}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`));
+    return res.send(r.toXML())
+  } else if (query.q != 'disposition' && question.multiple && all_possible_responses_entered) {
+    r.addSpeakI18n('survey_multiple_all_possible_entered', {question: question.name})
   }
 
   if (next) {
@@ -624,7 +632,7 @@ app.post('/survey_multiple', async ({query, body}, res) => {
   const matched_previous_response_keys =_.remove(_.map(questionData.answers, (answer, key) => _.includes(previous_survey_result_answers, answer.value) ? key : null), null);
   let validDigits = Object.keys(questionData.answers)
   _.remove(validDigits, (digit) => _.includes(matched_previous_response_keys, digit))
-  validDigits.push('#')
+  if (previous_survey_results.length > 0) { validDigits.push('*') }
   const surveyResponse = r.addGetDigits({
     action: res.locals.appUrl(`survey_result?q=${question}&caller_id=${query.caller_id}&call_id=${call.id}&campaign_id=${query.campaign_id}&multiple=1`),
     redirect: true,
@@ -634,6 +642,8 @@ app.post('/survey_multiple', async ({query, body}, res) => {
     validDigits: validDigits,
   });
   surveyResponse.addSpeakI18n('survey_multiple_others');
+  surveyResponse.addWait({length: 1});
+  surveyResponse.addSpeakI18n('survey_multiple_others_next');
   res.send(r.toXML());
 });
 

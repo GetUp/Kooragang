@@ -29,12 +29,48 @@
   "event_rsvp": {
     "name": "What dates can they make?",
     "multiple": true,
+    "next": "lift_needed",
     "answers": {
       "2": {
         "value": "September 5"
       },
       "3": {
         "value": "September 19"
+      },
+      "4": {
+        "value": "September 22"
+      }
+    }
+  },
+  "lift_needed": {
+    "name": "Do they need a lift?",
+    "answers": {
+      "2": {
+        "value": "Yes",
+        "next": "lift_needed"
+      },
+      "3": {
+        "value": "No",
+        "next": "lift_needed"
+      },
+      "4": {
+        "value": "Maybe",
+        "next": "lift_needed"
+      }
+    }
+  },
+  "calling": {
+    "name": "Will they call?",
+    "multiple": true,
+    "answers": {
+      "2": {
+        "value": "monday"
+      },
+      "3": {
+        "value": "tuesday"
+      },
+      "4": {
+        "value": "wednesday"
       }
     }
   }

@@ -8,7 +8,7 @@ const ivrCaller = proxyquire('../../ivr/caller', {
     dial: async (appUrl) => {}
   }
 });
-const ivrCallerAssessment = require('../../ivr/caller_assessment')
+const ivrCallerAssessment = require('../../ivr/caller_assessment');
 const app = require('../../ivr/common');
 app.use(ivrCaller);
 app.use(ivrCallerAssessment);
@@ -30,52 +30,18 @@ const {
 
 const hours_of_operation_full = require('../../seeds/hours_of_operation_full.example.json');
 const hours_of_operation_null = require('../../seeds/hours_of_operation_null.example.json');
-
+const more_info = require('../../seeds/more_info.example.json')
 const questions = require('../../seeds/questions.example.json');
-const questions_multiple = require('../../seeds/questions_multiple.example.json');
-const malformedQuestion = {
-  "disposition": {
-    "name": "test–—‘’‚“”„†‡‰‹›€ing",
-    "answers": {
-      "2": {
-        "value": "answering¡¢£©®¶ & machine"
-      }
-    }
-  }
-};
-const more_info = require('../../seeds/more_info.example.json');
-const defaultCampaign = {
-  id: 1,
-  name: 'test',
-  questions: questions,
+const multiple_questions = require('../../seeds/questions_multiple.example.json');
+const malformed_questions = require('../../seeds/questions_malformed.example.json');
+
+const campaign_template = Object.assign({
   more_info: more_info,
-  phone_number: '1111',
-  sms_number: '22222222',
-  hours_of_operation: hours_of_operation_full,
-  shortcode: 'test',
-  no_call_window: 240,
-  max_call_attempts: 1
-}
-const malformedCampaign = {
-  name: 'test',
-  questions: malformedQuestion,
-  more_info: more_info,
-  phone_number: '1111',
-  sms_number: '22222222',
   hours_of_operation: hours_of_operation_full
-}
-const multipleCampaign = {
-  id: 1,
-  name: 'test',
-  questions: questions_multiple,
-  more_info: more_info,
-  phone_number: '1111',
-  sms_number: '22222222',
-  hours_of_operation: hours_of_operation_full,
-  shortcode: 'test',
-  no_call_window: 240,
-  max_call_attempts: 1
-}
+}, require('../../seeds/default_campaign.example.json'))
+const defaultCampaign = Object.assign({ id: 1, questions: questions }, campaign_template)
+const malformedCampaign = Object.assign({ questions: malformed_questions }, campaign_template)
+const multipleCampaign = Object.assign({ id: 1, questions: multiple_questions }, campaign_template)
 const activeCampaign = Object.assign({status: 'active'}, defaultCampaign)
 const pausedCampaign = Object.assign({status: 'paused'}, defaultCampaign)
 const downCampaign = Object.assign({status: 'down'}, defaultCampaign)
@@ -1326,6 +1292,9 @@ describe('/survey', () => {
 
   context('with invalid xml characters', () => {
     let malformed_campaign;
+    beforeEach(async () => {
+      await Campaign.query().delete();
+    });
     beforeEach(async () => malformed_campaign = await Campaign.query().insert(malformedCampaign));
     it('should be spripped out to valid xml', async () => {
       const question = 'disposition';
@@ -1478,8 +1447,9 @@ describe('/survey_result', () => {
   });
 
   context('with a question with multiple responses', () => {
-    const payload = { Digits: '2', To: '614000100'};
     let callee, call;
+    const payload = { Digits: '2', To: '614000100'};
+    const skip_payload = { Digits: '*', To: '614000100'};
     beforeEach(async () => {
       await SurveyResult.query().delete()
       await Call.query().delete()
@@ -1489,34 +1459,56 @@ describe('/survey_result', () => {
       callee = await Callee.query().insert(associatedCallee);
       call = await Call.query().insert({callee_id: callee.id});
     });
-    context('with no current responses', () => {
-      it ('should announce the result & redirect to multiple survey', () => {
-        return request.post(`/survey_result?q=event_rsvp&campaign_id=1&call_id=${call.id}`)
-          .type('form').send(payload)
-          .expect(/September/)
-          .expect(/survey_multiple\?q=/);
+    context('with a valid question digit', () => {
+      context('with no current responses', () => {
+        it ('should announce the result & redirect to multiple survey', () => {
+          return request.post(`/survey_result?q=event_rsvp&campaign_id=1&call_id=${call.id}&multiple=1`)
+            .type('form').send(payload)
+            .expect(/September/)
+            .expect(/survey_multiple\?q=/);
+        });
+      });
+      context('with responses less than number of options', () => {
+        beforeEach(async () => {
+          await SurveyResult.query().insert({call_id: call.id, question: 'event_rsvp', answer: 'September 19'});
+        });
+        it ('should announce the result & redirect to multiple survey', () => {
+          return request.post(`/survey_result?q=event_rsvp&campaign_id=1&call_id=${call.id}&multiple=1`)
+            .type('form').send(payload)
+            .expect(/September/)
+            .expect(/survey_multiple\?q=/);
+        });
+      });
+      context('with responses as many number of options', () => {
+        let current_survey_results
+        beforeEach(async () => {
+          await SurveyResult.query().insert({call_id: call.id, question: 'event_rsvp', answer: 'September 19'});
+          await SurveyResult.query().insert({call_id: call.id, question: 'event_rsvp', answer: 'September 22'});
+        });
+        it ('should announce the result & redirect to call again', () => {
+          return request.post(`/survey_result?q=event_rsvp&campaign_id=1&call_id=${call.id}&multiple=1`)
+            .type('form').send(payload)
+            .expect(/call_again/);
+        });
       });
     });
-    context('with responses less than number of options', () => {
-      beforeEach(async () => {
-        await SurveyResult.query().insert({call_id: call.id, question: 'event_rsvp', answer: 'September 5'});
+    context('with the skip current question response given', () => {
+      context('on a question with a next present', () => {
+        it ('should announce the result & redirect to survey', () => {
+          return request.post(`/survey_result?q=event_rsvp&campaign_id=1&call_id=${call.id}&multiple=1`)
+            .type('form').send(skip_payload)
+            .expect(/survey\?q=/);
+        });
       });
-      it ('should announce the result & redirect to multiple survey', () => {
-        return request.post(`/survey_result?q=event_rsvp&campaign_id=1&call_id=${call.id}`)
-          .type('form').send(payload)
-          .expect(/September/)
-          .expect(/survey_multiple\?q=/);
-      });
-    });
-    context('with responses as many number of options', () => {
-      beforeEach(async () => {
-        await SurveyResult.query().insert({call_id: call.id, question: 'event_rsvp', answer: 'September 5'});
-        await SurveyResult.query().insert({call_id: call.id, question: 'event_rsvp', answer: 'September 19'});
-      });
-      it ('should announce the result & redirect to multiple survey', () => {
-        return request.post(`/survey_result?q=event_rsvp&campaign_id=1&call_id=${call.id}`)
-          .type('form').send(payload)
-          .expect(/call_again/);
+      context('on a question with no next present', () => {
+        beforeEach(async () => {
+          await SurveyResult.query().insert({call_id: call.id, question: 'event_rsvp', answer: 'September 19'});
+        });
+        it ('should announce the result & redirect to call_again', () => {
+          return request.post(`/survey_result?q=calling&campaign_id=1&call_id=${call.id}&multiple=1`)
+            .type('form').send(skip_payload)
+            .expect(/call_again\?/);
+        });
       });
     });
   });
@@ -1524,7 +1516,7 @@ describe('/survey_result', () => {
 
 describe('/survey_multiple', () => {
   context('with a question with multiple responses', () => {
-    const payload = { Digits: '2', To: '614000100'};
+    const payload = {To: '614000100'};
     let callee, call;
     beforeEach(async () => {
       await SurveyResult.query().delete()
@@ -1535,11 +1527,27 @@ describe('/survey_multiple', () => {
       callee = await Callee.query().insert(associatedCallee);
       call = await Call.query().insert({callee_id: callee.id});
     });
-    context('with no current responses', () => {
-      it ('should ask if there are any other survey results', () => {
-        return request.post(`/survey_multiple?q=event_rsvp&campaign_id=1&call_id=${call.id}`)
-          .type('form').send(payload)
-          .expect(/any other responses/);
+    context('with a valid question digit', () => {
+      context('with no current responses', () => {
+        it ('should ask if there are any other survey results', () => {
+          return request.post(`/survey_multiple?q=event_rsvp&campaign_id=1&call_id=${call.id}`)
+            .type('form').send(payload)
+            .expect(/2,3,4/)
+            .expect(/any other responses/);
+        });
+      });
+    });
+    context('with the skip current question response given', () => {
+      context('with no current responses', () => {
+        beforeEach(async () => {
+          await SurveyResult.query().insert({call_id: call.id, question: 'event_rsvp', answer: 'September 19'});
+        });
+        it ('should ask if there are any other survey results', () => {
+          return request.post(`/survey_multiple?q=event_rsvp&campaign_id=1&call_id=${call.id}`)
+            .type('form').send(payload)
+            .expect(/2,4,*/)
+            .expect(/any other responses/);
+        });
       });
     });
   });
@@ -1870,6 +1878,30 @@ describe('/survey_result_assessment', () => {
         .type('form').send(payload)
         .expect(/will call member of parliament/)
         .expect(/briefing\?campaign_id=\d+/);
+    });
+  });
+});
+
+describe('/survey_multiple_assessment', () => {
+  context('with a question with multiple responses', () => {
+    const payload = { Digits: '2', To: '614000100'};
+    let callee, call, caller;
+    beforeEach(async () => {
+      await SurveyResult.query().delete()
+      await Call.query().delete()
+      await Callee.query().delete()
+      await Campaign.query().delete()
+      campaign = await Campaign.query().insert(multipleCampaign)
+      callee = await Callee.query().insert(associatedCallee);
+      call = await Call.query().insert({callee_id: callee.id});
+      caller = await Caller.query().insert(associatedCaller);
+    });
+    context('with no current responses', () => {
+      it ('should ask if there are any other survey results', () => {
+        return request.post(`/survey_multiple_assessment?q=event_rsvp&campaign_id=1&call_id=${call.id}&caller_id=${caller.id}`)
+          .type('form').send(payload)
+          .expect(/any other responses/);
+      });
     });
   });
 });
