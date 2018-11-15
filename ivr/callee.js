@@ -45,6 +45,7 @@ app.post('/answer', async ({body, query}, res) => {
         conference_id: `conference-${caller.id}`,
         member_id: caller.conference_member_id,
         text: name,
+        callback_url: res.locals.appUrl(`log?event=speak_name`)
       }, voice())
       try{
         if (process.env.SPEAK_NAMES) await plivo_api('speak_conference_member', params);

@@ -149,7 +149,8 @@ describe('/answer', () => {
             .post(`/v1/Account/test/Conference/conference-${caller.id}/Member/1111/Speak/`, (body) => {
                return body.text === 'Bridger' &&
                 body.language === voice().language &&
-                body.voice === voice().voice;
+                body.voice === voice().voice &&
+                body.callback_url.match(/log/);
             })
             .query(true)
             .reply(200);
