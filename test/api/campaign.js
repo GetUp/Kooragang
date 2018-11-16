@@ -26,10 +26,7 @@ const cloneCampaignAttributes = {
 }
 const defaultAudience = {
   id: 1,
-  list_name: 'test list',
-  list_id: 2222,
-  list_member_count: 111,
-  imported_member_count: 110,
+  sync_id: 1111,
   status: 'complete'
 }
 process.env.KOORAGANG_API_HASH = 'xxxxxxxxxx'
@@ -227,7 +224,7 @@ describe('Campaign API Endpoints', ()=> {
   describe('fetching campaign audiences', ()=> {
     beforeEach(async () => {
       await dropFixtures()
-      const campaign = await Campaign.query().insert(defaultCampaign)
+      let campaign = await Campaign.query().insert(defaultCampaign)
       await Audience.query().insert(Object.assign({}, defaultAudience, {campaign_id: campaign.id}))
     })
     it('should return an array of attributed audiences', async () => {
@@ -238,10 +235,8 @@ describe('Campaign API Endpoints', ()=> {
         .expect(200)
       const audience = res.body.data[0]
       expect(audience.id).to.be(1)
-      expect(audience.list_name).to.be('test list')
-      expect(audience.list_id).to.be('2222')
-      expect(audience.list_member_count).to.be('111')
-      expect(audience.imported_member_count).to.be('110')
+      expect(audience.campaign_id).to.be('1')
+      expect(audience.sync_id).to.be('1111')
       expect(audience.status).to.be('complete')
     })
   })
