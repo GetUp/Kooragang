@@ -15,7 +15,7 @@ app.get('/api/campaigns', wrap(async (req, res, next) => {
 
 //index public
 app.get('/api/campaigns_public', wrap(async (req, res, next) => {
-  const campaign = await Campaign.query().where({status: 'active', public: true}).orderBy('created_at', 'desc')
+  const campaign = await Campaign.query().where({status: 'active', public_visible: true}).orderBy('created_at', 'desc')
   if (!campaign) return next(new NotFoundError('No Campaigns Exist'))
   return res.json({data: campaign})
 }))
