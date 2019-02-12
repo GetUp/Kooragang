@@ -65,3 +65,17 @@ module.exports.languageBlock = (block, vars) => {
   const i18n = new i18n_module(config.lang, config.langFile)
   return i18n.__(block, vars)
 }
+
+module.exports.region_prefix_map = (region) => {
+  const map = {
+    'Sydney': '2',
+    'Melbourne': '3',
+    'Brisbane': '7',
+    'Adelaide': '8',
+    'Perth': '8',
+    'Hobart': '3',
+    'Darwin': '8',
+    'Canberra': '2'
+  }
+  return map[region]
+}
