@@ -137,7 +137,7 @@ app.post('/connect', async ({body, query}, res) => {
     let valid_team_digits = ['2', '*']
     if (user && user.team_id) { valid_team_digits.push('1') }
     const teamAction = r.addGetDigits({
-      action: res.locals.appUrl(`team?campaign_id=${query.campaign_id}&callback=${query.callback ? query.callback : 0}&authenticated=${query.authenticated ? '1' : '0'}&assessment=${query.assessment ? '1' : '0'}`),
+      action: res.locals.appUrl(`team?campaign_id=${query.campaign_id}&callback=${query.callback ? query.callback : 0}&authenticated=${query.authenticated ? '1' : '0'}&assessment=${query.assessment ? '1' : '0'}&number=${caller_number}`),
       timeout: 10,
       retries: 10,
       numDigits: 1,
