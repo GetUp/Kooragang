@@ -70,7 +70,7 @@ const create_app_and_link_number = async (payload, region) => {
 }
 
 const find_free_number = async (region, offset=0) => {
-  const country_area_prefix = `${process.env.BASE_URL}${region_prefix_map(region)}`
+  const country_area_prefix = `${process.env.COUNTRY_CODE}${region_prefix_map(region)}`
   const batchSize = 20
   const [_search_code, search_response] = await plivo_api('get_numbers', {number_startswith: country_area_prefix, offset, limit: batchSize}, {multiArgs: true})
   const country_area_prefix_re = new RegExp('^' + country_area_prefix, 'i')
