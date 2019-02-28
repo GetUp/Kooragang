@@ -68,14 +68,19 @@ module.exports.languageBlock = (block, vars) => {
 
 module.exports.region_prefix_map = (region) => {
   const map = {
-    'Sydney': '2',
-    'Melbourne': '3',
-    'Brisbane': '7',
-    'Adelaide': '8',
-    'Perth': '8',
-    'Hobart': '3',
-    'Darwin': '8',
-    'Canberra': '2'
+    'Sydney/Landline': '2',
+    'Melbourne/Landline': '3',
+    'Brisbane/Landline': '7',
+    'Adelaide/Landline': '8',
+    'Perth/Landline': '8',
+    'Hobart/Landline': '3',
+    'Darwin/Landline': '8',
+    'Canberra/Landline': '2',
+    'Australia/Mobile': '4'
   }
   return map[region]
+}
+
+module.exports.region_phone_type_match = (region) => {
+  return _.isNull(region.match(/Landline/)) ? 'mobile' : 'fixed'
 }

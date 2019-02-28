@@ -11,12 +11,15 @@ const defaultCampaign = {
   id: 11,
   name: 'test',
   questions: {},
-  number_region: 'Sydney'
+  number_region: 'Sydney/Landline',
+  outgoing_number_region: 'Sydney/Landline'
 }
+process.env.COUNTRY_ISO = 'AU'
+process.env.COUNTRY_CODE = '61'
+process.env.PLIVO_OUTGOING_HANGUP_APP_ID = '123123'
 const questions = require('../seeds/questions.example.json')
 
-const numberSetupCampaign = Object.assign({}, defaultCampaign, {plivo_setup_status: 'needed'})
-const audioSetupCampaign = Object.assign({}, defaultCampaign, {text_to_speech_status: 'needed'}, {questions} )
+const numberSetupCampaign = Object.assign({}, defaultCampaign, {plivo_setup_status: 'needed', plivo_setup_outgoing_status: 'needed'})
 
 describe('plivo_setup_campaigns', () => {
   let searchRentedNumbersCall, createApplicationCall, editRentedNumberCall;
@@ -25,7 +28,7 @@ describe('plivo_setup_campaigns', () => {
   let rentableNumbers = [{region: 'SYDNEY, AUSTRALIA', application: null, number: '6141414141414'}]
   const app_id = '12121'
   const fields = {name: 'Test App', intro: { name: "test", audio_filename: { en: 'test.wav'} }}
-  const area = {country_iso: 'AU', type: 'local', region: 'Sydney'}
+  const area = {country_iso: 'AU', type: 'local', region: 'Sydney/Landline'}
   beforeEach(async () => await dropFixtures())
   beforeEach(async () => campaign = await Campaign.query().insert(numberSetupCampaign));
 
