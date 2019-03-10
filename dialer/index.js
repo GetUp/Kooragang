@@ -22,7 +22,7 @@ module.exports.dial = async (appUrl, campaign) => {
   const callers = await Caller.query().where({status: 'available', campaign_id: campaign.id});
   const incall = await Caller.query().where({status: 'in-call', campaign_id: campaign.id})
   const callsToMake = Math.floor(callers.length * campaign.ratio);
-  const queued_calls = parseInt((await QueuedCall.query().where({campaign_id: campaign.id}).count('id'))[0].count, 10)
+  const queued_calls = parseInt((await QueuedCall.query().where({campaign_id: campaign.id}).whereRaw("created_at > now() - '15 minutes'::interval").count('id'))[0].count, 10)
   const callsToMakeExcludingCurrentCalls = callsToMake - queued_calls;
   let callees = [];
   let trans

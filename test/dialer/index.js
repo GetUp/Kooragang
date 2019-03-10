@@ -509,7 +509,7 @@ describe('.dial', () => {
         await Promise.all(inserts);
       });
 
-      it('should exclude calls in progress from the number of calls to make', async () => {
+      it('should exclude queued calls made in last 15 minutes from the number of calls to make', async () => {
         let calls_in_progress;
         let counter = 0;
         const mockedApiCall = nock('https://api.plivo.com')
@@ -525,7 +525,9 @@ describe('.dial', () => {
         await QueuedCall.query().where({callee_id: answered_callee.id}).delete()
         campaign = await dialer.decrementCallsInProgress(campaign);
         expect(campaign.calls_in_progress).to.be(2);
-        expect((await QueuedCall.query().where({campaign_id: campaign.id})).length).to.be(2);
+        // insert an old queued call that should be ignored
+        await QueuedCall.query().insert({callee_id: answered_callee.id, campaign_id: campaign.id, created_at: moment().subtract(16, 'minutes').toDate()});
+        expect((await QueuedCall.query().where({campaign_id: campaign.id})).length).to.be(3);
         await dialer.dial(testUrl, campaign);
         mockedApiCall.done()
       });
