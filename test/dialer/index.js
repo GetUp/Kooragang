@@ -72,11 +72,11 @@ describe('.dial', () => {
 
     context('with an outgoing_number set on the campaign', () => {
       beforeEach(async () => {
-        campaign = await Campaign.query().patchAndFetchById(campaign.id, {outgoing_number: '909090'});
+        campaign = await Campaign.query().patchAndFetchById(campaign.id, {ring_timeout: '99'});
       });
       it('should use the campaign\'s outgoing_number', async () => {
         const mockedApiCall = nock('https://api.plivo.com')
-          .post(/Call/, body => body.from === campaign.outgoing_number)
+          .post(/Call/, body => body.ring_timeout === campaign.ring_timeout)
           .query(true)
           .reply(200);
         await dialer.dial(testUrl, campaign);
