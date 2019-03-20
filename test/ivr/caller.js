@@ -1170,7 +1170,7 @@ describe('/resume_survey', () => {
     it('should redirect back to call queue', async () => {
       await request.post(`/resume_survey?last_call_id=${call.id}&caller_id=${caller.id}&campaign_id=${campaign.id}`)
         .type('form')
-        .send({Digits: '3'})
+        .send({Digits: '2'})
         .expect(new RegExp(`ready.*caller_id=${caller.id}.*campaign_id=${campaign.id}`))
     })
   })
