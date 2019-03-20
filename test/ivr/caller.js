@@ -1167,10 +1167,10 @@ describe('/resume_survey', () => {
   })
 
   context('with 2 pressed', () => {
-    it('should redirect back to call que', async () => {
+    it('should redirect back to call queue', async () => {
       await request.post(`/resume_survey?last_call_id=${call.id}&caller_id=${caller.id}&campaign_id=${campaign.id}`)
         .type('form')
-        .send({Digits: '2'})
+        .send({Digits: '3'})
         .expect(new RegExp(`ready.*caller_id=${caller.id}.*campaign_id=${campaign.id}`))
     })
   })
@@ -1218,7 +1218,7 @@ describe('/conference_event/caller', () => {
     })
   });
 
-  context('with 2 pressed during the conference', () => {
+  context('with 3 pressed during the conference', () => {
     const CallUUID = '1';
     const ConferenceUUID = '2';
 
@@ -1227,13 +1227,13 @@ describe('/conference_event/caller', () => {
       const mockedApiCall = nock('https://api.plivo.com')
         .post(/\/Call\/1\//, (body) => {
            return body.aleg_url.match(/survey_result/)
-              && body.aleg_url.match(/digit=2/);
+              && body.aleg_url.match(/digit=3/);
         })
         .query(true)
         .reply(200);
       await request.post(`/conference_event/caller?caller_id=${caller.id}`)
         .type('form')
-        .send({ConferenceAction: 'digits', ConferenceDigitsMatch: '2', CallUUID, ConferenceUUID})
+        .send({ConferenceAction: 'digits', ConferenceDigitsMatch: '3', CallUUID, ConferenceUUID})
         .expect(200);
       mockedApiCall.done();
     })

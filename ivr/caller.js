@@ -438,7 +438,7 @@ app.post('/ready', async ({body, query}, res) => {
     hangupOnStar: 'true',
     action: res.locals.appUrl(`survey?q=disposition&caller_id=${caller_id}&campaign_id=${query.campaign_id}`)
   }
-  if (process.env.ENABLE_ANSWER_MACHINE_SHORTCUT) params.digitsMatch = ['2']
+  if (process.env.ENABLE_ANSWER_MACHINE_SHORTCUT) params.digitsMatch = ['3']
   if (campaign.transfer_to_target) params.digitsMatch = (params.digitsMatch || []).concat('9')
   r.addConference(`conference-${caller_id}`, params);
   res.send(r.toXML());
@@ -484,12 +484,12 @@ app.post('/conference_event/caller', async ({query, body}, res) => {
     }else {
       await Event.query().insert({name: 'available', campaign_id: campaign.id, caller_id: caller.id, value: {calls_in_progress, updated_calls_in_progress: campaign.calls_in_progress}})
     }
-  } else if (body.ConferenceAction === 'digits' && ['2', '9'].includes(body.ConferenceDigitsMatch)) {
+  } else if (body.ConferenceAction === 'digits' && ['3', '9'].includes(body.ConferenceDigitsMatch)) {
     const call = await Call.query().where({conference_uuid: body.ConferenceUUID}).first();
     if (call) {
-      const params = body.ConferenceDigitsMatch === '2' ? {
+      const params = body.ConferenceDigitsMatch === '3' ? {
         call_uuid: body.CallUUID,
-        aleg_url: res.locals.appUrl(`survey_result?q=disposition&caller_id=${query.caller_id}&call_id=${call.id}&campaign_id=${query.campaign_id}&digit=2`),
+        aleg_url: res.locals.appUrl(`survey_result?q=disposition&caller_id=${query.caller_id}&call_id=${call.id}&campaign_id=${query.campaign_id}&digit=3`),
       } : {
         call_uuid: call.callee_call_uuid,
         aleg_url: res.locals.appUrl(`transfer_to_target?call_id=${call.id}&campaign_id=${query.campaign_id}`)
