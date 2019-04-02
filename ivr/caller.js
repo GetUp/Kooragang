@@ -322,8 +322,8 @@ app.post('/ready', async ({body, query}, res) => {
         campaign_id: query.campaign_id,
         created_from_incoming: incomingCaller(body)
       }
-      if (body.From) {
-        const user = await User.query().where({phone_number: body.From}).first();
+      if (body.caller_number) {
+        const user = await User.query().where({phone_number: body.caller_number}).first();
         if (user && user.team_id) {
           caller_params.team_id = user.team_id
         }

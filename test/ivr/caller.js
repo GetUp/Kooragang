@@ -423,7 +423,7 @@ describe('/connect', () => {
     beforeEach(async () => user = await User.query().insert({phone_number: '098765', team_id: team.id}));
     beforeEach(async () => { await Callee.query().insert(associatedCallee) });
     beforeEach(async () => campaign.recalculateCallersRemaining() );
-    const payload = { From: '098765' };
+    const payload = { From: '098765', caller_number: '098765' };
 
     context('with existing user and team', () => {
       it('should announce the team input options', () => {
@@ -993,7 +993,8 @@ describe('/ready', () => {
     beforeEach(async () => user = await User.query().insert({phone_number: '098765', team_id: team.id}));
     const payload = {
       CallUUID,
-      From: '098765'
+      From: '098765',
+      caller_number: '098765'
     };
     it('should update caller creation params to include team id', async () => {
       await request.post(`/ready?campaign_id=${campaign.id}&start=1&caller_number=${caller.phone_number}`)
