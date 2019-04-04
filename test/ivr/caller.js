@@ -423,7 +423,7 @@ describe('/connect', () => {
     beforeEach(async () => user = await User.query().insert({phone_number: '098765', team_id: team.id}));
     beforeEach(async () => { await Callee.query().insert(associatedCallee) });
     beforeEach(async () => campaign.recalculateCallersRemaining() );
-    const payload = { From: '098765', caller_number: '098765' };
+    const payload = { From: '098765' };
 
     context('with existing user and team', () => {
       it('should announce the team input options', () => {
@@ -472,7 +472,7 @@ describe('/connect', () => {
       });
     });
     context('with a callback', () => {
-      const payload = { From: '33333' };
+      const payload = { From: '33333',  caller_number: '098765' };
       it('should ignore the team input options and announce welcome back', () => {
         return request.post(`/connect?campaign_id=${campaign.id}&callback=1&number=${caller.phone_number}`)
           .type('form')
@@ -997,6 +997,14 @@ describe('/ready', () => {
       caller_number: '098765'
     };
     it('should update caller creation params to include team id', async () => {
+      await request.post(`/ready?campaign_id=${campaign.id}&start=1&caller_number=${caller.phone_number}`)
+        .type('form')
+        .send(payload);
+      const new_caller = await Caller.query().where({phone_number: caller.phone_number, campaign_id: campaign.id}).first()
+      expect(new_caller.team_id).to.be(team.id)
+    });
+    it('on callbacks, it should update caller creation params to include team id', async () => {
+      payload.From = '333333'
       await request.post(`/ready?campaign_id=${campaign.id}&start=1&caller_number=${caller.phone_number}`)
         .type('form')
         .send(payload);
