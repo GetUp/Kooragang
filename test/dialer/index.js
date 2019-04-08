@@ -690,17 +690,19 @@ describe('.calledEveryone with recalculateCallersRemaining called beforehand', (
         });
       });
 
-      context('with the call completed and with disposition survey result of "call back later"', () => {
-        beforeEach(async() => {
-          const call = await Call.query().insert({callee_id: callee.id, status: 'completed'})
-          const survey_result = await SurveyResult.query().insert({call_id: call.id, question: 'disposition', answer: 'call back later'})
-          await callee.trigger_callable_recalculation(call, survey_result.answer)
-        })
-        it ('should be false', async() => {
-          await campaign.recalculateCallersRemaining()
-          expect(await campaign.calledEveryone()).to.be(false)
+      ['call back later', 'issue with call quality'].forEach(status => {
+        context(`with the call completed and with disposition survey result of ${status}`, () => {
+          beforeEach(async() => {
+            const call = await Call.query().insert({callee_id: callee.id, status: 'completed'})
+            const survey_result = await SurveyResult.query().insert({call_id: call.id, question: 'disposition', answer: status})
+            await callee.trigger_callable_recalculation(call, survey_result.answer)
+          })
+          it ('should be false', async() => {
+            await campaign.recalculateCallersRemaining()
+            expect(await campaign.calledEveryone()).to.be(false)
+          });
         });
-      });
+      })
 
       context('with the call completed and with disposition survey result of "answering machine"', () => {
         beforeEach(async() => {

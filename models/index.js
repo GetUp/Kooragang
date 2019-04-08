@@ -231,7 +231,10 @@ class Campaign extends Base {
   }
 
   callback_dispositions() {
-    let callback_dispositions = [languageBlock('call_back_later_disposition')]
+    let callback_dispositions = [
+      languageBlock('call_back_later_disposition'),
+      languageBlock('issue_with_call_quality_disposition')
+    ]
     if (this.callback_answering_machines) {
       callback_dispositions.push(languageBlock('answering_machine_disposition'))
     }

@@ -291,6 +291,10 @@
         "en": "call back later",
         "de": "call back later"
     },
+    "issue_with_call_quality_disposition": {
+        "en": "issue with call quality",
+        "de": "issue with call quality"
+    },
     "answering_machine_disposition": {
         "en": "answering machine",
         "de": "answering machine"
