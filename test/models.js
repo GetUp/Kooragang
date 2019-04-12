@@ -30,10 +30,10 @@ describe('Campaign', () => {
     context('with answers missing', () => {
       it('should throw a validation error', expectInvalidQuestion({disposition: {}}, /disposition question requires answers/))
     })
-    context('with an answer that is not betweeen 2-9', () => {
-      it('should throw a validation error', expectInvalidQuestion({disposition: {name: 'test', answers: {'1': {value: 'test'}}}}, /answer 1 for disposition question is not valid/))
+    context('with an answer that is not between 1-9', () => {
+      it('should throw a validation error', expectInvalidQuestion({disposition: {name: 'test', answers: {'0': {value: 'test'}}}}, /answer 0 for disposition question is not valid/))
     });
-    context('with an answer that is not betweeen 2-9', () => {
+    context('with an answer with missing value', () => {
       it('should throw a validation error', expectInvalidQuestion({disposition: {name: 'test', answers: {'2': {oops: 'test'}}}}, /answer 2 for disposition question is missing value/))
     })
     context('with an answer with an invalid next', () => {
