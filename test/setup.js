@@ -3,6 +3,7 @@ const nock = require('nock')
 const { plivo_setup_campaigns } = require('../campaigns/plivo_setup')
 const {dropFixtures} = require('./test_helper')
 const {Campaign} = require('../models');
+const moment = require('moment')
 const sinon = require('sinon')
 const EventEmitter = require('events')
 const emitter = new EventEmitter()
@@ -42,7 +43,7 @@ describe('plivo_setup_campaigns', () => {
           .reply(200, () => { return { objects: rentedNumbers, meta: {next: null}} })
         createApplicationCall = nock('https://api.plivo.com')
           .post(/Application/, body => {
-            return body.app_name === `kooragang-test-${numberSetupCampaign.id}-${numberSetupCampaign.name}` &&
+            return body.app_name === `kooragang-test-${numberSetupCampaign.id}-${numberSetupCampaign.name}_${moment().format('YYMMDDHHmm')}` &&
               body.answer_url.match(/https:\/\/test\/connect\?campaign_id=\d+/) &&
               body.fallback_answer_url.match(/https:\/\/test\/log\?event=fallback&campaign_id=\d+/) &&
               body.hangup_url.match(/https:\/\/test\/call_ended\?campaign_id=\d+/)

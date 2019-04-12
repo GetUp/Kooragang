@@ -16,7 +16,7 @@ const plivo_setup_campaigns = async () => {
 const setup_inbound = async (campaign) => {
   await campaign.$query().patch({plivo_setup_status: 'active'})
   if (!campaign.phone_number) {
-    await setup_outgoing(campaign)
+    await setup_inbound_infrastructure(campaign)
   } else {
     await campaign.$query().patch({plivo_setup_status: 'complete'})
   }
@@ -25,7 +25,7 @@ const setup_inbound = async (campaign) => {
 const setup_inbound_infrastructure = async (campaign) => {
   const base_url = process.env.BASE_URL || 'https://test'
   const payload = {
-    app_name: `${moment().format('x')}_kooragang-${process.env.NODE_ENV || 'development'}-${campaign.id}-${campaign.name.replace(/\W/g, '_').toLowerCase()}`,
+    app_name: `kooragang-${process.env.NODE_ENV || 'development'}-${campaign.id}-${campaign.name.replace(/\W/g, '_').toLowerCase()}_${moment().format('YYMMDDHHmm')}`,
     answer_url: `${base_url}/connect?campaign_id=${campaign.id}`,
     fallback_answer_url: `${base_url}/log?event=fallback&campaign_id=${campaign.id}`,
     hangup_url: `${base_url}/call_ended?campaign_id=${campaign.id}`
@@ -94,8 +94,10 @@ const find_free_number = async (region, offset=0) => {
     .first()
   if (number) return number
   if (search_response.meta.next) {
+    console.log('>>>')
     return find_free_number(region, offset+batchSize)
   } else {
+    console.log('<<<')
     return await buy_number(region)
   }
 }
