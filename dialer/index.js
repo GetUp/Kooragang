@@ -116,7 +116,7 @@ const calleeCallParams = (campaign, callee, appUrl) => {
     answer_url : `${appUrl}/answer?name=${formattedName(callee)}&callee_id=${callee.id}&campaign_id=${callee.campaign_id}`,
     hangup_url : `${appUrl}/hangup?callee_id=${callee.id}&campaign_id=${callee.campaign_id}`,
     fallback_url : `${appUrl}/callee_fallback?callee_id=${callee.id}&campaign_id=${callee.campaign_id}`,
-    time_limit: 40 * 60,
+    time_limit: 45 * 60,
     ring_timeout: campaign.ring_timeout || process.env.RING_TIMEOUT || 15
   }
 }
