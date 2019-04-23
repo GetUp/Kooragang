@@ -32,7 +32,7 @@
         "de": ""
     },
     "campaign_status_completed_with_next": {
-        "en": "The {{campaign_name}}, campaign has been completed! But please stay on the line, we're transfering you to the, {{next_campaign_name}, campaign now",
+        "en": "The {{campaign_name}}, campaign has been completed! But please stay on the line, we're transfering you to the, {{next_campaign_name}}, campaign now",
         "de": ""
     },
     "campaign_status_completed": {

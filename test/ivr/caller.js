@@ -47,7 +47,7 @@ const pausedCampaign = Object.assign({status: 'paused'}, defaultCampaign)
 const downCampaign = Object.assign({status: 'down'}, defaultCampaign)
 const inactiveCampaign = Object.assign({status: 'inactive'}, defaultCampaign)
 const inactiveNextCampaign = Object.assign({status: 'inactive', next_campaign_id: 2}, defaultCampaign)
-const nextCampaign = Object.assign({status: 'active', callers_remaining: 9}, defaultCampaign, {id: 2})
+const nextCampaign = Object.assign({status: 'active', callers_remaining: 9}, defaultCampaign, {id: 2, name: 'Inactive Test'})
 const statuslessCampaign = Object.assign({status: null}, defaultCampaign)
 const redundancyCampaign = Object.assign({revert_to_redundancy: true}, activeCampaign)
 const amdCampaign = Object.assign({status: 'active', detect_answering_machine: true}, defaultCampaign)
@@ -240,6 +240,7 @@ describe('/connect', () => {
         .type('form')
         .send(payload)
         .expect(/please stay on the line/)
+        .expect(new RegExp(nextCampaign.name))
         .expect(new RegExp(`connect.*campaign_id=${next_campaign.id}`));
     });
   });
