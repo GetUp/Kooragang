@@ -20,13 +20,13 @@ app.post('/team', async ({query, body}, res) => {
 
   if (user && body.Digits === '2') {
     await Event.query().insert({name: 'team selection', campaign_id: query.campaign_id, value: {log_id: query.log_id}})
-    r.addSpeakI18n('enter_passcode')
-    r.addGetDigits({
+    const code_prompt = r.addGetDigits({
       action: res.locals.appUrl(`team/join?campaign_id=${query.campaign_id}&user_id=${user.id}&callback=${query.callback ? query.callback : 0}&authenticated=${query.authenticated ? '1' : '0'}&assessment=${query.assessment ? '1' : '0'}&number=${query.number}`),
       timeout: 10,
       retries: 10,
       numDigits: 4
     })
+    code_prompt.addSpeakI18n('enter_passcode')
     return res.send(r.toXML())
   }
 

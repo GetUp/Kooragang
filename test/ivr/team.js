@@ -10,6 +10,7 @@ const ivrCaller = proxyquire('../../ivr/team', {
 const app = require('../../ivr/common')
 app.use(ivrCaller)
 const request = require('supertest')(app)
+const {dropFixtures} = require('../test_helper')
 
 const {
   Campaign,
@@ -30,8 +31,7 @@ let campaign
 let team
 let user
 beforeEach(async () => {
-  await User.query().delete()
-  await Team.query().delete()
+  await dropFixtures()
 })
 beforeEach(async () => team = await Team.query().insert({name: 'planet savers', passcode: '1234'}))
 beforeEach(async () => user = await User.query().insert({phone_number: '098765', team_id: team.id}))
@@ -73,11 +73,11 @@ describe('/team', () => {
   })
   context('with 2 pressed', () => {
     const payload = { Digits: '2', From: '098765' }
-    it('prompts for team passcode', () => {
+    it('prompts for team passcode within the digit prompt', () => {
       return request.post(`/team?campaign_id=${campaign.id}`)
         .type('form')
         .send(payload)
-        .expect(/Please enter/)
+        .expect(/Please enter.*<\/Speak><\/GetDigits/)
     })
   })
   context('with * pressed', () => {
