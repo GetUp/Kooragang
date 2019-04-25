@@ -224,8 +224,8 @@
         "de": ""
     },
     "continue_or_end_session": {
-        "en": "Press 1 to continue calling, or 0 to end your session. ",
-        "de": "Drücken Sie 1, um den Anruf fortzusetzen, oder 0, um die Sitzung zu beenden. "
+        "en": "Press 1 to continue calling. ",
+        "de": "Drücken Sie 1, um den Anruf fortzusetzen. "
     },
     "correct_entry": {
         "en": "Press, 8 to correct your entry, ",

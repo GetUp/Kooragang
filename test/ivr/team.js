@@ -27,20 +27,17 @@ const teamsCampaign = {
   teams: true
 }
 
-let campaign
-let team
-let user
-beforeEach(async () => {
-  await dropFixtures()
-})
-beforeEach(async () => team = await Team.query().insert({name: 'planet savers', passcode: '1234'}))
-beforeEach(async () => user = await User.query().insert({phone_number: '098765', team_id: team.id}))
 
 describe('/team', () => {
+  let campaign, team, user
+
   beforeEach(async () => {
-    await Campaign.query().delete()
+    await dropFixtures()
+    team = await Team.query().insert({name: 'planet savers', passcode: '1234'})
+    user = await User.query().insert({phone_number: '098765', team_id: team.id})
     campaign = await Campaign.query().insert(teamsCampaign)
   })
+
   context('with no existing user', () => {
     const payload = { From: '098765' }
     beforeEach(async () => { await User.query().delete() })
@@ -100,9 +97,13 @@ describe('/team', () => {
 })
 
 describe('/team/join', () => {
+  let campaign, team, user
+
   beforeEach(async () => {
-    await Campaign.query().delete()
+    await dropFixtures()
     campaign = await Campaign.query().insert(teamsCampaign)
+    team = await Team.query().insert({name: 'planet savers', passcode: '1234'})
+    user = await User.query().insert({phone_number: '098765', team_id: team.id})
   })
   context('with a passcode that matches an existing team', () => {
     it('announces user joined team & redirect to connect', () => {
