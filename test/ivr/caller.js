@@ -44,6 +44,7 @@ const malformedCampaign = Object.assign({ questions: malformed_questions }, camp
 const multipleCampaign = Object.assign({ id: 1, questions: multiple_questions }, campaign_template)
 const activeCampaign = Object.assign({status: 'active'}, defaultCampaign)
 const pausedCampaign = Object.assign({status: 'paused'}, defaultCampaign)
+const pausedNextCampaign = Object.assign({status: 'paused', callers_remaining: 9, next_campaign_id: 2}, defaultCampaign)
 const downCampaign = Object.assign({status: 'down'}, defaultCampaign)
 const inactiveCampaign = Object.assign({status: 'inactive'}, defaultCampaign)
 const inactiveNextCampaign = Object.assign({status: 'inactive', next_campaign_id: 2}, defaultCampaign)
@@ -225,6 +226,24 @@ describe('/connect', () => {
         .type('form')
         .send(payload)
         .expect(/currently paused/);
+    });
+  });
+
+  context('with a paused campaign with a next campaign', () => {
+    beforeEach(async () => { await Campaign.query().delete() });
+    beforeEach(async () => campaign = await Campaign.query().insert(pausedNextCampaign));
+    beforeEach(async () => next_campaign = await Campaign.query().insert(nextCampaign));
+    const nextAssociatedCallee = Object.assign({}, associatedCallee, {campaign_id: 2})
+    beforeEach(async () => { await Callee.query().insert(nextAssociatedCallee) });
+    const payload = { From: caller.phone_number };
+    it('plays the transferring campaign message', () => {
+      return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
+        .type('form')
+        .send(payload)
+        .expect(/currently paused/)
+        .expect(/please stay on the line/)
+        .expect(new RegExp(nextCampaign.name))
+        .expect(new RegExp(`connect.*campaign_id=${next_campaign.id}`));
     });
   });
 

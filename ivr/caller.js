@@ -50,14 +50,6 @@ app.post('/connect', async ({body, query}, res) => {
     return res.send(r.toXML())
   }
 
-  if (!assessment && campaign.isPaused()){
-    r.addWait({length: 2});
-    r.addSpeakI18n('welcome', {org_name: process.env.ORG_NAME || ''});
-    r.addWait({length: 1});
-    r.addSpeakI18n('campaign_status_paused', {campaign_name: campaign.name});
-    return res.send(r.toXML());
-  }
-
   if (!assessment && !campaign.isWithinDailyTimeOfOperation()) {
     r.addWait({length: 2});
     r.addSpeakI18n('welcome', {org_name: process.env.ORG_NAME || ''});
@@ -73,16 +65,29 @@ app.post('/connect', async ({body, query}, res) => {
     return res.send(r.toXML());
   }
 
-  if (!assessment && (await campaign.isComplete()) && campaign.next_campaign_id) {
+  const campaign_is_complete = await campaign.isComplete();
+  if (!assessment && (campaign.isPaused() || campaign_is_complete) && campaign.next_campaign_id) {
     const next_campaign = await Campaign.query().where({id: campaign.next_campaign_id}).first()
     if (next_campaign && (await next_campaign.isOperational())) {
       r.addWait({length: 2})
       r.addSpeakI18n('welcome', {org_name: process.env.ORG_NAME || ''});
       r.addWait({length: 1});
-      r.addSpeakI18n('campaign_status_completed_with_next', {campaign_name: campaign.name, next_campaign_name: next_campaign.name});
+      if (campaign_is_complete) {
+        r.addSpeakI18n('campaign_status_completed_with_next', {campaign_name: campaign.name, next_campaign_name: next_campaign.name});
+      } else {
+        r.addSpeakI18n('campaign_status_paused_with_next', {campaign_name: campaign.name, next_campaign_name: next_campaign.name});
+      }
       r.addRedirect(res.locals.appUrl(`connect?campaign_id=${next_campaign.id}`));
       return res.send(r.toXML());
     }
+  }
+
+  if (!assessment && campaign.isPaused()){
+    r.addWait({length: 2});
+    r.addSpeakI18n('welcome', {org_name: process.env.ORG_NAME || ''});
+    r.addWait({length: 1});
+    r.addSpeakI18n('campaign_status_paused', {campaign_name: campaign.name});
+    return res.send(r.toXML());
   }
 
   if (!assessment && await campaign.isComplete()) {

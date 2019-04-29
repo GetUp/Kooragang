@@ -27,6 +27,10 @@
         "en": "The {{campaign_name}} campaign is currently paused! Please contact the campaign coordinator for further instructions. Thank you and have a great day!",
         "de": ""
     },
+    "campaign_status_paused_with_next": {
+        "en": "The {{campaign_name}}, campaign is currently paused! But please stay on the line, we're transfering you to the, {{next_campaign_name}}, campaign now",
+        "de": ""
+    },
     "error_caller_id": {
         "en": "It appears you do not have caller ID enabled. Please enable it and call back. Don't worry, even when your caller ID is enabled the people you're talking to do not see your number. Thank you.",
         "de": ""
