@@ -55,7 +55,7 @@ class Campaign extends Base {
     return this.status === "inactive"
   }
   async isComplete() {
-    return this.isInactive() || (await this.calledEveryone())
+    return (await this.calledEveryone())
   }
   async isOperational(){
     return this.isActive() && this.isWithinDailyTimeOfOperation() && !(await this.calledEveryone())

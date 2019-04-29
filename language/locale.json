@@ -39,6 +39,14 @@
         "en": "The {{campaign_name}}, campaign has been completed! Please contact the campaign coordinator for further instructions. Thank you and have a great day!",
         "de": "Die {{campaign_name}}, Kampagne ist vorbei! Wenn Sie Fragen haben, wenden Sie sich an den Kampagnenkoordinator. Vielen Dank und einen schönen Tag!"
     },
+    "campaign_status_inactive": {
+        "en": "The {{campaign_name}}, campaign is not active today! Please contact the campaign coordinator for further instructions. Thank you and have a great day!",
+        "de": ""
+    },
+    "campaign_status_inactive_with_next": {
+        "en": "The {{campaign_name}}, campaign is not active today! But please stay on the line, we're transfering you to the, {{next_campaign_name}}, campaign now",
+        "de": ""
+    },
     "hundreds_calling": {
         "en": "There are hundreds of people calling right now!",
         "de": ""
