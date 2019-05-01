@@ -7,13 +7,9 @@ const app = express();
 const _ = require('lodash');
 const plivo_api = plivo.RestAPI({ authId: process.env.PLIVO_API_ID, authToken: process.env.PLIVO_API_TOKEN });
 const readline = require('readline');
-const knex = require('knex')({ client: 'pg', connection: process.env.LOADTEST_DATABASE_URL });
-const objection = require('objection');
-const Model = objection.Model;
 const promisfy = require('es6-promisify');
-Model.knex(knex);
 const targets = process.env.TARGET.split(',');
-console.error(targets)
+console.log(targets)
 const debug = process.env.DEBUG;
 let wrap;
 
@@ -26,18 +22,6 @@ const selectTarget = () => {
   const target = targets[targetCount % targets.length]
   targetCount++
   return target
-}
-
-class Caller extends Model {
-  static get tableName() { return 'callers' }
-}
-
-class Event extends Model {
-  static get tableName() { return 'events' }
-}
-
-class Call extends Model {
-  static get tableName() { return 'calls' }
 }
 
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -55,7 +39,8 @@ app.all('/answer', async (req, res) => {
   if (debug) console.error(`Agent ${req.query.agent} connected. with CallUUID: ${req.body.CallUUID}`)
   state[req.query.agent] = 'joined';
   const r = plivo.Response();
-  r.addWait({ length: 60 * 10 });
+  r.addWait({ length: 30 });
+  r.addRedirect(appUrl(`cycle?agent=${req.query.agent}`));
   return res.send(r.toXML());
 });
 
@@ -66,23 +51,21 @@ app.all('/hangup', async (req, res) => {
   return res.sendStatus(200);
 });
 
+app.all('/cycle', async (req, res) => {
+  const r = plivo.Response();
+  if (wrap) {
+    r.addHangup();
+    return res.send(r.toXML());
+  }
+  r.addWait({ length: (30 + _.random(4)) });
+  r.addRedirect(appUrl(`cycle?agent=${req.query.agent}`));
+  return res.send(r.toXML());
+});
+
 const report = async () => {
   const summary = _.invertBy(state);
   const statuses = Object.keys(summary).map((status) => `${status} = ${summary[status].length}`);
-  const statusCounts = await Call.knexQuery().select('dropped')
-    .count('calls.id as count')
-    .whereRaw("ended_at >= NOW() - INTERVAL '5 minutes'")
-    .groupBy('dropped');
-  const waitEvents = await Event.query()
-    .whereIn('name', ['caller_complete', 'answered'])
-    .whereRaw("created_at >= NOW() - INTERVAL '5 minutes'");
-  const wait = waitEvents.length ? Math.round(_.sumBy(waitEvents, event => JSON.parse(event.value).seconds_waiting) / waitEvents.length) : 0;
-  const total = _.sumBy(statusCounts, ({ count }) => parseInt(count, 10));
-  const dropStatus = _.find(statusCounts, ({ dropped }) => dropped);
-  const drops = dropStatus ? parseInt(dropStatus.count, 10) : 0;
-  const rate = agents ? Math.round(total * 12 / agents) : 0;
-  const dropRate = total ? Math.round(drops * 100 / total) : 0;
-  console.log(moment().format('h:mm:ss a ⇨ '), statuses.length ? statuses.join(', ') : 'connected: 0', ` average wait: ${wait}s   [${rate}/agent hour with ${total} total, ${drops} drops at ${dropRate}% drop rate in last 5 mins ]`);
+  console.log(moment().format('h:mm:ss a ⇨ '), `initiated = ${agentIds.length}`, statuses.length ? statuses.join(', ') : 'joined: 0');
 };
 
 const addAgent = async (count) => {
@@ -90,6 +73,7 @@ const addAgent = async (count) => {
   const range = _.range(count)
   for (let _step of range) {
     const agent = 61100000001 + agents++
+    agentIds.push(agent)
     const params = {
       to: selectTarget(),
       from: agent,
@@ -121,7 +105,13 @@ app.listen(port, () => {
       process.exit();
     } else if (key.name === 'p') {
       wrap = !wrap;
-      console.error(wrap ? 'Hanging up all agents' : 'OK to resume');
+      if (wrap) {
+        console.error('Hanging up all agents; press P again to resume once all disconnected')
+      } else {
+        agentIds = []
+        state = {}
+        console.error('OK to resume')
+      }
     } else if (key.sequence === '*') {
       await addAgent(100);
     } else if (key.name.match(/[1-9]/)) {
