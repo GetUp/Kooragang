@@ -1,4 +1,4 @@
-require('newrelic')
+if (process.env.NEW_RELIC_LICENSE_KEY) require('newrelic')
 const port = process.env.PORT || 8080
 const app = require('express')()
 if (process.env.IVR) {
