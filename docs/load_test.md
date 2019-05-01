@@ -24,5 +24,11 @@
 
 ---
 
-- load testing script location `./load/index.js` 
+- load testing script location `./load/index.js`
 - command to run local tunnel `[env_vars] node ./load`
+
+#### inbound connection cap testing
+
+`node load/inbound`
+
+(you can drop `LOADTEST_DATABASE_URL` & `PGSSLMODE` from the above list)
