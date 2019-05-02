@@ -2,8 +2,7 @@
   "name": "Kooragang",
   "private": true,
   "engines": {
-    "node": "8.2",
-    "npm": "5.3"
+    "node": "8.2"
   },
   "scripts": {
     "start": "npm run local-tunnel | npm run local",
