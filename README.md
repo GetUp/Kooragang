@@ -4,9 +4,9 @@ Kooragang is a phonebanking tool for running large-scale distributed volunteer c
 
 Existing third-party phonebanking tools are typically designed for a centralised environment such as a call centre. They require stable internet and secondary devices. They also require training. These requirements are challenging in a distributed campaign where people are calling from community centres, house-parties and by themselves at home. These environments have unstable internet and rarely is there enough devices to go around. These challenges limited the speed at which a distributed campaign can scale.
 
-Kooragang was designed to overcome these challenges by only requiring a volunteer caller to have a phone that can make normal phone calls (i.e. not a smart phone). 
+Kooragang was designed to overcome these challenges by only requiring a volunteer caller to have a phone that can make normal phone calls (i.e. not a smart phone).
 
-Kooragang uses a predictive dialer to speed up calling. The aggressiveness of the predictive dialer can be configured to stay within acceptable drop rates. 
+Kooragang uses a predictive dialer to speed up calling. The aggressiveness of the predictive dialer can be configured to stay within acceptable drop rates.
 
 
 ### FAQ
@@ -29,3 +29,11 @@ This depends greatly on pickup rates, the lengths of the calls and your local Pl
 `knex migrate:latest`
 `knex migrate:latest --env test`
 `knex seed:run`
+
+`cp .env.example .env` & add your Plivo credentials
+
+NB ensure `ALERT_IF_WAIT_MORE_THAN_URL` is set to _at least_ 'slack.com'
+
+`npm run start` to boot the app
+
+See `package.json` for further commands.
