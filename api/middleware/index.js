@@ -37,8 +37,11 @@ const headers = (req, res, next) => {
   res.type('json')
   next()
 }
-
+const unauthenticatedEndpoints = [
+  '/api/calls_count_today',
+]
 const authentication = (req, res, next) => {
+  if (unauthenticatedEndpoints.includes(req.url)) return next()
   const token = req.headers['authorization']
   if (token) {
     if (token === process.env.KOORAGANG_API_HASH) {

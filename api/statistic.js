@@ -353,4 +353,14 @@ app.get('/api/system/statistics', wrap(async (req, res) => {
   return res.json({ data: data.rows.map(row => { return row }) })
 }))
 
+app.get('/api/calls_count_today', wrap(async (req, res) => {
+  const tz = process.env.TZ || 'Australia/Sydney'
+  const { rows } = await knex.raw(`
+    select count(*)
+    from calls
+    where ended_at >= current_date::timestamp at time zone '${tz}'
+  `)
+  return res.json({ data: rows[0] })
+}))
+
 module.exports = app
