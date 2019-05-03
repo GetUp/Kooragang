@@ -16,7 +16,7 @@ response.addSpeakLanguage = function(text) {
 };
 
 response.addSpeakI18n = function(block, vars) {
-  text = languageBlock(block, vars)
+  let text = languageBlock(block, vars)
   text = text.replace(/[^\x00-\x7F]/g, "");//stripping non UTF8 chars
   this.addSpeak(text, voice())
 };

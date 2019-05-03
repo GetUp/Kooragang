@@ -12,7 +12,7 @@ const log = async ({method, url, body, query, params, headers}, res, next) => {
   if (process.env.NODE_ENV !== 'development') return next()
 
   console.log('~~~ API REQUEST > ', {method, url, body, query, params})
-  let oldWrite = res.write
+  let oldWrite = res.write,
       oldEnd = res.end,
       chunks = []
   res.write = function (chunk) {
@@ -51,7 +51,7 @@ const authentication = (req, res, next) => {
   }
 }
 
-const error_handler = (err, req, res, next) => {
+const error_handler = (err, req, res, _next) => {
   const returned_error = {errors: {message: err.message || err}}
   switch(err.constructor) {
       case BadRequestError:

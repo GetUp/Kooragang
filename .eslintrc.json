@@ -6,10 +6,16 @@
   },
   "parserOptions": {
     "ecmaVersion": 8
-   },
+  },
   "extends": "eslint:recommended",
   "rules": {
     "no-console": "off",
-    "no-unused-vars": ["error", {"varsIgnorePattern": "^_"}]
+    "no-unused-vars": [
+      "error",
+      {
+        "varsIgnorePattern": "^_",
+        "argsIgnorePattern": "^_"
+      }
+    ]
   }
 }

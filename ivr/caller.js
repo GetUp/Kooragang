@@ -170,7 +170,7 @@ app.post('/connect_sms', async ({body, query}, res) => {
   const shortcode = _.lowerCase(_.trim(body.Text))
   const campaign = shortcode && await Campaign.query().where({shortcode: shortcode}).first()
   if (!campaign){
-    content = languageBlock('error_sms_connect_message_not_found')
+    const content = languageBlock('error_sms_connect_message_not_found')
     r.addMessage(`${content}`, {
       src: body.To,
       dst: body.From
