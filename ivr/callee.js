@@ -58,6 +58,7 @@ app.post('/answer', async ({body, query}, res) => {
     r.addConference(`conference-${caller.id}`, {
       startConferenceOnEnter: false,
       stayAlone: false,
+      endConferenceOnExit: true,
       callbackUrl: res.locals.appUrl(`conference_event/callee?caller_id=${caller.id}&campaign_id=${query.campaign_id}`)
     });
   } else {
