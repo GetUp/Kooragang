@@ -441,6 +441,8 @@ app.post('/ready', async ({body, query}, res) => {
     timeLimit: 60 * 120,
     callbackUrl: res.locals.appUrl(callbackUrl),
     hangupOnStar: 'true',
+    stayAlone: false,
+    endConferenceOnExit: true,
     action: res.locals.appUrl(`survey?q=disposition&caller_id=${caller_id}&campaign_id=${query.campaign_id}`)
   }
   if (process.env.ENABLE_ANSWER_MACHINE_SHORTCUT) params.digitsMatch = ['3']
