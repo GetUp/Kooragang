@@ -1289,6 +1289,19 @@ describe('/conference_event/caller', () => {
       mockedApiCall.done();
     })
   });
+
+  context('with caller leaving the conference and with a call that ended more than 30 seconds ago', () => {
+    it('should record an event', async () => {
+      const ConferenceUUID = '60996fca-70a7-11e9-a736-175f2f49f057'
+      const call = await Call.query().insert({ended_at: moment(new Date()).subtract(40, 'seconds'), conference_uuid: ConferenceUUID, status: 'answered'});
+      await request.post(`/conference_event/caller?caller_id=1234&campaign_id=${campaign.id}`)
+        .type('form')
+        .send({ConferenceAction: 'exit', ConferenceUUID})
+      const event = await Event.query().where({campaign_id: campaign.id, name: 'conference_exit_error'}).first()
+      expect(JSON.parse(event.value)['conference_uuid']).to.be(ConferenceUUID)
+      expect(event.caller_id).to.be(1234)
+    })
+  });
 });
 
 describe('/survey', () => {

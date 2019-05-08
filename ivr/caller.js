@@ -505,6 +505,14 @@ app.post('/conference_event/caller', async ({query, body}, res) => {
         await Event.query().insert({campaign_id: query.campaign_id, name: 'failed_transfer', value: {params, call_id: call.id, error: e, call_uuid: body.CallUUID, conference_uuid: body.ConferenceUUID}});
       }
     }
+  } else if (body.ConferenceAction === 'exit') {
+    const old_call = await Call.query()
+                               .where({conference_uuid: body.ConferenceUUID})
+                               .whereRaw("ended_at < now() - '30 seconds'::interval")
+                               .first();
+    if (old_call) {
+      await Event.query().insert({campaign_id: query.campaign_id, caller_id: query.caller_id, name: 'conference_exit_error', value: {call_id: old_call.id, call_uuid: body.CallUUID, conference_uuid: body.ConferenceUUID}});
+    }
   }
   res.sendStatus(200);
 });
