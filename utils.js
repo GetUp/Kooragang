@@ -24,13 +24,13 @@ const cleanNumber = number => number.replace(/[^\d]/g, '')
 
 module.exports.sipFormatNumber = number => {
   const cleanedNumber = cleanNumber(number)
-  if(process.env.OUTBOUND_SIP_SERVER && !cleanedNumber.match(/^sip:/)) {
+  if (process.env.OUTBOUND_SIP_SERVER && !cleanedNumber.match(/^sip:/)) {
     return `sip:${cleanedNumber}@${process.env.OUTBOUND_SIP_SERVER}`
   }
   return cleanedNumber
 }
 
-module.exports.sayPhoneNumber = number => number.replace(/^61/, '0').split('').join(' ')
+module.exports.sayPhoneNumber = number => number.replace(/^61/, '0').split('').join(', ')
 
 module.exports.extractDialInNumber = body => {
   const dialInNumber = body.Direction === 'outbound' ? body.From : body.To
@@ -57,7 +57,7 @@ module.exports.isValidCallerNumber = (caller_number) => {
   return !_.isEmpty(caller_number) && caller_number !== 'anonymous' && caller_number !== 'undefined'
 };
 
-module.exports.modelsBoundReadOnly = _.partialRight(_.mapValues, m => m.bindReadOnly() )
+module.exports.modelsBoundReadOnly = _.partialRight(_.mapValues, m => m.bindReadOnly())
 
 module.exports.languageBlock = (block, vars) => {
   const config = {

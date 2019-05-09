@@ -28,7 +28,7 @@
         "de": ""
     },
     "campaign_status_paused_with_next": {
-        "en": "The {{campaign_name}}, campaign is currently paused! We are now switchin to the {{next_campaign_name}} campaign. Please hangup and call {{next_campaign_number}}.  I repeat, please hangup and call {{next_campaign_number}}. Speak to you soon! This message will repeat in 5 seconds.",
+        "en": "The {{campaign_name}}, campaign is currently paused! We are now switching to the {{next_campaign_name}} campaign. Please hangup and call {{next_campaign_number}}.  I repeat, please hangup and call {{next_campaign_number}}. Speak to you soon! This message will repeat in 5 seconds.",
         "de": ""
     },
     "error_caller_id": {
@@ -36,7 +36,7 @@
         "de": ""
     },
     "campaign_status_completed_with_next": {
-        "en": "The {{campaign_name}}, campaign has been completed! We are now switch to the {{next_campaign_name}} campaign. Please hangup and call {{next_campaign_number}}. I repeat, please hangup and call {{next_campaign_number}}. Speak to you soon! This message will repeat in 5 seconds.",
+        "en": "The {{campaign_name}}, campaign has been completed! We have now switched to the {{next_campaign_name}} campaign. Please hangup and call {{next_campaign_number}}. I repeat, please hangup and call {{next_campaign_number}}. Speak to you soon! This message will repeat in 5 seconds.",
         "de": ""
     },
     "campaign_status_completed": {
