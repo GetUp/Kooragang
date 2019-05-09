@@ -587,7 +587,6 @@ app.post('/survey_result', async ({ query, body }, res) => {
   const question = questions[query.q];
   const call = await Call.query().where({ id: query.call_id }).eager('callee').first();
   const answers = question.answers
-  const previous_survey_results = await SurveyResult.query().where({ call_id: query.call_id, question })
   const multiple = query.multiple === '1'
 
   if (multiple && (body.Digits === '*' || query.digit === '*')) {
@@ -643,7 +642,7 @@ app.post('/survey_result', async ({ query, body }, res) => {
   res.send(r.toXML());
 });
 
-app.post('/survey_multiple', async ({ query, body }, res) => {
+app.post('/survey_multiple', async ({ query }, res) => {
   const r = plivo.Response();
   const call = await Call.query().where({ id: query.call_id }).eager('callee').first();
   const campaign = await Campaign.query().where({ id: query.campaign_id }).first();
