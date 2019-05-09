@@ -328,6 +328,45 @@ describe('/hangup', () => {
     })
   });
 
+  context('with an existing call that has not yet connected and a caller with status in-call', () => {
+    let callee, caller, call
+    beforeEach(async () => Event.query().delete());
+    beforeEach(async () => Call.query().delete());
+    beforeEach(async () => Caller.query().delete());
+    beforeEach(async () => {
+      callee = await Callee.query().insert(associatedCallee);
+      caller = await Caller.query().insert(Object.assign( { status: 'in-call' } , callerTemplate))
+      call = await Call.query().insert({callee_call_uuid: CallUUID, status: 'answered', callee_id: callee.id, caller_id: caller.id})
+    })
+
+    it('should record an event', async () => {
+      await request.post(`/hangup?name=Bridger&callee_id=${callee.id}`)
+        .type('form').send({CallStatus: 'completed', CallUUID, Duration: '10', BillDuration: '30', TotalCost: '0.01020'})
+      const event = await Event.query().where({name: 'exit_before_conference'}).first()
+      expect(event.call_id).to.be(call.id.toString())
+      expect(event.caller_id).to.be(caller.id)
+    })
+
+    it('should update the caller to be available', async () => {
+      await request.post(`/hangup?name=Bridger&callee_id=${callee.id}`)
+        .type('form').send({CallStatus: 'completed', CallUUID, Duration: '10', BillDuration: '30', TotalCost: '0.01020'})
+      const updatedCaller = await Caller.query().first()
+      expect(updatedCaller.status).to.be('available')
+    })
+
+    it('should record the call has ended with the status, duration, bill duration and total cost of the call', async () => {
+      return request.post(`/hangup?name=Bridger&callee_id=${callee.id}`)
+        .type('form').send({CallStatus: 'completed', CallUUID, Duration: '10', BillDuration: '30', TotalCost: '0.01020'})
+        .expect(200)
+        .then(async () => {
+          const call = await Call.query()
+            .where({status: 'completed', callee_call_uuid: CallUUID, duration: 10, bill_duration: 30, total_cost: 0.0102})
+            .first();
+          expect(call).to.be.an(Call);
+        });
+    });
+  });
+
   context('with an existing call', () => {
     const CallStatus = 'completed';
     let callee;

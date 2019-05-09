@@ -82,6 +82,13 @@ app.post('/hangup', async ({body, query}, res) => {
   const status = body.Machine === 'true' ? 'machine_detection' : body.CallStatus;
   await QueuedCall.query().where({callee_id: query.callee_id}).delete()
   if (call){
+    if (call.status === 'answered') {
+      const caller = await Caller.query().where({ id: call.caller_id }).first()
+      if (caller) {
+        await caller.$query().patch({ status: 'available' })
+        await Event.query().insert({name: 'exit_before_conference', campaign_id: caller.campaign_id, call_id: call.id, caller_id: caller.id})
+      }
+    }
     await Call.query().where({callee_call_uuid: body.CallUUID}).patch({
       ended_at: new Date(),
       status,
