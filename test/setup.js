@@ -18,7 +18,7 @@ const questions = require('../seeds/questions.example.json')
 const numberSetupCampaign = Object.assign({}, defaultCampaign, { plivo_setup_status: 'needed' })
 const audioSetupCampaign = Object.assign({}, defaultCampaign, { text_to_speech_status: 'needed' }, { questions })
 
-describe('plivo_setup_campaigns', () => {
+xdescribe('plivo_setup_campaigns', () => {
   let searchRentedNumbersCall, createApplicationCall, editRentedNumberCall;
   let campaign;
   let rentedNumbers = [{ region: 'SYDNEY, AUSTRALIA', application: null, number: '61212121212' }, { region: 'SYDNEY, AUSTRALIA', application: null, number: '6131311313' }]
