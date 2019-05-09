@@ -84,7 +84,7 @@ app.post('/hangup', async ({body, query}, res) => {
   if (call){
     if (call.status === 'answered') {
       const caller = await Caller.query().where({ id: call.caller_id }).first()
-      if (caller) {
+      if (caller && caller.status === 'in-call') {
         await caller.$query().patch({ status: 'available' })
         await Event.query().insert({name: 'exit_before_conference', campaign_id: caller.campaign_id, call_id: call.id, caller_id: caller.id})
       }
