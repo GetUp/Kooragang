@@ -79,6 +79,15 @@ app.post('/connect', async ({ body, query }, res) => {
         r.addSpeakI18n(message, { campaign_name: campaign.name, next_campaign_name: next_campaign.name, next_campaign_number });
         r.addWait({ length: 5 });
       })
+      const smsVars = {
+        next_campaign_name: next_campaign.name,
+        next_campaign_number: next_campaign.phone_number.replace(/^61/, '0'),
+      }
+      const sms = languageBlock('campaign_completed_with_next_sms', smsVars)
+      r.addMessage(sms, {
+        src: process.env.NUMBER || '1111111111',
+        dst: caller_number,
+      })
       r.addHangup()
       return res.send(r.toXML());
     }

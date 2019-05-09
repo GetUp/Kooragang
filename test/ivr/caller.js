@@ -237,13 +237,15 @@ describe('/connect', () => {
     beforeEach(async () => { await Callee.query().insert(nextAssociatedCallee) });
     const payload = { From: caller.phone_number };
 
-    it('plays the next campaign name and number and hangs up', () => {
+    it('plays the next campaign name and number, sends an sms, and hangs up', () => {
       return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
         .type('form')
         .send(payload)
         .expect(/currently paused/)
         .expect(/0, 2, 9, 1, 2, 3, 4, 5, 6, 7/)
         .expect(new RegExp(nextCampaign.name))
+        .expect(/<Message/)
+        .expect(/Please call 0291234567./)
         .expect(/hangup/);
     });
   });
@@ -256,13 +258,15 @@ describe('/connect', () => {
     beforeEach(async () => { await Callee.query().insert(nextAssociatedCallee) });
     const payload = { From: caller.phone_number };
 
-    it('plays the next campaign name and number and hangs up', () => {
+    it('plays the next campaign name and number, sends an sms, and hangs up', () => {
       return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
         .type('form')
         .send(payload)
         .expect(/completed/)
         .expect(/0, 2, 9, 1, 2, 3, 4, 5, 6, 7/)
         .expect(new RegExp(nextCampaign.name))
+        .expect(/<Message/)
+        .expect(/Please call 0291234567./)
         .expect(/hangup/);
     });
   });

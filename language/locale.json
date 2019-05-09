@@ -39,6 +39,10 @@
         "en": "The {{campaign_name}}, campaign has been completed! We have now switched to the {{next_campaign_name}} campaign. Please hangup and call {{next_campaign_number}}. I repeat, please hangup and call {{next_campaign_number}}. Speak to you soon! This message will repeat in 5 seconds.",
         "de": ""
     },
+    "campaign_completed_with_next_sms": {
+        "en": "Hi! We've switched to the {{next_campaign_name}} campaign. Please call {{next_campaign_number}}. Thanks!",
+        "de": ""
+    },
     "campaign_status_completed": {
         "en": "The {{campaign_name}}, campaign has been completed! Please contact the campaign coordinator for further instructions. Thank you and have a great day!",
         "de": "Die {{campaign_name}}, Kampagne ist vorbei! Wenn Sie Fragen haben, wenden Sie sich an den Kampagnenkoordinator. Vielen Dank und einen schönen Tag!"
