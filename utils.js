@@ -30,6 +30,8 @@ module.exports.sipFormatNumber = number => {
   return cleanedNumber
 }
 
+module.exports.sayPhoneNumber = number => number.replace(/^61/, '0').split('').join(' ')
+
 module.exports.extractDialInNumber = body => {
   const dialInNumber = body.Direction === 'outbound' ? body.From : body.To
   if (!sipHeaderPresent(body)) return dialInNumber

@@ -48,7 +48,7 @@ const pausedNextCampaign = Object.assign({status: 'paused', callers_remaining: 9
 const downCampaign = Object.assign({status: 'down'}, defaultCampaign)
 const inactiveCampaign = Object.assign({status: 'inactive'}, defaultCampaign)
 const inactiveNextCampaign = Object.assign({status: 'inactive', next_campaign_id: 2}, defaultCampaign)
-const nextCampaign = Object.assign({status: 'active', callers_remaining: 9}, defaultCampaign, {id: 2, name: 'Inactive Test'})
+const nextCampaign = Object.assign({status: 'active', callers_remaining: 9}, defaultCampaign, {id: 2, name: 'Inactive Test', phone_number: '61291234567'})
 const statuslessCampaign = Object.assign({status: null}, defaultCampaign)
 const redundancyCampaign = Object.assign({revert_to_redundancy: true}, activeCampaign)
 const amdCampaign = Object.assign({status: 'active', detect_answering_machine: true}, defaultCampaign)
@@ -236,14 +236,15 @@ describe('/connect', () => {
     const nextAssociatedCallee = Object.assign({}, associatedCallee, {campaign_id: 2})
     beforeEach(async () => { await Callee.query().insert(nextAssociatedCallee) });
     const payload = { From: caller.phone_number };
-    it('plays the transferring campaign message', () => {
+
+    it('plays the next campaign name and number and hangs up', () => {
       return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
         .type('form')
         .send(payload)
         .expect(/currently paused/)
-        .expect(/please stay on the line/)
+        .expect(/0 2 9 1 2 3 4 5 6 7/)
         .expect(new RegExp(nextCampaign.name))
-        .expect(new RegExp(`connect.*campaign_id=${next_campaign.id}`));
+        .expect(/hangup/);
     });
   });
 
@@ -254,13 +255,15 @@ describe('/connect', () => {
     const nextAssociatedCallee = Object.assign({}, associatedCallee, {campaign_id: 2})
     beforeEach(async () => { await Callee.query().insert(nextAssociatedCallee) });
     const payload = { From: caller.phone_number };
-    it('plays the transferring campaign message', () => {
+
+    it('plays the next campaign name and number and hangs up', () => {
       return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
         .type('form')
         .send(payload)
-        .expect(/please stay on the line/)
+        .expect(/completed/)
+        .expect(/0 2 9 1 2 3 4 5 6 7/)
         .expect(new RegExp(nextCampaign.name))
-        .expect(new RegExp(`connect.*campaign_id=${next_campaign.id}`));
+        .expect(/hangup/);
     });
   });
 
@@ -1701,12 +1704,15 @@ describe('/call_again', () => {
     const nextAssociatedCallee = Object.assign({}, associatedCallee, {campaign_id: 2})
     beforeEach(async () => { await Callee.query().insert(nextAssociatedCallee) });
     const payload = { From: caller.phone_number };
-    it('plays the transferring campaign message', () => {
-      return request.post(`/call_again?campaign_id=${campaign.id}&call_id=1`)
+
+    it('plays the next campaign name and number and hangs up', () => {
+      return request.post(`/call_again?campaign_id=${campaign.id}`)
         .type('form')
         .send(payload)
-        .expect(/please stay on the line/)
-        .expect(new RegExp(`connect.*campaign_id=${next_campaign.id}`));
+        .expect(/completed/)
+        .expect(/0 2 9 1 2 3 4 5 6 7/)
+        .expect(new RegExp(nextCampaign.name))
+        .expect(/hangup/);
     });
   });
 });
