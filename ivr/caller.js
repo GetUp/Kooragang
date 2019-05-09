@@ -546,6 +546,10 @@ app.post('/survey', async ({query, body}, res) => {
   } else {
     call = await Call.query().where({conference_uuid: (body.ConferenceUUID || "")}).first();
   }
+  const caller = await Caller.query().where({id: caller_id}).first()
+  if (caller) {
+    await caller.$query().patch({ status: 'in-survey' })
+  }
   if (!call) {
     r.addSpeakI18n('left_call_queue')
     await Event.query().insert({campaign_id: query.campaign_id, name: 'left queue without call', value: body, caller_id})

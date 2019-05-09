@@ -1309,28 +1309,37 @@ describe('/conference_event/caller', () => {
 
 describe('/survey', () => {
   const conference_uuid = '222';
+  let call, callerInCall, campaign
   beforeEach(async () => {
     await Call.query().delete();
     await Campaign.query().delete();
     await SurveyResult.query().delete();
   });
-  beforeEach(async () => call = await Call.query().insert({callee_call_uuid: CallUUID, conference_uuid, status: 'answered'}));
+  beforeEach(async () => {
+    campaign = await Campaign.query().insert(activeCampaign)
+    call = await Call.query().insert({callee_call_uuid: CallUUID, conference_uuid, status: 'answered'})
+    callerInCall = await Caller.query().insert(Object.assign(caller, { status: 'in-call', campaign_id: campaign.id }))
+  });
 
   context('after the first question', () => {
-    beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign));
     it ('should return the question specified by the q param', () => {
       const question = 'action';
-      return request.post(`/survey?q=${question}&call_id=${call.id}&campaign_id=${campaign.id}`)
+      return request.post(`/survey?q=${question}&call_id=${call.id}&campaign_id=${campaign.id}&caller_id=${callerInCall.id}`)
         .expect(new RegExp(`q=${question}`))
         .expect(new RegExp(`${question}`, 'i'));
+    });
+
+    it ("should set the caller's status to in-survey", async () => {
+      await request.post(`/survey?q=disposition&call_id=${call.id}&campaign_id=${campaign.id}&caller_id=${callerInCall.id}`)
+      const updatedCaller = await caller.$query().first()
+      expect(updatedCaller.status).to.be('in-survey')
     });
   });
 
   context('after undoing a question', () => {
-    beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign));
     it ('should return not mention that the call has ended', () => {
       const question = 'action';
-      return request.post(`/survey?q=disposition&call_id=${call.id}&campaign_id=${campaign.id}&undo=1`)
+      return request.post(`/survey?q=disposition&call_id=${call.id}&campaign_id=${campaign.id}&undo=1&caller_id=${callerInCall.id}`)
         .expect(/7,8"><Speak language="en-GB" voice="MAN">What was the Overall/)
     });
   });
@@ -1338,18 +1347,18 @@ describe('/survey', () => {
   context('with invalid xml characters', () => {
     let malformed_campaign;
     beforeEach(async () => {
+      await Caller.query().delete();
       await Campaign.query().delete();
     });
     beforeEach(async () => malformed_campaign = await Campaign.query().insert(malformedCampaign));
     it('should be spripped out to valid xml', async () => {
       const question = 'disposition';
-      return request.post(`/survey?q=${question}&call_id=${call.id}&campaign_id=${malformed_campaign.id}`)
+      return request.post(`/survey?q=${question}&call_id=${call.id}&campaign_id=${malformed_campaign.id}&caller_id=${callerInCall.id}`)
         .expect(new RegExp('testing', 'i'));
     });
   });
 
   context('without a call record (* pressed while in the queue)', () => {
-    beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign));
     beforeEach(async () => await Call.query().delete())
     it('prompts to re-enter the queue', () => {
       return request.post(`/survey?q=disposition&caller_id=1&campaign_id=${campaign.id}`)
@@ -1368,7 +1377,6 @@ describe('/survey', () => {
   })
 
   context('without a call record (* pressed while in the queue)', () => {
-    beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign));
     beforeEach(async () => await Call.query().delete())
     it('prompts to re-enter the queue', () => {
       return request.post(`/survey?q=disposition&caller_id=1&campaign_id=${campaign.id}`)
@@ -1378,7 +1386,6 @@ describe('/survey', () => {
   })
 
   context('with a call that has status of machine_detection', () => {
-    beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign));
     beforeEach(async () => call = await Call.query().patchAndFetchById(call.id, {status: 'machine_detection'}))
     it('re-enters the queue', () => {
       return request.post(`/survey?q=disposition&call_id=${call.id}&caller_id=1&campaign_id=${campaign.id}`)
@@ -1388,10 +1395,9 @@ describe('/survey', () => {
   })
 
   context('after any question', () => {
-    beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign));
     it ('should wait and play a help message', async () => {
       const question = 'action';
-      return request.post(`/survey?q=${question}&call_id=${call.id}&campaign_id=${campaign.id}`)
+      return request.post(`/survey?q=${question}&call_id=${call.id}&campaign_id=${campaign.id}&caller_id=${callerInCall.id}`)
         .expect(/<Wait length="5"\/><Speak language="en-GB" voice="MAN">.+<\/Speak>/)
     });
   });
