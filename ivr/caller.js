@@ -73,12 +73,6 @@ app.post('/connect', async ({ body, query }, res) => {
       r.addWait({ length: 2 })
       r.addSpeakI18n('welcome', { org_name: process.env.ORG_NAME || '' });
       r.addWait({ length: 1 });
-      const next_campaign_number = sayPhoneNumber(next_campaign.phone_number)
-      const message = campaign_is_complete ? 'campaign_status_completed_with_next' : 'campaign_status_paused_with_next'
-      _.times(4, () => {
-        r.addSpeakI18n(message, { campaign_name: campaign.name, next_campaign_name: next_campaign.name, next_campaign_number });
-        r.addWait({ length: 5 });
-      })
       const smsVars = {
         next_campaign_name: next_campaign.name,
         next_campaign_number: next_campaign.phone_number.replace(/^61/, '0'),
@@ -87,6 +81,12 @@ app.post('/connect', async ({ body, query }, res) => {
       r.addMessage(sms, {
         src: process.env.NUMBER || '1111111111',
         dst: caller_number,
+      })
+      const next_campaign_number = sayPhoneNumber(next_campaign.phone_number)
+      const message = campaign_is_complete ? 'campaign_status_completed_with_next' : 'campaign_status_paused_with_next'
+      _.times(4, () => {
+        r.addSpeakI18n(message, { campaign_name: campaign.name, next_campaign_name: next_campaign.name, next_campaign_number });
+        r.addWait({ length: 5 });
       })
       r.addHangup()
       return res.send(r.toXML());
