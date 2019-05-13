@@ -1509,6 +1509,22 @@ describe('/survey_result', () => {
     });
   });
 
+  context('with an answering machine disposition', () => {
+    const payload = { Digits: '2', To: '614000100' };
+    let callee, call;
+    beforeEach(async () => {
+      callee = await Callee.query().insert(associatedCallee);
+      call = await Call.query().insert({ callee_id: callee.id });
+    });
+
+    it('should put them back into the calling queue', () => {
+      return request.post(`/survey_result?q=disposition&campaign_id=1&call_id=${call.id}`)
+        .type('form').send(payload)
+        .expect(/ready/i)
+        .expect(/in the call queue/i);
+    });
+  });
+
   context('with a question with multiple responses', () => {
     let callee, call;
     const payload = { Digits: '2', To: '614000100' };
