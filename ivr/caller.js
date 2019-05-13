@@ -646,7 +646,6 @@ app.post('/survey_result', async ({ query, body }, res) => {
   if (next) {
     r.addRedirect(res.locals.appUrl(`survey?q=${next}&call_id=${query.call_id}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`));
   } else if ( disposition === languageBlock('answering_machine_disposition') ) {
-    r.addSpeakI18n('back_in_call_queue')
     r.addRedirect(res.locals.appUrl(`ready?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`));
   } else {
     r.addRedirect(res.locals.appUrl(`call_again?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&call_id=${query.call_id}`));

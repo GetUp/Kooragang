@@ -1521,7 +1521,6 @@ describe('/survey_result', () => {
       return request.post(`/survey_result?q=disposition&campaign_id=1&call_id=${call.id}`)
         .type('form').send(payload)
         .expect(/ready/i)
-        .expect(/in the call queue/i);
     });
   });
 
