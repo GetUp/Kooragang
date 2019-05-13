@@ -1443,12 +1443,11 @@ describe('/survey_result', () => {
   })
 
   context('with a non-meaningful disposition', () => {
-    const payload = { Digits: '2', To: '614000100' };
+    const payload = { Digits: '8', To: '614000100' };
     it('should announce the result & redirect to call_again', () => {
       return request.post(`/survey_result?q=disposition&campaign_id=1&call_id=${call.id}`)
         .type('form').send(payload)
-        .expect(/answering machine/)
-        .expect(/call_again/);
+        .expect(/ready/);
     });
   });
 
