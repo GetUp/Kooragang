@@ -126,14 +126,19 @@ class Campaign extends Base {
     return !(await this.areCallsInProgress()) && this.callers_remaining === 0
   }
   callableCallees(callsToMakeExcludingCurrentCalls=1) {
-    return Callee.query()
-      .where('campaign_id', this.id)
+    let query = Callee.query()
+      .where('callees.campaign_id', this.id)
       .whereRaw(`(last_called_at is null or last_called_at < NOW() - INTERVAL '${this.no_call_window} minutes')`)
       .where({callable: true})
       .whereRaw('call_count < ?', this.max_call_attempts)
-      .orderByRaw(this.exhaust_callees_before_recycling ? 'call_count, last_called_at, 1' : '1')
       .limit(callsToMakeExcludingCurrentCalls)
       .select('callees.id')
+    if (this.exhaust_callees_before_recycling) {
+      return query.orderByRaw('call_count, last_called_at, 1')
+    } else {
+      return query.joinRaw('left join audiences on callees.audience_id = audiences.id')
+                  .orderByRaw('audiences.priority, 1')
+    }
   }
   valid() {
     const errors = []

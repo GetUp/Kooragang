@@ -6,7 +6,7 @@ const _ = require('lodash');
 const sinon = require('sinon');
 
 const {dropFixtures} = require('../test_helper')
-const { QueuedCall, Callee, Caller, Call, Campaign, Event, SurveyResult } = require('../../models');
+const { Audience, QueuedCall, Callee, Caller, Call, Campaign, Event, SurveyResult } = require('../../models');
 
 const defaultCampaign = {
   id: 2,
@@ -315,9 +315,13 @@ describe('.dial', () => {
         context('with the max_call_attempts number more than calls made', () => {
           beforeEach(async () => {
             campaign = await campaign.$query().patchAndFetchById(campaign.id, {exhaust_callees_before_recycling: false, max_call_attempts: 2})
+            const low_priority_audience = await Audience.query().insert({ campaign_id: campaign.id, priority: 5 })
+            const high_priority_audience = await Audience.query().insert({ campaign_id: campaign.id, priority: 1 })
+            await busyCallee.$query().patch({ audience_id: high_priority_audience.id})
+            await uncalledCallee.$query().patch({ audience_id: low_priority_audience.id})
           })
 
-          it('should call callees prioritised by their id not excluding those within max_call_attempts', async () => {
+          it('should call callees prioritised by their audience priority not excluding those within max_call_attempts', async () => {
             await dialer.dial(testUrl, campaign)
             expect((await completedCallee.$query()).last_called_at).to.be(null)
             expect((await busyCallee.$query()).last_called_at).to.not.be(null)
