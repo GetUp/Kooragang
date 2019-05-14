@@ -1271,7 +1271,8 @@ describe('/conference_event/caller', () => {
       const mockedApiCall = nock('https://api.plivo.com')
         .post(/\/Call\/1\//, (body) => {
           return body.aleg_url.match(/survey_result/)
-            && body.aleg_url.match(/digit=3/);
+            && body.aleg_url.match(/digit=3/)
+            && body.aleg_url.match(/incall=1/);
         })
         .query(true)
         .reply(200);
@@ -1443,11 +1444,11 @@ describe('/survey_result', () => {
   })
 
   context('with a non-meaningful disposition', () => {
-    const payload = { Digits: '8', To: '614000100' };
+    const payload = { Digits: '3', To: '614000100' };
     it('should announce the result & redirect to call_again', () => {
       return request.post(`/survey_result?q=disposition&campaign_id=1&call_id=${call.id}`)
         .type('form').send(payload)
-        .expect(/ready/);
+        .expect(/call_again/);
     });
   });
 
@@ -1508,7 +1509,7 @@ describe('/survey_result', () => {
     });
   });
 
-  context('with an answering machine disposition', () => {
+  context('with an incall disposition', () => {
     const payload = { Digits: '2', To: '614000100' };
     let callee, call;
     beforeEach(async () => {
@@ -1517,7 +1518,7 @@ describe('/survey_result', () => {
     });
 
     it('should put them back into the calling queue', () => {
-      return request.post(`/survey_result?q=disposition&campaign_id=1&call_id=${call.id}`)
+      return request.post(`/survey_result?q=disposition&campaign_id=1&call_id=${call.id}&incall=1`)
         .type('form').send(payload)
         .expect(/ready/i)
     });

@@ -509,7 +509,7 @@ app.post('/conference_event/caller', async ({ query, body }, res) => {
     if (call) {
       const params = body.ConferenceDigitsMatch === '3' ? {
         call_uuid: body.CallUUID,
-        aleg_url: res.locals.appUrl(`survey_result?q=disposition&caller_id=${query.caller_id}&call_id=${call.id}&campaign_id=${query.campaign_id}&digit=3`),
+        aleg_url: res.locals.appUrl(`survey_result?q=disposition&caller_id=${query.caller_id}&call_id=${call.id}&campaign_id=${query.campaign_id}&digit=3&incall=1`),
       } : {
           call_uuid: call.callee_call_uuid,
           aleg_url: res.locals.appUrl(`transfer_to_target?call_id=${call.id}&campaign_id=${query.campaign_id}`)
@@ -645,7 +645,7 @@ app.post('/survey_result', async ({ query, body }, res) => {
 
   if (next) {
     r.addRedirect(res.locals.appUrl(`survey?q=${next}&call_id=${query.call_id}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`));
-  } else if ( data.question === 'disposition' ) {
+  } else if ( data.question === 'disposition' && query.incall) {
     r.addRedirect(res.locals.appUrl(`ready?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`));
   } else {
     r.addRedirect(res.locals.appUrl(`call_again?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&call_id=${query.call_id}`));
