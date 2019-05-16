@@ -641,6 +641,10 @@ app.post('/survey_result', async ({ query, body }, res) => {
     return res.send(r.toXML())
   } else if (query.q != 'disposition' && question.multiple && all_possible_responses_entered) {
     r.addSpeakI18n('survey_multiple_all_possible_entered', { question: question.name })
+    if (question.next) {
+      r.addRedirect(res.locals.appUrl(`survey?q=${question.next}&call_id=${query.call_id}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`));
+      return res.send(r.toXML());
+    }
   }
 
   if (next) {
