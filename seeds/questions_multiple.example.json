@@ -28,7 +28,7 @@
   },
   "event_rsvp": {
     "name": "What dates can they make?",
-    "multiple": true,
+    "multiple": "1",
     "next": "lift_needed",
     "answers": {
       "2": {

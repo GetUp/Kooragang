@@ -1581,10 +1581,10 @@ describe('/survey_result', () => {
           await SurveyResult.query().insert({ call_id: call.id, question: 'event_rsvp', answer: 'September 19' });
           await SurveyResult.query().insert({ call_id: call.id, question: 'event_rsvp', answer: 'September 22' });
         });
-        it('should announce the result & redirect to call again', () => {
+        it('should announce the result & redirect to next question', () => {
           return request.post(`/survey_result?q=event_rsvp&campaign_id=1&call_id=${call.id}&multiple=1`)
             .type('form').send(payload)
-            .expect(/call_again/);
+            .expect(/lift_needed/);
         });
       });
     });
