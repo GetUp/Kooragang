@@ -17,6 +17,9 @@ const {
 } = require('../models');
 
 module.exports.dial = async (appUrl, campaign) => {
+  if (!campaign.isWithinDailyTimeOfOperation()) {
+    return;
+  }
   const timer = new Date();
   campaign = await recalculateRatio(campaign);
   const callers = await Caller.query().where({status: 'available', campaign_id: campaign.id});

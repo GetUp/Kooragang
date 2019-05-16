@@ -8,6 +8,8 @@ const sinon = require('sinon');
 const {dropFixtures} = require('../test_helper')
 const { Audience, QueuedCall, Callee, Caller, Call, Campaign, Event, SurveyResult } = require('../../models');
 
+const hours_of_operation_full = require('../../seeds/hours_of_operation_full.example.json');
+const hours_of_operation_null = require('../../seeds/hours_of_operation_null.example.json');
 const defaultCampaign = {
   id: 2,
   name: 'test',
@@ -15,7 +17,8 @@ const defaultCampaign = {
   max_ratio: 3.0,
   acceptable_drop_rate: 0.05,
   recalculate_ratio_window: 180,
-  ratio_window: 600
+  ratio_window: 600,
+  hours_of_operation: hours_of_operation_full
 }
 
 const insertMinNumberOfCallers = async (campaign) => {
@@ -38,6 +41,23 @@ describe('.dial', () => {
       await Caller.query().insert({phone_number: '1', status: 'available', campaign_id: campaign.id});
       await Callee.query().insert({phone_number: '61411111111', campaign_id: campaign.id})
     });
+
+    context('outside the hours of operation', () => {
+      beforeEach(async () => {
+        campaign = await Campaign.query().patchAndFetchById(campaign.id, {
+          hours_of_operation: hours_of_operation_null
+        });
+      });
+      it('should not make any calls', async () => {
+        const mockedApiCall = nock('https://api.plivo.com')
+          .post(/Call/, true)
+          .query(true)
+          .reply(200);
+        await dialer.dial(testUrl, campaign);
+        expect(await Event.query()).to.eql([])
+      })
+    })
+
     context('with answering machine detection enabled on campaign', () => {
       beforeEach(async () => {
         campaign = await Campaign.query().patchAndFetchById(campaign.id, {
