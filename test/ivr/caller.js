@@ -902,6 +902,24 @@ describe('/ready', () => {
         .type('form').send({ Digits: '0', CallUUID: '1' })
         .expect(/disconnect/i)
     });
+    it('should allow a user to leave audio recording as feedback if config variable set to true', () => {
+      process.env.ALLOW_USER_AUDIO_FEEDBACK = 'true'
+      return request.post(`/disconnect?completed=1`)
+        .type('form').send({ CallUUID: '1' })
+        .expect(/Thank you/)
+        .expect(/volunteer/)
+        .expect(/feedback/)
+      delete process.env.ALLOW_USER_AUDIO_FEEDBACK
+    });
+    it('should not allow a user to leave audio recording as feedback if config variable set to false', () => {
+      process.env.ALLOW_USER_AUDIO_FEEDBACK = 'false'
+      return request.post(`/disconnect?completed=1`)
+        .type('form').send({ CallUUID: '1' })
+        .expect(/Thank you/)
+        .expect(/volunteer/)
+        .expect(/^((?!feedback).)*$/)
+      delete process.env.ALLOW_USER_AUDIO_FEEDBACK
+    });
   });
 
   context('with 2 pressed', () => {

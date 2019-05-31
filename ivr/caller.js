@@ -749,12 +749,14 @@ app.post('/disconnect', (req, res) => {
 
   r.addSpeakI18n('thank_you_volunteer');
 
-  const feedback = r.addGetDigits({
-    action: res.locals.appUrl('feedback'),
-    timeout: 5,
-    retries: 2
-  });
-  feedback.addSpeakI18n('feedback_goodbye');
+  if (process.env.ALLOW_USER_AUDIO_FEEDBACK === 'true') {
+    const feedback = r.addGetDigits({
+      action: res.locals.appUrl('feedback'),
+      timeout: 5,
+      retries: 2
+    });
+    feedback.addSpeakI18n('feedback_goodbye');
+  }
 
   res.send(r.toXML());
 });
