@@ -20,7 +20,7 @@ process.env.COUNTRY_CODE = '61'
 process.env.PLIVO_OUTGOING_HANGUP_APP_ID = '123123'
 const questions = require('../seeds/questions.example.json')
 
-const numberSetupCampaign = Object.assign({}, defaultCampaign, {plivo_setup_status: 'needed', plivo_setup_outgoing_status: 'needed'})
+const numberSetupCampaign = Object.assign({}, defaultCampaign, {plivo_setup_status: 'needed', plivo_setup_outgoing_status: 'needed', user_set_outgoing_number: true})
 
 describe('plivo_setup_campaigns', () => {
   let searchRentedNumbersCall, createApplicationCall, editRentedNumberCall;
@@ -37,10 +37,12 @@ describe('plivo_setup_campaigns', () => {
 
     const shouldSearchForNumbersAndSetupTheApp = ({updated_number}) => {
       beforeEach(() => {
+        console.log('~~~~~')
         searchRentedNumbersCall = nock('https://api.plivo.com')
           .get(/Number/)
           .query(true)
           .reply(200, () => { return { objects: rentedNumbers, meta: {next: null}} })
+        console.log('~~~~~')
         createApplicationCall = nock('https://api.plivo.com')
           .post(/Application/, body => {
             return body.app_name === `kooragang-test-${numberSetupCampaign.id}-${numberSetupCampaign.name}_${moment().format('YYMMDDHHmm')}` &&
@@ -50,6 +52,7 @@ describe('plivo_setup_campaigns', () => {
           })
           .query(true)
           .reply(200, {app_id})
+        console.log('~~~~~')
         editRentedNumberCall = nock('https://api.plivo.com')
           .post(new RegExp(`\/Number\/${updated_number}\/`), body => body.app_id === app_id)
           .query(true)
