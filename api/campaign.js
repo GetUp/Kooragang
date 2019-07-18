@@ -31,6 +31,7 @@ app.get('/api/campaigns/:id', wrap(async (req, res, next) => {
 app.post('/api/campaigns', wrap(async (req, res, next) => {
   let payload = req.body.data
   payload.plivo_setup_status = 'needed'
+  payload.plivo_setup_outgoing_status = 'needed'
   let campaign = await Campaign.query().insert(payload).returning('*').first()
   if (!campaign) return next(new BadRequestError('No Campaign Created'))
   return res.json({data: campaign})

@@ -211,13 +211,15 @@ class Campaign extends Base {
 
   async insert_clone(data) {
     let clone = await this.$clone().$toJson()
-    const strip_keys = _.concat(['id', 'created_at', 'updated_at', 'phone_number', 'redirect_number', 'calls_in_progress'], campaign_virtual_attributes)
+    const strip_keys = _.concat(['id', 'created_at', 'updated_at', 'phone_number', 'outgoing_number', 'redirect_number', 'calls_in_progress'], campaign_virtual_attributes)
     strip_keys.forEach(key => delete clone[key])
     clone.name = await Campaign.nonExistantClonedName(clone.name, data ? data.name : null)
     clone.number_region = data && data.number_region ? data.number_region : clone.number_region
+    clone.number_outgoing_region = data && data.number_outgoing_region ? data.number_outgoing_region : clone.number_outgoing_region
     clone.target_numbers = data && data.target_numbers ? data.target_numbers : clone.target_numbers
     clone.status = 'inactive'
     clone.plivo_setup_status = 'needed'
+    clone.plivo_setup_outgoing_status = 'needed'
     return await Campaign.query().insert(clone).returning('*').first()
   }
 
@@ -226,11 +228,20 @@ class Campaign extends Base {
     return payload.number_region != this.number_region
   }
 
+  plivo_setup_outgoing_payload_differ(payload) {
+    if (!payload.outgoing_number_region) return false
+    return payload.outgoing_number_region != this.outgoing_number_region
+  }
+
   async update_and_patch_jobs(payload) {
     if (this.plivo_setup_payload_differ(payload)) {
       payload.plivo_setup_status = 'needed'
       payload.phone_number = null
       payload.redirect_number = null
+    }
+    if (this.plivo_setup_outgoing_payload_differ(payload)) {
+      payload.plivo_setup_outgoing_status = 'needed'
+      payload.outgoing_number = null
     }
     return await this.$query().patch(payload).returning('*').first()
   }

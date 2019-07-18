@@ -3,6 +3,7 @@ const nock = require('nock')
 const { plivo_setup_campaigns } = require('../campaigns/plivo_setup')
 const { dropFixtures } = require('./test_helper')
 const { Campaign } = require('../models');
+const moment = require('moment')
 const sinon = require('sinon')
 const EventEmitter = require('events')
 const emitter = new EventEmitter()
@@ -11,21 +12,25 @@ const defaultCampaign = {
   id: 11,
   name: 'test',
   questions: {},
-  number_region: 'Sydney'
+  number_region: 'Sydney/Landline',
+  outgoing_number_region: 'Sydney/Landline'
 }
+process.env.COUNTRY_ISO = 'AU'
+process.env.COUNTRY_CODE = '61'
+process.env.PLIVO_OUTGOING_HANGUP_APP_ID = '123123'
 const questions = require('../seeds/questions.example.json')
 
-const numberSetupCampaign = Object.assign({}, defaultCampaign, { plivo_setup_status: 'needed' })
-const audioSetupCampaign = Object.assign({}, defaultCampaign, { text_to_speech_status: 'needed' }, { questions })
+const numberSetupCampaign = Object.assign({}, defaultCampaign, {plivo_setup_status: 'needed', plivo_setup_outgoing_status: 'needed', user_set_outgoing_number: true})
 
-xdescribe('plivo_setup_campaigns', () => {
+describe('plivo_setup_campaigns', () => {
   let searchRentedNumbersCall, createApplicationCall, editRentedNumberCall;
   let campaign;
   let rentedNumbers = [{ region: 'SYDNEY, AUSTRALIA', application: null, number: '61212121212' }, { region: 'SYDNEY, AUSTRALIA', application: null, number: '6131311313' }]
   let rentableNumbers = [{ region: 'SYDNEY, AUSTRALIA', application: null, number: '6141414141414' }]
   const app_id = '12121'
   const fields = { name: 'Test App', intro: { name: "test", audio_filename: { en: 'test.wav' } } }
-  const area = { country_iso: 'AU', type: 'local', region: 'Sydney' }
+  const area = { country_iso: 'AU', type: 'local', region: 'Sydney/Landline' }
+
   beforeEach(async () => await dropFixtures())
   beforeEach(async () => campaign = await Campaign.query().insert(numberSetupCampaign));
 
@@ -39,7 +44,7 @@ xdescribe('plivo_setup_campaigns', () => {
           .reply(200, () => { return { objects: rentedNumbers, meta: { next: null } } })
         createApplicationCall = nock('https://api.plivo.com')
           .post(/Application/, body => {
-            return body.app_name === `kooragang-test-${numberSetupCampaign.id}-${numberSetupCampaign.name}` &&
+            return body.app_name === `kooragang-test-${numberSetupCampaign.id}-${numberSetupCampaign.name}_${moment().format('YYMMDDHHmm')}` &&
               body.answer_url.match(/https:\/\/test\/connect\?campaign_id=\d+/) &&
               body.fallback_answer_url.match(/https:\/\/test\/log\?event=fallback&campaign_id=\d+/) &&
               body.hangup_url.match(/https:\/\/test\/call_ended\?campaign_id=\d+/)
