@@ -324,7 +324,7 @@ app.post('/ready', async ({ body, query }, res) => {
     if (body.Digits === '3') {
       let content = languageBlock('script_message', { campaign_script_url: _.escape(campaign.script_url) })
       r.addMessage(content, {
-        src: process.env.NUMBER || '1111111111', dst: query.caller_number
+        src: campaign.sms_number || process.env.NUMBER || '1111111111', dst: query.caller_number
       });
       r.addSpeakI18n('sms_instruction');
       return res.send(r.toXML());
