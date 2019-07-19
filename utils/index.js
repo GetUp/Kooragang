@@ -1,5 +1,6 @@
 const _ = require('lodash');
 const i18n_module = require('i18n-nodejs')
+const region_number_prefix = require('./region_number_prefix.json');
 
 module.exports.sleep = (ms = 0) => {
   const timeout = process.env.NODE_ENV === "test" ? 0 : ms;
@@ -69,18 +70,10 @@ module.exports.languageBlock = (block, vars) => {
 }
 
 module.exports.region_prefix_map = (region) => {
-  const map = {
-    'Sydney/Landline': '2',
-    'Melbourne/Landline': '3',
-    'Brisbane/Landline': '7',
-    'Adelaide/Landline': '8',
-    'Perth/Landline': '8',
-    'Hobart/Landline': '3',
-    'Darwin/Landline': '8',
-    'Canberra/Landline': '2',
-    'Australia/Mobile': '4'
+  country_prefixes = region_number_prefix[process.env.COUNTRY_ISO]
+  if (country_prefixes) {
+    return country_prefixes[region] 
   }
-  return map[region]
 }
 
 module.exports.region_phone_type_match = (region) => {
