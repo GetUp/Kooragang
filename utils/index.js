@@ -69,13 +69,18 @@ module.exports.languageBlock = (block, vars) => {
   return i18n.__(block, vars)
 }
 
-module.exports.region_prefix_map = (region) => {
-  country_prefixes = region_number_prefix[process.env.COUNTRY_ISO]
-  if (country_prefixes) {
-    return country_prefixes[region] 
-  }
+module.exports.region_name_match = (region) => {
+  return region.replace(/\/(.*)/gi, '')
 }
 
 module.exports.region_phone_type_match = (region) => {
   return _.isNull(region.match(/Landline/)) ? 'mobile' : 'fixed'
+}
+
+module.exports.plivo_number_search_strategy = () => {
+  return region_number_prefix[process.env.COUNTRY_ISO] ? 'number_prefix' : 'region'
+}
+
+module.exports.region_prefix_map = (region) => {
+  return region_number_prefix[process.env.COUNTRY_ISO][region]
 }
