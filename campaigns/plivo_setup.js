@@ -76,7 +76,6 @@ const setup_outgoing_infrastructure = async (campaign) => {
 
 const find_hangup_and_link_number = async (region) => {
   const number = await find_free_number(region)
-  console.log({number, app_id: process.env.PLIVO_OUTGOING_HANGUP_APP_ID})
   await plivo_api('edit_number', {number, app_id: process.env.PLIVO_OUTGOING_HANGUP_APP_ID})
   return number
 }

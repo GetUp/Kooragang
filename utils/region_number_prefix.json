@@ -9,5 +9,19 @@
         "Darwin/Landline": "8",
         "Canberra/Landline": "2",
         "Australia/Mobile": "4"
+    },
+    "CA": {
+        "Vancouver/Landline": "778",
+        "Montreal/Landline": "438",
+        "Toronto/Landline": "647",
+        "Halifax/Landline": "782",
+        "Calgary/Landline": "587",
+        "Regina/Landline": "306",
+        "Charlottetown/Landline": "902",
+        "Winnipeg/Landline": "431",
+        "Moncton/Landline": "506",
+        "Quebec/Landline": "581",
+        "Hamilton/Landline": "365",
+        "London/Landline": "548"
     }
 }
