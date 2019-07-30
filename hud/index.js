@@ -21,6 +21,7 @@ module.exports = async (server) => {
   db.query('listen caller_event')
   db.on('notification', async notification => {
     if (notification.channel !== 'caller_event') return
+    console.log(`~~~~~ ${notification.payload}`)
     const event = JSON.parse(notification.payload)
     event.value = JSON.parse(event.value)
     if (event.name === 'answered') {
