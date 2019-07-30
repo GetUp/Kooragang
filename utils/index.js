@@ -13,11 +13,17 @@ module.exports.error_exit = error => {
 }
 
 module.exports.extractCallerNumber = (query, body) => {
+  let caller_number
   if (query.callback === '1' || query.assessment === '1') {
-    return query.number;
+    caller_number = query.number;
   } else {
     const sip = body.From.match(/sip:(\w+)@/);
-    return sip ? sip[1] : body.From.replace(/\s/g, '').replace(/^0/, '61');
+    caller_number = sip ? sip[1] : body.From.replace(/\s/g, '');
+  }
+  if (process.env.COUNTRY_ISO == 'AU') {
+    return caller_number.replace(/^0/, '61');
+  } else {
+    return _.startsWith(caller_number, process.env.COUNTRY_CODE) ? caller_number : `${process.env.COUNTRY_CODE}${caller_number}`
   }
 };
 
