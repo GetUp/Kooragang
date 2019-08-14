@@ -29,7 +29,6 @@ app.post('/answer', async ({body, query}, res) => {
 
   let campaign = await Campaign.query().where({id: query.campaign_id}).first()
   const calls_in_progress = campaign.calls_in_progress
-  campaign = await dialer.decrementCallsInProgress(campaign)
   await QueuedCall.query().where({callee_id: query.callee_id}).delete()
 
   if (!errorFindingCaller && caller) {
@@ -115,7 +114,6 @@ app.post('/hangup', async ({body, query}, res) => {
     callee = await Callee.query().eager('campaign').where({id: call.callee_id}).first()
     let campaign = callee.campaign
     const calls_in_progress = campaign.calls_in_progress
-    campaign = await dialer.decrementCallsInProgress(campaign)
     await Event.query().insert({name: 'filter', campaign_id: campaign.id, call_id: call.id, value: {status, calls_in_progress, updated_calls_in_progress: campaign.calls_in_progress}})
   }
   await callee.trigger_callable_recalculation(call)

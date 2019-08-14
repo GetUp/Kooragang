@@ -69,7 +69,6 @@ describe('/answer', () => {
       callee = await Callee.query().where({phone_number: associatedCallee.phone_number}).first()
       caller = await Caller.query().insert(callerTemplate)
       await QueuedCall.query().insert({callee_id: callee.id, campaign_id: callee.campaign_id})
-      campaign = await campaign.$query().patch({calls_in_progress: 1}).returning('*').first()
     })
 
     context('with no callers available', () => {
@@ -93,13 +92,6 @@ describe('/answer', () => {
             const event = await Event.query().where({call_id: call.id, name: 'drop'}).first()
             expect(event).to.be.an(Event)
           })
-      })
-
-      it('should decrement calls_in_progress', async () => {
-        await request.post(`/answer?name=Bridger&callee_id=${callee.id}&campaign_id=${callee.campaign_id}`)
-          .type('form').send({CallStatus, CallUUID: call_uuid})
-        campaign = await campaign.$query()
-        expect(campaign.calls_in_progress).to.be(0)
       })
 
       it('should remove the QueuedCall for the callee', async () => {
@@ -145,13 +137,6 @@ describe('/answer', () => {
             })
             .query(true)
             .reply(200)
-        })
-
-        it('should also decrement calls_in_progress', async () => {
-          await request.post(`/answer?name=Bridger&callee_id=${callee.id}&campaign_id=${callee.campaign_id}`)
-            .type('form').send({CallStatus, CallUUID: call_uuid})
-          campaign = await campaign.$query()
-          expect(campaign.calls_in_progress).to.be(0)
         })
 
         it('should set their status to in-call and update the seconds_waiting', async () => {

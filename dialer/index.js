@@ -52,16 +52,14 @@ module.exports.dial = async (appUrl, campaign) => {
       await Event.query().insert({campaign_id: campaign.id, name: 'callee_error', value: {error: e}})
     }
   }
-  const updated_calls_in_progress = campaign.calls_in_progress + callees.length
+  const updated_calls_in_progress = queued_calls.length + callees.length
   let extra_event_data = {
     ratio: campaign.ratio,
     incall: incall_callers.length,
     callers: available_callers.length,
-    calls_in_progress: campaign.calls_in_progress,
     queued_calls
   }
   if (callees.length) {
-    await campaign.$query().increment('calls_in_progress', callees.length)
     await Promise.all(callees.map(callee => updateAndCall(campaign, callee, appUrl)))
     const callee_ids = _.map(callees, 'id')
     extra_event_data.callsToMake = callsToMake
@@ -169,24 +167,12 @@ const updateAndCall = async (campaign, callee, appUrl) => {
     await QueuedCall.query().insert({callee_id: callee.id, campaign_id: callee.campaign_id, response, status})
     await Event.query().insert({name: 'call_initiated', campaign_id: callee.campaign_id, value: {callee_id: callee.id, status, response}})
   }catch(e){
-    await decrementCallsInProgress(campaign)
     await Event.query().insert({
       campaign_id: campaign.id,
       name: 'api_error',
-      value: {calls_in_progress: campaign.calls_in_progress, callee_id: callee.id, error: e}})
+      value: { callee_id: callee.id, error: e }})
   }
 }
-
-const decrementCallsInProgress = async campaign => {
-  const updatedCampaign = await Campaign.query()
-    .returning('*')
-    .where({id: campaign.id})
-    .where('calls_in_progress', '>', 0)
-    .decrement('calls_in_progress', 1)
-    .first()
-  return updatedCampaign || campaign
-}
-module.exports.decrementCallsInProgress = decrementCallsInProgress
 
 module.exports.notifyAgents = async (campaign) => {
   const availableCallers = await Caller.query().where({status: 'available', campaign_id: campaign.id})

@@ -151,17 +151,6 @@ describe('.dial', () => {
     })
 
     context('with error with an api call', () => {
-      it ('should remove decrement the calls_in_progress', async () => {
-        const mockedApiCall = nock('https://api.plivo.com')
-          .post(/Call/, _ => true)
-          .query(true)
-          .reply(404)
-        await dialer.dial(testUrl, campaign)
-        const updatedCampaign = await Campaign.query().where({id: campaign.id}).first()
-        expect(updatedCampaign.calls_in_progress).to.be(0)
-        mockedApiCall.done()
-      })
-
       it ('should not create a QueuedCall', async () => {
         const mockedApiCall = nock('https://api.plivo.com')
           .post(/Call/, _ => true)
@@ -493,7 +482,7 @@ describe('.dial', () => {
     context('with more queued calls than available callers', () => {
       beforeEach(async () => {
         campaign = await Campaign.query().patchAndFetchById(campaign.id, {
-          ratio: 1, max_ratio: 4, last_checked_ratio_at: new Date(), calls_in_progress: 6
+          ratio: 1, max_ratio: 4, last_checked_ratio_at: new Date()
         })
         await Callee.query().delete()
         const inserts = _.range(8).map(() => Callee.query().insert({phone_number: '61411111111', campaign_id: campaign.id}))
@@ -520,11 +509,10 @@ describe('.dial', () => {
           await dialer.dial(testUrl, campaign)
           const event = await Event.query().where({campaign_id: campaign.id, name: 'no-calling'}).first()
           expect(event).to.be.an(Event)
-          const {incall, calls_in_progress, callers, ratio, queued_calls} = JSON.parse(event.value)
+          const {incall, callers, ratio, queued_calls} = JSON.parse(event.value)
           expect(callers).to.be(1)
           expect(incall).to.be(1)
           expect(ratio).to.be(1)
-          expect(calls_in_progress).to.be(6)
           expect(queued_calls).to.be(8)
         })
 
@@ -534,7 +522,7 @@ describe('.dial', () => {
     context('with calls in progress', () => {
       beforeEach(async () => {
         campaign = await Campaign.query().patchAndFetchById(campaign.id, {
-          ratio: 1, max_ratio: 4, last_checked_ratio_at: new Date(), calls_in_progress: 0
+          ratio: 1, max_ratio: 4, last_checked_ratio_at: new Date()
         })
       })
       beforeEach(async () => {
@@ -555,8 +543,6 @@ describe('.dial', () => {
         await dialer.dial(testUrl, campaign)
         const answered_callee = await Callee.query().where({campaign_id: campaign.id}).whereNotNull('last_called_at').first()
         await QueuedCall.query().where({callee_id: answered_callee.id}).delete()
-        campaign = await dialer.decrementCallsInProgress(campaign)
-        expect(campaign.calls_in_progress).to.be(2)
         // insert an old queued call that should be ignored
         await QueuedCall.query().insert({callee_id: answered_callee.id, campaign_id: campaign.id, created_at: moment().subtract(16, 'minutes').toDate()})
         expect((await QueuedCall.query().where({campaign_id: campaign.id})).length).to.be(3)
@@ -569,7 +555,7 @@ describe('.dial', () => {
       beforeEach(async () => {
         await Promise.all(_.range(2).map(() => Caller.query().insert({phone_number: '1', status: 'available', campaign_id: campaign.id})))
         campaign = await Campaign.query().patchAndFetchById(campaign.id, {
-          ratio: 1.6, max_ratio: 4, last_checked_ratio_at: new Date(), calls_in_progress: 0
+          ratio: 1.6, max_ratio: 4, last_checked_ratio_at: new Date()
         })
       })
       beforeEach(async () => {
