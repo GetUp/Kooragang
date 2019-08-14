@@ -12,11 +12,11 @@ const timezone_abbreviations = {
   ACDT: 'Australian Central Daylight Time',         //UTC+10:30
   AEDT: 'Australian Eastern Daylight Time',         //UTC+11:00
   LHDT: 'Lord Howe Daylight Time',                  //UTC+11:00
-};
+}
 
 moment.fn.zoneName = function () {
-    var timezone_abbreviation = this.zoneAbbr();
-    return timezone_abbreviations[timezone_abbreviation] || timezone_abbreviation;
-};
+    var timezone_abbreviation = this.zoneAbbr()
+    return timezone_abbreviations[timezone_abbreviation] || timezone_abbreviation
+}
 
 module.exports = moment

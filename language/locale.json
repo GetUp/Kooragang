@@ -84,7 +84,7 @@
         "de": ""
     },
     "error_sms_connect_message_not_found": {
-        "en": "Sorry we can't find the campaign you're after from the message you sent. Check the message and try again later.",
+        "en": "Sorry we cannot find the campaign you're after from the message you sent. Check the message and try again later.",
         "de": ""
     },
     "welcome_back": {

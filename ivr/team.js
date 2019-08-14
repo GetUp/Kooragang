@@ -10,7 +10,7 @@ app.post('/team', async ({query, body}, res) => {
   if (!user) { user = await User.query().insert({phone_number: body.From}) }
 
   if (user.team_id && body.Digits === '1') {
-    const team = await Team.query().where({id: user.team_id}).first();
+    const team = await Team.query().where({id: user.team_id}).first()
     await user.$query().patch({last_joined_at: new Date()})
     await Event.query().insert({name: 'team join existing', campaign_id: query.campaign_id, value: {log_id: query.log_id}})
     r.addSpeakI18n('rejoined_team', {team_name: team.name})

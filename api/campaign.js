@@ -51,7 +51,7 @@ app.delete('/api/campaigns/:id', wrap(async (req, res, next) => {
   const campaign = await Campaign.query().where({id: req.params.id}).first()
   if (!campaign) return next(new NotFoundError('No Campaign Exists With ID: ' + req.params.id))
   const non_assessment_callers = await Caller.query().where({campaign_id: campaign.id, test: false}).count().first()
-  const non_assessment_callers_int = non_assessment_callers ? parseInt(non_assessment_callers.count, 10) : 0;
+  const non_assessment_callers_int = non_assessment_callers ? parseInt(non_assessment_callers.count, 10) : 0
   if (non_assessment_callers_int > 0) return next(new BadRequestError('Cannot Delete Campaign With ID: ' + req.params.id))
   await Audience.query().where({campaign_id: campaign.id}).delete()
   if (await campaign.$query().delete()) return res.json({data: campaign})

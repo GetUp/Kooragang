@@ -1,9 +1,8 @@
 const expect = require('expect.js')
-const moment = require('../api/moment')
 const {Campaign} = require('../models')
 const {dropFixtures} = require('./test_helper')
-const hours_of_operation_full_json = require('../seeds/hours_of_operation_full.example.json');
-const hours_of_operation_null_json = require('../seeds/hours_of_operation_null.example.json');
+const hours_of_operation_full_json = require('../seeds/hours_of_operation_full.example.json')
+const hours_of_operation_null_json = require('../seeds/hours_of_operation_null.example.json')
 
 describe('withinDailyTimeOfOperation', () => {
   beforeEach(async () => {

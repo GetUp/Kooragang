@@ -1,10 +1,8 @@
 const expect = require('expect.js')
-const nock = require('nock')
 const proxyquire = require('proxyquire')
-const moment = require('moment')
 const ivrCaller = proxyquire('../../ivr/team', {
   '../dialer': {
-    dial: async (appUrl) => {}
+    dial: async () => {}
   }
 })
 const app = require('../../ivr/common')

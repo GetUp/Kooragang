@@ -1,39 +1,37 @@
-const _ = require('lodash');
-const expect = require('expect.js');
-const nock = require('nock');
-const proxyquire = require('proxyquire');
-const moment = require('moment');
+const _ = require('lodash')
+const expect = require('expect.js')
+const nock = require('nock')
+const proxyquire = require('proxyquire')
+const moment = require('moment')
 const ivrCaller = proxyquire('../../ivr/caller', {
   '../dialer': {
-    dial: async (appUrl) => { }
+    dial: async (_) => { }
   }
-});
-const ivrCallerAssessment = require('../../ivr/caller_assessment');
-const app = require('../../ivr/common');
-app.use(ivrCaller);
-app.use(ivrCallerAssessment);
-const request = require('supertest')(app);
+})
+const ivrCallerAssessment = require('../../ivr/caller_assessment')
+const app = require('../../ivr/common')
+app.use(ivrCaller)
+app.use(ivrCallerAssessment)
+const request = require('supertest')(app)
 
 const { dropFixtures } = require('../test_helper')
 const {
-  QueuedCall,
   Call,
   Callee,
   Caller,
   Campaign,
   Event,
-  Redirect,
   SurveyResult,
   Team,
   User
-} = require('../../models');
+} = require('../../models')
 
-const hours_of_operation_full = require('../../seeds/hours_of_operation_full.example.json');
-const hours_of_operation_null = require('../../seeds/hours_of_operation_null.example.json');
+const hours_of_operation_full = require('../../seeds/hours_of_operation_full.example.json')
+const hours_of_operation_null = require('../../seeds/hours_of_operation_null.example.json')
 const more_info = require('../../seeds/more_info.example.json')
-const questions = require('../../seeds/questions.example.json');
-const multiple_questions = require('../../seeds/questions_multiple.example.json');
-const malformed_questions = require('../../seeds/questions_malformed.example.json');
+const questions = require('../../seeds/questions.example.json')
+const multiple_questions = require('../../seeds/questions_multiple.example.json')
+const malformed_questions = require('../../seeds/questions_malformed.example.json')
 
 const campaign_template = Object.assign({
   more_info: more_info,
@@ -56,29 +54,22 @@ const operationalWindowCampaign = Object.assign({}, activeCampaign, { hours_of_o
 const teamsCampaign = Object.assign({ status: 'active', teams: true }, defaultCampaign)
 const authCampaign = Object.assign({ status: 'active', passcode: '1234' }, defaultCampaign)
 const holdMusicCampaign = Object.assign({}, activeCampaign, { hold_music: '{"stevie_wonder_classic.mp3"}' })
-const multipleResponseCampaign = Object.assign({ status: 'active' }, multipleCampaign)
 
-const CallUUID = '111';
+const CallUUID = '111'
 let campaign
 let caller = {
   first_name: 'bob',
   phone_number: '61288888888',
   location: 'balmain',
   campaign_id: 1
-};
+}
 const associatedCallee = {
   first_name: 'chris',
   phone_number: '61277777777',
   location: 'rozelle',
   caller: '61288888888',
   campaign_id: 1
-};
-const unassociatedCallee = {
-  first_name: 'alice',
-  phone_number: '+612 9999-9999',
-  location: 'drummoyne',
-  campaign_id: 1
-};
+}
 
 const associatedTargetedCallee = Object.assign({}, associatedCallee, { target_number: '098765' })
 const associatedCaller = Object.assign({}, caller)
@@ -86,18 +77,18 @@ const associatedCaller = Object.assign({}, caller)
 beforeEach(async () => {
   await dropFixtures()
   campaign = await Campaign.query().insert(activeCampaign)
-});
+})
 
 describe('/connect', () => {
   context('with no campaign id specified', () => {
-    const payload = { From: caller.phone_number };
+    const payload = { From: caller.phone_number }
     it('plays the briefing message', () => {
       return request.post('/connect')
         .type('form')
         .send(payload)
-        .expect(/error/);
-    });
-  });
+        .expect(/error/)
+    })
+  })
 
   describe('the language of the robo voice', () => {
     context('with no environment variable set', () => {
@@ -131,111 +122,111 @@ describe('/connect', () => {
   })
 
   context('with a sip number', () => {
-    beforeEach(async () => { await Callee.query().insert(associatedCallee) });
-    beforeEach(async () => campaign.recalculateCallersRemaining());
+    beforeEach(async () => { await Callee.query().insert(associatedCallee) })
+    beforeEach(async () => campaign.recalculateCallersRemaining())
     it('should strip out sip details for caller number', async () => {
       await request.post(`/connect?campaign_id=${campaign.id}`)
         .type('form')
         .send({ From: 'sip:alice123@phone.plivo.com' })
-        .expect(/caller_number=alice123&amp;start=1/);
-    });
-  });
+        .expect(/caller_number=alice123&amp;start=1/)
+    })
+  })
 
   context('with a private number', () => {
-    beforeEach(async () => { await Callee.query().insert(associatedCallee) });
-    beforeEach(async () => campaign.recalculateCallersRemaining());
-    const payload = { From: '' };
+    beforeEach(async () => { await Callee.query().insert(associatedCallee) })
+    beforeEach(async () => campaign.recalculateCallersRemaining())
+    const payload = { From: '' }
     it('directs them to enable caller id', () => {
       return request.post(`/connect?campaign_id=${campaign.id}`)
         .type('form')
         .send(payload)
-        .expect(/caller ID/);
-    });
-  });
+        .expect(/caller ID/)
+    })
+  })
 
   context('with a private number', () => {
-    beforeEach(async () => { await Callee.query().insert(associatedCallee) });
-    beforeEach(async () => campaign.recalculateCallersRemaining());
-    const payload = { From: 'anonymous' };
+    beforeEach(async () => { await Callee.query().insert(associatedCallee) })
+    beforeEach(async () => campaign.recalculateCallersRemaining())
+    const payload = { From: 'anonymous' }
     it('directs them to enable caller id', () => {
       return request.post(`/connect?campaign_id=${campaign.id}`)
         .type('form')
         .send(payload)
-        .expect(/caller ID/);
-    });
-  });
+        .expect(/caller ID/)
+    })
+  })
 
   context('with a private number', () => {
-    beforeEach(async () => { await Callee.query().insert(associatedCallee) });
-    beforeEach(async () => campaign.recalculateCallersRemaining());
-    const payload = { From: 'undefined' };
+    beforeEach(async () => { await Callee.query().insert(associatedCallee) })
+    beforeEach(async () => campaign.recalculateCallersRemaining())
+    const payload = { From: 'undefined' }
     it('directs them to enable caller id', () => {
       return request.post(`/connect?campaign_id=${campaign.id}`)
         .type('form')
         .send(payload)
-        .expect(/caller ID/);
-    });
-  });
+        .expect(/caller ID/)
+    })
+  })
 
   context('with a callback', () => {
-    const payload = { From: '33333' };
-    beforeEach(async () => { await Callee.query().insert(associatedCallee) });
-    beforeEach(async () => campaign.recalculateCallersRemaining());
+    const payload = { From: '33333' }
+    beforeEach(async () => { await Callee.query().insert(associatedCallee) })
+    beforeEach(async () => campaign.recalculateCallersRemaining())
     it('should use the number passed in the number parameter', () => {
       return request.post(`/connect?campaign_id=${campaign.id}&callback=1&number=${caller.phone_number}`)
         .type('form')
         .send(payload)
         .expect(/<Redirect/)
         .expect(/briefing/)
-        .expect(new RegExp(caller.phone_number));
-    });
-  });
+        .expect(new RegExp(caller.phone_number))
+    })
+  })
 
   context('with a paused campaign', () => {
-    beforeEach(async () => { await Campaign.query().delete() });
-    beforeEach(async () => campaign = await Campaign.query().insert(pausedCampaign));
-    beforeEach(async () => campaign.recalculateCallersRemaining());
-    const payload = { From: caller.phone_number };
+    beforeEach(async () => { await Campaign.query().delete() })
+    beforeEach(async () => campaign = await Campaign.query().insert(pausedCampaign))
+    beforeEach(async () => campaign.recalculateCallersRemaining())
+    const payload = { From: caller.phone_number }
     it('plays the paused briefing message ', () => {
       return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
         .type('form')
         .send(payload)
-        .expect(/currently paused/);
-    });
-  });
+        .expect(/currently paused/)
+    })
+  })
 
   context('with a down campaign', () => {
-    beforeEach(async () => { await Campaign.query().delete() });
-    beforeEach(async () => campaign = await Campaign.query().insert(downCampaign));
-    beforeEach(async () => campaign.recalculateCallersRemaining());
-    const payload = { From: caller.phone_number };
+    beforeEach(async () => { await Campaign.query().delete() })
+    beforeEach(async () => campaign = await Campaign.query().insert(downCampaign))
+    beforeEach(async () => campaign.recalculateCallersRemaining())
+    const payload = { From: caller.phone_number }
     it('plays the down briefing message ', () => {
       return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
         .type('form')
         .send(payload)
-        .expect(/technical/);
-    });
-  });
+        .expect(/technical/)
+    })
+  })
 
   context('with a statusless campaign', () => {
-    beforeEach(async () => { await Campaign.query().delete() });
-    beforeEach(async () => campaign = await Campaign.query().insert(statuslessCampaign));
-    const payload = { From: caller.phone_number };
+    beforeEach(async () => { await Campaign.query().delete() })
+    beforeEach(async () => campaign = await Campaign.query().insert(statuslessCampaign))
+    const payload = { From: caller.phone_number }
     it('plays the paused briefing message ', () => {
       return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
         .type('form')
         .send(payload)
-        .expect(/currently paused/);
-    });
-  });
+        .expect(/currently paused/)
+    })
+  })
 
   context('with a paused campaign with a next campaign', () => {
-    beforeEach(async () => { await Campaign.query().delete() });
-    beforeEach(async () => campaign = await Campaign.query().insert(pausedNextCampaign));
-    beforeEach(async () => next_campaign = await Campaign.query().insert(nextCampaign));
+    beforeEach(async () => { await Campaign.query().delete() })
+    beforeEach(async () => campaign = await Campaign.query().insert(pausedNextCampaign))
+    beforeEach(async () => await Campaign.query().insert(nextCampaign))
     const nextAssociatedCallee = Object.assign({}, associatedCallee, { campaign_id: 2 })
-    beforeEach(async () => { await Callee.query().insert(nextAssociatedCallee) });
-    const payload = { From: caller.phone_number };
+    beforeEach(async () => { await Callee.query().insert(nextAssociatedCallee) })
+    const payload = { From: caller.phone_number }
 
     it('plays the next campaign name and number, sends an sms, and hangs up', () => {
       return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
@@ -246,17 +237,17 @@ describe('/connect', () => {
         .expect(new RegExp(nextCampaign.name))
         .expect(/<Message/)
         .expect(/Please call 0291234567./)
-        .expect(/hangup/);
-    });
-  });
+        .expect(/hangup/)
+    })
+  })
 
   context('with a inactive campaign with a next campaign', () => {
-    beforeEach(async () => { await Campaign.query().delete() });
-    beforeEach(async () => campaign = await Campaign.query().insert(inactiveNextCampaign));
-    beforeEach(async () => next_campaign = await Campaign.query().insert(nextCampaign));
+    beforeEach(async () => { await Campaign.query().delete() })
+    beforeEach(async () => campaign = await Campaign.query().insert(inactiveNextCampaign))
+    beforeEach(async () => await Campaign.query().insert(nextCampaign))
     const nextAssociatedCallee = Object.assign({}, associatedCallee, { campaign_id: 2 })
-    beforeEach(async () => { await Callee.query().insert(nextAssociatedCallee) });
-    const payload = { From: caller.phone_number };
+    beforeEach(async () => { await Callee.query().insert(nextAssociatedCallee) })
+    const payload = { From: caller.phone_number }
 
     it('plays the next campaign name and number, sends an sms, and hangs up', () => {
       return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
@@ -267,82 +258,82 @@ describe('/connect', () => {
         .expect(new RegExp(nextCampaign.name))
         .expect(/<Message/)
         .expect(/Please call 0291234567./)
-        .expect(/hangup/);
-    });
-  });
+        .expect(/hangup/)
+    })
+  })
 
   context('with a inactive campaign', () => {
     context('without an assessment session', () => {
-      beforeEach(async () => { await Campaign.query().delete() });
-      beforeEach(async () => campaign = await Campaign.query().insert(inactiveCampaign));
-      const payload = { From: caller.phone_number };
+      beforeEach(async () => { await Campaign.query().delete() })
+      beforeEach(async () => campaign = await Campaign.query().insert(inactiveCampaign))
+      const payload = { From: caller.phone_number }
       it('plays the outside operational window briefing message', () => {
         return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
           .type('form')
           .send(payload)
-          .expect(/has been completed/);
-      });
-    });
+          .expect(/has been completed/)
+      })
+    })
     context('with an assessment session', () => {
-      beforeEach(async () => { await Campaign.query().delete() });
-      beforeEach(async () => campaign = await Campaign.query().insert(inactiveCampaign));
-      const payload = { From: caller.phone_number };
+      beforeEach(async () => { await Campaign.query().delete() })
+      beforeEach(async () => campaign = await Campaign.query().insert(inactiveCampaign))
+      const payload = { From: caller.phone_number }
       it('should redirect to briefing', () => {
         return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}&assessment=1`)
           .type('form')
           .send(payload)
           .expect(/<Redirect/)
-          .expect(/briefing/);
-      });
-    });
-  });
+          .expect(/briefing/)
+      })
+    })
+  })
 
   context('with an operational window campaign', () => {
-    beforeEach(async () => { await Campaign.query().delete() });
-    beforeEach(async () => campaign = await Campaign.query().insert(operationalWindowCampaign));
-    beforeEach(async () => { await Callee.query().insert(associatedCallee) });
-    const payload = { From: caller.phone_number };
+    beforeEach(async () => { await Campaign.query().delete() })
+    beforeEach(async () => campaign = await Campaign.query().insert(operationalWindowCampaign))
+    beforeEach(async () => { await Callee.query().insert(associatedCallee) })
+    const payload = { From: caller.phone_number }
     it('plays the operational window briefing message', () => {
       return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
         .type('form')
         .send(payload)
-        .expect(/hours of operation/);
-    });
-  });
+        .expect(/hours of operation/)
+    })
+  })
 
   context('with an revert_to_redundancy campaign', () => {
-    beforeEach(async () => { await Campaign.query().delete() });
-    beforeEach(async () => campaign = await Campaign.query().insert(redundancyCampaign));
-    beforeEach(async () => { await Callee.query().insert(associatedCallee) });
-    beforeEach(async () => campaign.recalculateCallersRemaining());
+    beforeEach(async () => { await Campaign.query().delete() })
+    beforeEach(async () => campaign = await Campaign.query().insert(redundancyCampaign))
+    beforeEach(async () => { await Callee.query().insert(associatedCallee) })
+    beforeEach(async () => campaign.recalculateCallersRemaining())
     context('when direction is inbound', () => {
-      const payload = { From: caller.phone_number, Direction: 'inbound' };
+      const payload = { From: caller.phone_number, Direction: 'inbound' }
       it('informs user of high traffic', async () => {
         await request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
           .type('form')
           .send(payload)
           .expect(/hundreds of people/)
           .expect(/handle this traffic/)
-      });
+      })
 
       it('should log an event', async () => {
         await request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
           .type('form')
           .send(payload)
-        expect(await Event.query().where({ name: 'reached_channel_limit', campaign_id: campaign.id }).first()).to.be.a(Event);
-      });
-    });
+        expect(await Event.query().where({ name: 'reached_channel_limit', campaign_id: campaign.id }).first()).to.be.a(Event)
+      })
+    })
     context('when direction is outbound', () => {
-      const payload = { From: caller.phone_number, Direction: 'outbound' };
+      const payload = { From: caller.phone_number, Direction: 'outbound' }
       it('should continue to briefing', async () => {
         await request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
           .type('form')
           .send(payload)
           .expect(/briefing/)
-      });
-    });
+      })
+    })
     context('when DISABLE_REDUNDANCY=1', () => {
-      const payload = { From: caller.phone_number, Direction: 'inbound' };
+      const payload = { From: caller.phone_number, Direction: 'inbound' }
       beforeEach(() => process.env.DISABLE_REDUNDANCY = 1)
       afterEach(() => delete process.env.DISABLE_REDUNDANCY)
 
@@ -353,24 +344,24 @@ describe('/connect', () => {
           .expect(/hundreds of people/)
           .expect(/all our lines are full/)
           .expect(/hangup/i)
-      });
-    });
-  });
+      })
+    })
+  })
 
   context('with revert_to_redundancy set', () => {
-    beforeEach(async () => { await Callee.query().insert(associatedCallee) });
-    beforeEach(async () => campaign.recalculateCallersRemaining());
+    beforeEach(async () => { await Callee.query().insert(associatedCallee) })
+    beforeEach(async () => campaign.recalculateCallersRemaining())
 
     context('dialing into a didlogic number', () => {
       const didlogic_number = '1111111'
-      const payload = { Direction: 'inbound', From: caller.phone_number, 'SIP-H-To': `<sip:38092489203840928@app.plivo.com;phone=${didlogic_number}>` };
+      const payload = { Direction: 'inbound', From: caller.phone_number, 'SIP-H-To': `<sip:38092489203840928@app.plivo.com;phone=${didlogic_number}>` }
 
       context('under the channel limit', () => {
         it('should continue to briefing', async () => {
           await request.post(`/connect?campaign_id=${campaign.id}`)
             .type('form')
             .send(payload)
-            .expect(/briefing/);
+            .expect(/briefing/)
         })
       })
       context('over the channel limit', () => {
@@ -396,26 +387,26 @@ describe('/connect', () => {
             .type('form')
             .send(payload)
             .expect(/handle this traffic/)
-            .expect(new RegExp(`ready.*campaign_id=${campaign.id}.*caller_number=${caller.phone_number}.*start=1.*force_callback=1`));
+            .expect(new RegExp(`ready.*campaign_id=${campaign.id}.*caller_number=${caller.phone_number}.*start=1.*force_callback=1`))
         })
       })
     })
   })
 
   context('with revert_to_redundancy set', () => {
-    beforeEach(async () => { await Callee.query().insert(associatedCallee) });
-    beforeEach(async () => campaign.recalculateCallersRemaining());
+    beforeEach(async () => { await Callee.query().insert(associatedCallee) })
+    beforeEach(async () => campaign.recalculateCallersRemaining())
 
     context('dialing into a plivo number', () => {
       const plivo_number = '61200001111'
-      const payload = { Direction: 'inbound', From: caller.phone_number, To: plivo_number };
+      const payload = { Direction: 'inbound', From: caller.phone_number, To: plivo_number }
 
       context('under the channel limit', () => {
         it('should continue to briefing', async () => {
           await request.post(`/connect?campaign_id=${campaign.id}`)
             .type('form')
             .send(payload)
-            .expect(/briefing/);
+            .expect(/briefing/)
         })
       })
       context('over the channel limit', () => {
@@ -441,24 +432,25 @@ describe('/connect', () => {
             .type('form')
             .send(payload)
             .expect(/handle this traffic/)
-            .expect(new RegExp(`ready.*campaign_id=${campaign.id}.*caller_number=${caller.phone_number}.*start=1.*force_callback=1`));
+            .expect(new RegExp(`ready.*campaign_id=${campaign.id}.*caller_number=${caller.phone_number}.*start=1.*force_callback=1`))
         })
       })
     })
   })
 
   context('with teams active campaign', () => {
+    let team
     beforeEach(async () => {
-      await Campaign.query().delete();
-      await User.query().delete();
-      await Team.query().delete();
-    });
-    beforeEach(async () => campaign = await Campaign.query().insert(teamsCampaign));
-    beforeEach(async () => team = await Team.query().insert({ name: 'planet savers', passcode: '1234' }));
-    beforeEach(async () => user = await User.query().insert({ phone_number: '098765', team_id: team.id }));
-    beforeEach(async () => { await Callee.query().insert(associatedCallee) });
-    beforeEach(async () => campaign.recalculateCallersRemaining());
-    const payload = { From: '098765' };
+      await Campaign.query().delete()
+      await User.query().delete()
+      await Team.query().delete()
+    })
+    beforeEach(async () => campaign = await Campaign.query().insert(teamsCampaign))
+    beforeEach(async () => team = await Team.query().insert({ name: 'planet savers', passcode: '1234' }))
+    beforeEach(async () => await User.query().insert({ phone_number: '098765', team_id: team.id }))
+    beforeEach(async () => { await Callee.query().insert(associatedCallee) })
+    beforeEach(async () => campaign.recalculateCallersRemaining())
+    const payload = { From: '098765' }
 
     context('with existing user and team', () => {
       it('should announce the team input options', () => {
@@ -467,115 +459,115 @@ describe('/connect', () => {
           .send(payload)
           .expect(/membership/)
           .expect(/joining a new team/)
-          .expect(/without a team/);
-      });
+          .expect(/without a team/)
+      })
 
       it('should hangup if no input', () => {
         return request.post(`/connect?campaign_id=${campaign.id}`)
           .type('form')
           .send(payload)
-          .expect(/No key pressed. Hanging up now/);
-      });
-    });
+          .expect(/No key pressed. Hanging up now/)
+      })
+    })
     context('with no existing user or team', () => {
       beforeEach(async () => {
-        await User.query().delete();
-        await Team.query().delete();
-      });
+        await User.query().delete()
+        await Team.query().delete()
+      })
       it('should announce the team input options', () => {
         return request.post(`/connect?campaign_id=${campaign.id}`)
           .type('form')
           .send(payload)
           .expect(/member of a calling/)
-          .expect(/without a team/);
-      });
+          .expect(/without a team/)
+      })
 
       it('should hangup if no input', () => {
         return request.post(`/connect?campaign_id=${campaign.id}`)
           .type('form')
           .send(payload)
-          .expect(/No key pressed. Hanging up now/);
-      });
-    });
+          .expect(/No key pressed. Hanging up now/)
+      })
+    })
     context('with team param passed in connect url', () => {
       it('should redirect to briefing', () => {
         return request.post(`/connect?campaign_id=${campaign.id}&team=1`)
           .type('form')
           .send(payload)
           .expect(/<Redirect/)
-          .expect(/briefing/);
-      });
-    });
+          .expect(/briefing/)
+      })
+    })
     context('with a callback', () => {
-      const payload = { From: '33333', caller_number: '098765' };
+      const payload = { From: '33333', caller_number: '098765' }
       it('should ignore the team input options and announce welcome back', () => {
         return request.post(`/connect?campaign_id=${campaign.id}&callback=1&number=${caller.phone_number}`)
           .type('form')
           .send(payload)
           .expect(/<Redirect/)
-          .expect(/briefing/);
-      });
-    });
-  });
+          .expect(/briefing/)
+      })
+    })
+  })
 
   context('with an authenticated campaign', () => {
-    beforeEach(async () => { await Campaign.query().delete() });
-    beforeEach(async () => campaign = await Campaign.query().insert(authCampaign));
-    beforeEach(async () => { await Callee.query().insert(associatedCallee) });
-    beforeEach(async () => campaign.recalculateCallersRemaining());
-    const payload = { From: caller.phone_number };
+    beforeEach(async () => { await Campaign.query().delete() })
+    beforeEach(async () => campaign = await Campaign.query().insert(authCampaign))
+    beforeEach(async () => { await Callee.query().insert(associatedCallee) })
+    beforeEach(async () => campaign.recalculateCallersRemaining())
+    const payload = { From: caller.phone_number }
     context('with a callback and authenticated false', () => {
       it('should be prompted to enter passcode', () => {
         return request.post(`/connect?campaign_id=${campaign.id}&number=${caller.phone_number}`)
           .type('form')
           .send(payload)
-          .expect(/Please enter the campaign passcode/);
-      });
-    });
+          .expect(/Please enter the campaign passcode/)
+      })
+    })
     context('with a callback true', () => {
       it('should redirect to briefing', () => {
         return request.post(`/connect?campaign_id=${campaign.id}&callback=1&number=${caller.phone_number}`)
           .type('form')
           .send(payload)
           .expect(/<Redirect/)
-          .expect(/briefing/);
-      });
-    });
+          .expect(/briefing/)
+      })
+    })
     context('with a authenticed true', () => {
       it('should redirect to briefing', () => {
         return request.post(`/connect?campaign_id=${campaign.id}&authenticated=1&number=${caller.phone_number}`)
           .type('form')
           .send(payload)
           .expect(/<Redirect/)
-          .expect(/briefing/);
-      });
-    });
+          .expect(/briefing/)
+      })
+    })
     context('with a correct passcode entered', () => {
       it('should redirect to briefing', () => {
         return request.post(`/connect?campaign_id=${campaign.id}&callback=1&number=${caller.phone_number}`)
           .type('form')
           .send(payload)
           .expect(/<Redirect/)
-          .expect(/briefing/);
-      });
-    });
+          .expect(/briefing/)
+      })
+    })
     context('with an incorrect passcode entered', () => {
       it('should ignore the team input options and announce welcome back', () => {
         return request.post(`/connect?campaign_id=${campaign.id}&callback=1&number=${caller.phone_number}`)
           .type('form')
           .send(payload)
           .expect(/<Redirect/)
-          .expect(/briefing/);
-      });
-    });
-  });
+          .expect(/briefing/)
+      })
+    })
+  })
 
 
   context('with ', () => {
-    beforeEach(async () => { await Campaign.query().delete() });
-    beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign));
-    beforeEach(async () => { await Callee.query().insert(associatedCallee) });
-    const payload = { From: caller.phone_number };
+    beforeEach(async () => { await Campaign.query().delete() })
+    beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign))
+    beforeEach(async () => { await Callee.query().insert(associatedCallee) })
+    const payload = { From: caller.phone_number }
 
     context('with no language, voice language, nor voice gender set', () => {
       it('say welcome in english in a man\'s voice', () => {
@@ -584,9 +576,9 @@ describe('/connect', () => {
           .send(payload)
           .expect(/Welcome/)
           .expect(/en-GB/)
-          .expect(/MAN/);
-      });
-    });
+          .expect(/MAN/)
+      })
+    })
 
     context('with german language, voice language gender set', () => {
       it('say welcome in english in a mans voice', () => {
@@ -596,11 +588,13 @@ describe('/connect', () => {
           .type('form')
           .send(payload)
           .expect(/Willkommen/)
-          .expect(/de-DE/);
+          .expect(/de-DE/)
+      })
+      afterEach(() => {
         delete process.env.VOICE_LANGUAGE
         delete process.env.LANGUAGE
-      });
-    });
+      })
+    })
 
     context('with english language, voice language and female voice gender set', () => {
       it('say welcome in english in a mans voice', () => {
@@ -612,12 +606,14 @@ describe('/connect', () => {
           .send(payload)
           .expect(/Welcome/)
           .expect(/en-GB/)
-          .expect(/WOMAN/);
+          .expect(/WOMAN/)
+      })
+      afterEach(() => {
         delete process.env.VOICE_GENDER
         delete process.env.VOICE_LANGUAGE
         delete process.env.LANGUAGE
-      });
-    });
+      })
+    })
 
     context('with english language, voice language and female voice gender set', () => {
       it('say welcome in english in a mans voice', () => {
@@ -629,14 +625,16 @@ describe('/connect', () => {
           .send(payload)
           .expect(/Welcome/)
           .expect(/en-GB/)
-          .expect(/MAN/);
+          .expect(/MAN/)
+      })
+      afterEach(() => {
         delete process.env.VOICE_GENDER
         delete process.env.VOICE_LANGUAGE
         delete process.env.LANGUAGE
-      });
-    });
-  });
-});
+      })
+    })
+  })
+})
 
 describe('/briefing', () => {
   context('with a briefing path', () => {
@@ -667,11 +665,11 @@ describe('/briefing', () => {
       })
     })
   })
-});
+})
 
 describe('/ready', () => {
   beforeEach(async () => { await Callee.query().insert(associatedCallee) })
-  beforeEach(async () => campaign.recalculateCallersRemaining());
+  beforeEach(async () => campaign.recalculateCallersRemaining())
 
   context('with a ready path', () => {
     let readyPath
@@ -736,7 +734,7 @@ describe('/ready', () => {
     })
 
     context('with a number of non sip origin', () => {
-      beforeEach(async () => { await Caller.query().delete() });
+      beforeEach(async () => { await Caller.query().delete() })
       context('inbound', () => {
         const payload = { CallUUID: '1231', From: '1231', To: '8667', Direction: 'inbound' }
         it('records the number details', async () => {
@@ -781,7 +779,7 @@ describe('/ready', () => {
     })
 
     context('with a number of sip origin', () => {
-      beforeEach(async () => { await Caller.query().delete() });
+      beforeEach(async () => { await Caller.query().delete() })
       context('inbound', () => {
         const payload = { CallUUID: '1231', From: 'sip:61481222333@119.9.12.222', To: 'sip:2342352352352@app.plivo.com', Direction: 'inbound', 'SIP-H-To': '<sip:38092489203840928@app.plivo.com;phone=99999>' }
         it('records the number details', async () => {
@@ -813,30 +811,30 @@ describe('/ready', () => {
     })
 
     it('should give extra instructions',
-      () => request.post(`/ready?caller_number=12333&start=1&campaign_id=${campaign.id}`).type('form').send({ CallUUID: '1' }).expect(/press star/i));
+      () => request.post(`/ready?caller_number=12333&start=1&campaign_id=${campaign.id}`).type('form').send({ CallUUID: '1' }).expect(/press star/i))
 
     context('with the last call that on the same campaign and phone number that has no survey result', () => {
-      let previous_caller, previous_call;
+      let previous_caller, previous_call, last_caller
       beforeEach(async () => {
-        previous_caller = await Caller.query().insert({ phone_number: '1234', campaign_id: campaign.id });
-        previous_call = await Call.query().insert({ status: 'answered', caller_id: previous_caller.id });
-        last_caller = await Caller.query().insert({ phone_number: '1234', campaign_id: campaign.id });
+        previous_caller = await Caller.query().insert({ phone_number: '1234', campaign_id: campaign.id })
+        previous_call = await Call.query().insert({ status: 'answered', caller_id: previous_caller.id })
+        last_caller = await Caller.query().insert({ phone_number: '1234', campaign_id: campaign.id })
       })
 
       it('should ask if they want to resume', async () => {
         await request.post(`/ready?caller_number=${last_caller.phone_number}&campaign_id=${campaign.id}&start=1`)
           .type('form').send({ CallUUID: '1' })
-          .expect(new RegExp(`resume_survey.*caller_id=.*last_call_id=${previous_call.id}.*campaign_id=${campaign.id}`));
+          .expect(new RegExp(`resume_survey.*caller_id=.*last_call_id=${previous_call.id}.*campaign_id=${campaign.id}`))
       })
     })
 
     context('with a previous call that on the same campaign and phone number that has no survey result', () => {
-      let previous_caller, previous_call;
+      let previous_caller, last_caller
       beforeEach(async () => {
-        previous_caller = await Caller.query().insert({ phone_number: '1234', campaign_id: campaign.id });
-        previous_call = await Call.query().insert({ status: 'answered', caller_id: previous_caller.id });
-        last_caller = await Caller.query().insert({ phone_number: '1234', campaign_id: campaign.id });
-        last_call = await Call.query().insert({ status: 'answered', caller_id: previous_caller.id });
+        previous_caller = await Caller.query().insert({ phone_number: '1234', campaign_id: campaign.id })
+        await Call.query().insert({ status: 'answered', caller_id: previous_caller.id })
+        last_caller = await Caller.query().insert({ phone_number: '1234', campaign_id: campaign.id })
+        const last_call = await Call.query().insert({ status: 'answered', caller_id: previous_caller.id })
         await SurveyResult.query().insert({ call_id: last_call.id, question: 'test', answer: 'test' })
       })
 
@@ -846,19 +844,19 @@ describe('/ready', () => {
           .expect(/call queue/i)
       })
     })
-  });
+  })
 
   it('should put them in a conference',
-    () => request.post(`/ready?caller_id=${caller.id}&campaign_id=${campaign.id}`).type('form').send({ CallUUID: '1' }).expect(/<Conference/i));
+    () => request.post(`/ready?caller_id=${caller.id}&campaign_id=${campaign.id}`).type('form').send({ CallUUID: '1' }).expect(/<Conference/i))
 
   it('should use the caller number as the conference name',
-    () => request.post(`/ready?caller_id=${caller.id}&campaign_id=${campaign.id}`).type('form').send({ CallUUID: '1' }).expect(new RegExp(caller.id)));
+    () => request.post(`/ready?caller_id=${caller.id}&campaign_id=${campaign.id}`).type('form').send({ CallUUID: '1' }).expect(new RegExp(caller.id)))
 
   context('with redirect_to_target set for the campaign', () => {
     beforeEach(async () => campaign = await campaign.$query().patchAndFetch({ transfer_to_target: true, target_numbers: ['1'] }))
 
     it('should enable 9 as a digit to press', () => {
-      return request.post(`/ready?caller_id=${caller.id}&campaign_id=${campaign.id}`).type('form').send({ CallUUID: '1' }).expect(/digitsMatch="9"/i);
+      return request.post(`/ready?caller_id=${caller.id}&campaign_id=${campaign.id}`).type('form').send({ CallUUID: '1' }).expect(/digitsMatch="9"/i)
     })
   })
 
@@ -901,7 +899,7 @@ describe('/ready', () => {
       return request.post(`/ready?caller_id=${caller.id}&start=1&campaign_id=${campaign.id}`)
         .type('form').send({ Digits: '0', CallUUID: '1' })
         .expect(/disconnect/i)
-    });
+    })
     it('should allow a user to leave audio recording as feedback if config variable set to true', () => {
       process.env.ALLOW_USER_AUDIO_FEEDBACK = 'true'
       return request.post(`/disconnect?completed=1`)
@@ -909,8 +907,7 @@ describe('/ready', () => {
         .expect(/Thank you/)
         .expect(/volunteer/)
         .expect(/feedback/)
-      delete process.env.ALLOW_USER_AUDIO_FEEDBACK
-    });
+    })
     it('should not allow a user to leave audio recording as feedback if config variable set to false', () => {
       process.env.ALLOW_USER_AUDIO_FEEDBACK = 'false'
       return request.post(`/disconnect?completed=1`)
@@ -918,100 +915,100 @@ describe('/ready', () => {
         .expect(/Thank you/)
         .expect(/volunteer/)
         .expect(/^((?!feedback).)*$/)
-      delete process.env.ALLOW_USER_AUDIO_FEEDBACK
-    });
-  });
+    })
+    afterEach(() => { delete process.env.ALLOW_USER_AUDIO_FEEDBACK })
+  })
 
   context('with 2 pressed', () => {
     it('should set a boolean for a call back', async () => {
       await request.post(`/ready?caller_number=${caller.phone_number}&start=1&campaign_id=${campaign.id}`)
         .type('form').send({ Digits: '2', CallUUID: '1234' })
         .expect(/hang up now/i)
-      const updatedCaller = await Caller.query().where({ call_uuid: '1234' }).first();
-      return expect(updatedCaller.callback).to.be(true);
-    });
-  });
+      const updatedCaller = await Caller.query().where({ call_uuid: '1234' }).first()
+      return expect(updatedCaller.callback).to.be(true)
+    })
+  })
 
   context('with 3 pressed', () => {
     it('should send an sms to their number with the script_url', async () => {
-      await campaign.$query().patch({ script_url: 'http://test.com/script' });
+      await campaign.$query().patch({ script_url: 'http://test.com/script' })
       await request.post(`/ready?caller_number=${caller.phone_number}&start=1&campaign_id=${campaign.id}`)
         .type('form').send({ Digits: '3' })
         .expect(/message/i)
         .expect(/test.com/i)
-    });
-  });
+    })
+  })
 
   context('with 7 pressed', () => {
-    let call, url, caller;
+    let call, url
     beforeEach(async () => {
-      call = await Call.query().insert({ status: 'answered' });
+      call = await Call.query().insert({ status: 'answered' })
       url = `/ready?caller_id=4&campaign_id=${campaign.id}&call_id=${call.id}`
-    });
+    })
     it('announce the reference code', async () => {
       await request.post(url)
         .type('form').send({ Digits: '7' })
-        .expect(/reference code for this call is/);
-    });
+        .expect(/reference code for this call is/)
+    })
     it('should redirect to call again', async () => {
       await request.post(url)
         .type('form').send({ Digits: '7' })
         .expect(/call_again/)
         .expect(/heard_reference_code/)
-    });
-  });
+    })
+  })
 
   context('with 9 pressed', () => {
-    let call, url, caller;
+    let call, url
     beforeEach(async () => {
-      call = await Call.query().insert({ status: 'answered' });
+      call = await Call.query().insert({ status: 'answered' })
       url = `/ready?caller_id=4&campaign_id=${campaign.id}&call_id=${call.id}`
-    });
+    })
     it('announce tech issue it noted', async () => {
       await request.post(url)
         .type('form').send({ Digits: '9' })
-        .expect(/The technical issue has been reported/);
-    });
+        .expect(/The technical issue has been reported/)
+    })
     it('should redirect to call again', async () => {
       await request.post(url)
         .type('form').send({ Digits: '9' })
         .expect(/call_again/)
-        .expect(/tech_issue_reported=1/);
-    });
+        .expect(/tech_issue_reported=1/)
+    })
     it('should log an event', async () => {
       await request.post(url)
         .type('form').send({ Digits: '9' })
-        .expect(200);
-      expect(await Event.query().where({ name: 'technical_issue_reported', call_id: call.id, campaign_id: campaign.id, caller_id: 4 }).first()).to.be.a(Event);
-    });
-  });
+        .expect(200)
+      expect(await Event.query().where({ name: 'technical_issue_reported', call_id: call.id, campaign_id: campaign.id, caller_id: 4 }).first()).to.be.a(Event)
+    })
+  })
 
   context('with 8 pressed', () => {
-    let call, url, caller;
+    let call, url
     beforeEach(async () => {
-      call = await Call.query().insert({ status: 'answered' });
-      await SurveyResult.query().delete();
+      call = await Call.query().insert({ status: 'answered' })
+      await SurveyResult.query().delete()
       await SurveyResult.query().insert({ call_id: call.id, question: 'disposition', answer: 'answering machine' })
       url = `/ready?caller_id=4&campaign_id=${campaign.id}&call_id=${call.id}`
-    });
+    })
     it('should delete the survey results', async () => {
       await request.post(url)
         .type('form').send({ Digits: '8' })
-        .expect(200);
-      expect((await SurveyResult.query()).length).to.be(0);
-    });
+        .expect(200)
+      expect((await SurveyResult.query()).length).to.be(0)
+    })
     it('should redirect to survey results with disposition question', async () => {
       await request.post(url)
         .type('form').send({ Digits: '8' })
-        .expect(new RegExp(`survey.*q=disposition.*caller_id=4.*campaign_id=${campaign.id}.*undo=1.*call_id=${call.id}`));
-    });
+        .expect(new RegExp(`survey.*q=disposition.*caller_id=4.*campaign_id=${campaign.id}.*undo=1.*call_id=${call.id}`))
+    })
     it('should log an event', async () => {
       await request.post(url)
         .type('form').send({ Digits: '8' })
-        .expect(200);
-      expect(await Event.query().where({ name: 'undo', call_id: call.id, campaign_id: campaign.id, caller_id: 4 }).first()).to.be.a(Event);
-    });
-  });
+        .expect(200)
+      expect(await Event.query().where({ name: 'undo', call_id: call.id, campaign_id: campaign.id, caller_id: 4 }).first()).to.be.a(Event)
+    })
+  })
 
   context('with 4 pressed', () => {
     it('should give the caller information on the dialing tool', async () => {
@@ -1019,114 +1016,119 @@ describe('/ready', () => {
         .type('form').send({ Digits: '4', CallUUID: '1333' })
         .expect(/system works/i)
         .expect(new RegExp(`briefing.*caller_number=${caller.phone_number}`))
-    });
-  });
+    })
+  })
 
   context('with more info key pressed', () => {
     it('should give the caller information on the campaign', async () => {
-      const more_info_item_key = Object.keys(campaign.more_info)[0];
-      const more_info_item_content = campaign.more_info[more_info_item_key];
-      const regexp = new RegExp(more_info_item_content, "i");
+      const more_info_item_key = Object.keys(campaign.more_info)[0]
+      const more_info_item_content = campaign.more_info[more_info_item_key]
+      const regexp = new RegExp(more_info_item_content, "i")
       return request.post(`/ready?caller_number=${caller.phone_number}&start=1&campaign_id=${campaign.id}`)
         .type('form').send({ Digits: more_info_item_key, CallUUID: '1333' })
         .expect(regexp)
         .expect(new RegExp(`briefing.*caller_number=${caller.phone_number}`))
-    });
-  });
+    })
+  })
 
   context('with existing user and team', () => {
+    let team
     beforeEach(async () => {
-      await Callee.query().delete();
-      await Campaign.query().delete();
-      await User.query().delete();
-      await Team.query().delete();
-    });
-    beforeEach(async () => campaign = await Campaign.query().insert(teamsCampaign));
-    beforeEach(async () => team = await Team.query().insert({ name: 'planet savers', passcode: '1234' }));
-    beforeEach(async () => user = await User.query().insert({ phone_number: '098765', team_id: team.id }));
+      await Callee.query().delete()
+      await Campaign.query().delete()
+      await User.query().delete()
+      await Team.query().delete()
+    })
+    beforeEach(async () => campaign = await Campaign.query().insert(teamsCampaign))
+    beforeEach(async () => team = await Team.query().insert({ name: 'planet savers', passcode: '1234' }))
+    beforeEach(async () => await User.query().insert({ phone_number: '098765', team_id: team.id }))
     const payload = {
       CallUUID,
       From: '098765',
       caller_number: '098765'
-    };
+    }
     it('should update caller creation params to include team id', async () => {
       await request.post(`/ready?campaign_id=${campaign.id}&start=1&caller_number=${caller.phone_number}`)
         .type('form')
-        .send(payload);
-      const new_caller = await Caller.query().where({ phone_number: caller.phone_number, campaign_id: campaign.id }).first()
+        .send(payload)
+      const new_caller = await Caller.query().where({
+        phone_number: caller.phone_number, campaign_id: campaign.id
+      }).first()
       expect(new_caller.team_id).to.be(team.id)
-    });
+    })
     it('on callbacks, it should update caller creation params to include team id', async () => {
       payload.From = '333333'
       await request.post(`/ready?campaign_id=${campaign.id}&start=1&caller_number=${caller.phone_number}`)
         .type('form')
-        .send(payload);
-      const new_caller = await Caller.query().where({ phone_number: caller.phone_number, campaign_id: campaign.id }).first()
+        .send(payload)
+      const new_caller = await Caller.query().where({
+        phone_number: caller.phone_number, campaign_id: campaign.id
+      }).first()
       expect(new_caller.team_id).to.be(team.id)
-    });
-  });
+    })
+  })
 
   context('with force_callback set to true', () => {
     it('should set a boolean for a call back', async () => {
       await request.post(`/ready?caller_number=${caller.phone_number}&start=1&campaign_id=${campaign.id}&force_callback=1`)
         .type('form').send({ CallUUID: '1234' })
         .expect(/hang up now/i)
-      const updatedCaller = await Caller.query().where({ call_uuid: '1234' }).first();
-      return expect(updatedCaller.callback).to.be(true);
-    });
-  });
+      const updatedCaller = await Caller.query().where({ call_uuid: '1234' }).first()
+      return expect(updatedCaller.callback).to.be(true)
+    })
+  })
 
   context('with assessment key pressed', () => {
     it('should redirect the user to the survey assessment path', async () => {
       return request.post(`/ready?caller_number=${caller.phone_number}&start=1&campaign_id=${campaign.id}`)
         .type('form').send({ Digits: '*', CallUUID: '1333' })
-        .expect(/Ok, we\'ll take you to assess the survey now/i)
+        .expect(/Ok, we'll take you to assess the survey now/i)
         .expect(/survey_assessment\?q=disposition/)
-    });
-  });
-});
+    })
+  })
+})
 
 describe('/transfer_to_target', () => {
   beforeEach(async () => campaign = await campaign.$query().patchAndFetch({ transfer_to_target: true, target_numbers: ['1234'] }))
   describe('with a callee that has a target number', () => {
     let call
     beforeEach(async () => {
-      const callee = await Callee.query().insert(associatedTargetedCallee);
-      const caller = await Caller.query().insert(associatedCaller);
-      call = await Call.query().insert({ status: 'answered', caller_id: caller.id, callee_id: callee.id });
-    });
+      const callee = await Callee.query().insert(associatedTargetedCallee)
+      const caller = await Caller.query().insert(associatedCaller)
+      call = await Call.query().insert({ status: 'answered', caller_id: caller.id, callee_id: callee.id })
+    })
     it('should dial the callee target number', async () => {
       await request.post(`/transfer_to_target?campaign_id=${campaign.id}&call_id=${call.id}`)
         .type('form').send({ CallUUID })
         .expect(/Number>098765<\/Number/)
-    });
+    })
     it('should record an event', async () => {
       await request.post(`/transfer_to_target?campaign_id=${campaign.id}&call_id=${call.id}`)
         .type('form').send({ CallUUID })
         .expect(200)
-      expect(await Event.query().where({ name: 'transfer_to_target' }).first()).to.be.a(Event);
-    });
-  });
+      expect(await Event.query().where({ name: 'transfer_to_target' }).first()).to.be.a(Event)
+    })
+  })
   describe('with a callee that has no target number', () => {
     let call
     beforeEach(async () => {
-      const callee = await Callee.query().insert(associatedCallee);
-      const caller = await Caller.query().insert(associatedCaller);
-      call = await Call.query().insert({ status: 'answered', caller_id: caller.id, callee_id: callee.id });
-    });
+      const callee = await Callee.query().insert(associatedCallee)
+      const caller = await Caller.query().insert(associatedCaller)
+      call = await Call.query().insert({ status: 'answered', caller_id: caller.id, callee_id: callee.id })
+    })
     it('should dial the campaign target number', async () => {
       await request.post(`/transfer_to_target?campaign_id=${campaign.id}&call_id=${call.id}`)
         .type('form').send({ CallUUID })
         .expect(/Number>1234<\/Number/)
-    });
+    })
     it('should record an event', async () => {
       await request.post(`/transfer_to_target?campaign_id=${campaign.id}&call_id=${call.id}`)
         .type('form').send({ CallUUID })
         .expect(200)
-      expect(await Event.query().where({ name: 'transfer_to_target' }).first()).to.be.a(Event);
-    });
-  });
-});
+      expect(await Event.query().where({ name: 'transfer_to_target' }).first()).to.be.a(Event)
+    })
+  })
+})
 
 describe('/call_ended', () => {
   context('with no matching caller', () => {
@@ -1134,66 +1136,68 @@ describe('/call_ended', () => {
       await request.post(`/call_ended?campaign_id=${campaign.id}`)
         .type('form').send({ CallUUID })
         .expect(200)
-      expect(await Event.query().where({ name: 'caller ended without entering queue' }).first()).to.be.a(Event);
-    });
-  });
+      expect(await Event.query().where({ name: 'caller ended without entering queue' }).first()).to.be.a(Event)
+    })
+  })
 
   context('with callback not set to true', () => {
-    beforeEach(async () => caller = await Caller.query().insert({ callback: null, call_uuid: CallUUID, campaign_id: campaign.id }));
+    beforeEach(async () =>
+      await Caller.query().insert({ callback: null, call_uuid: CallUUID, campaign_id: campaign.id })
+    )
     it('should not call them back', () => {
       return request.post(`/call_ended?campaign_id=${campaign.id}`)
         .type('form').send({ CallUUID })
-    });
-  });
+    })
+  })
 
   context('with callback set to true', () => {
-    let caller;
-    beforeEach(async () => caller = await Caller.query().insert({ callback: true, call_uuid: CallUUID, campaign_id: campaign.id, phone_number: '1234' }));
+    let caller
+    beforeEach(async () => caller = await Caller.query().insert({ callback: true, call_uuid: CallUUID, campaign_id: campaign.id, phone_number: '1234' }))
     it('should call them back', async () => {
       const mockedApiCall = nock('https://api.plivo.com')
         .post(/Call/, body => {
           return body.to === caller.phone_number && body.from === campaign.phone_number
             && body.answer_url.match(/connect/)
             && body.answer_url.match(/callback=1/)
-            && body.answer_url.match(/campaign_id=1/);
+            && body.answer_url.match(/campaign_id=1/)
         })
         .query(true)
-        .reply(200);
+        .reply(200)
       return request.post(`/call_ended?campaign_id=${campaign.id}`)
         .type('form').send({ CallUUID })
-        .then(() => mockedApiCall.done());
-    });
-  });
+        .then(() => mockedApiCall.done())
+    })
+  })
 
   context('with a caller with status "in-call"', () => {
-    beforeEach(async () => caller = await Caller.query().insert({ status: 'in-call', call_uuid: CallUUID, campaign_id: campaign.id }));
+    beforeEach(async () => caller = await Caller.query().insert({ status: 'in-call', call_uuid: CallUUID, campaign_id: campaign.id }))
     it('should unset the "in-call" status', async () => {
       await request.post(`/call_ended?campaign_id=${campaign.id}`)
         .type('form').send({ CallUUID })
-      expect((await caller.$query()).status).to.be('complete');
-    });
+      expect((await caller.$query()).status).to.be('complete')
+    })
 
     it('should create a caller_complete event', async () => {
       await request.post(`/call_ended?campaign_id=${campaign.id}`)
         .type('form').send({ CallUUID })
-      expect(await Event.query().where({ name: 'caller_complete' }).first()).to.be.a(Event);
-    });
+      expect(await Event.query().where({ name: 'caller_complete' }).first()).to.be.a(Event)
+    })
   })
 
   context('with a caller with status "available"', () => {
-    beforeEach(async () => caller = await Caller.query().insert({ status: 'available', call_uuid: CallUUID, updated_at: moment().subtract(1, 'seconds').toDate(), seconds_waiting: 4, campaign_id: campaign.id }));
+    beforeEach(async () => caller = await Caller.query().insert({ status: 'available', call_uuid: CallUUID, updated_at: moment().subtract(1, 'seconds').toDate(), seconds_waiting: 4, campaign_id: campaign.id }))
     it('should update their seconds_waiting', async () => {
       await request.post(`/call_ended?campaign_id=${campaign.id}`)
         .type('form').send({ CallUUID })
       caller = await caller.$query()
-      expect(caller.seconds_waiting).to.be(5);
-      expect(caller.status).to.be('complete');
-    });
-  });
-});
+      expect(caller.seconds_waiting).to.be(5)
+      expect(caller.status).to.be('complete')
+    })
+  })
+})
 
 describe('/resume_survey', () => {
-  let call, caller;
+  let call, caller
   beforeEach(async () => {
     const original_caller = await Caller.query().insert({ campaign_id: campaign.id })
     caller = await Caller.query().insert({ campaign_id: campaign.id })
@@ -1206,7 +1210,7 @@ describe('/resume_survey', () => {
         .type('form')
         .send({ Digits: '1' })
         .expect(200)
-      const updated_call = await call.$query();
+      const updated_call = await call.$query()
       expect(updated_call.caller_id).to.be(caller.id)
     })
 
@@ -1222,9 +1226,8 @@ describe('/resume_survey', () => {
         .type('form')
         .send({ Digits: '1' })
         .expect(200)
-      const updated_call = await call.$query();
-      const event = await Event.query().where({ name: 'resume calling', campaign_id: campaign.id, call_id: call.id, caller_id: caller.id }).first();
-      expect(event).to.be.an(Event);
+      const event = await Event.query().where({ name: 'resume calling', campaign_id: campaign.id, call_id: call.id, caller_id: caller.id }).first()
+      expect(event).to.be.an(Event)
     })
   })
 
@@ -1240,94 +1243,94 @@ describe('/resume_survey', () => {
 
 describe('/hold_music', () => {
   beforeEach(async () => {
-    await Campaign.query().delete();
-  });
+    await Campaign.query().delete()
+  })
   describe('without a specified hold music array against the campaign', () => {
     beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign))
     it('should return a default list of mp3', () => {
       return request.post(`/hold_music?campaign_id=${campaign.id}`).expect(/cloudfront.*welcome-pack-2.mp3/i)
-    });
+    })
   })
   describe('with a specified hold music array against the campaign', () => {
     beforeEach(async () => campaign = await Campaign.query().insert(holdMusicCampaign))
     it('should return a list of mp3', () => {
       return request.post(`/hold_music?campaign_id=${campaign.id}`).expect(/cloudfront.*stevie_wonder_classic.mp3/i)
-    });
+    })
   })
-});
+})
 
 describe('/conference_event/caller', () => {
   beforeEach(async () => {
-    await Event.query().delete();
-    await Call.query().delete();
-    await Callee.query().delete();
-    await Caller.query().delete();
-    await Campaign.query().delete();
-  });
+    await Event.query().delete()
+    await Call.query().delete()
+    await Callee.query().delete()
+    await Caller.query().delete()
+    await Campaign.query().delete()
+  })
   beforeEach(async () => {
-    campaign = await Campaign.query().insert({ id: 1, name: 'test', status: 'active' });
-    await Caller.query().insert(caller);
-  });
+    campaign = await Campaign.query().insert({ id: 1, name: 'test', status: 'active' })
+    await Caller.query().insert(caller)
+  })
 
   context('with caller entering the conference', () => {
     it('should update the caller to be available and recorder the conference_member_id', async () => {
       await request.post(`/conference_event/caller?caller_id=${caller.id}&campaign_id=${campaign.id}`)
         .type('form')
         .send({ ConferenceAction: 'enter', ConferenceFirstMember: 'true', ConferenceMemberID: '11' })
-      let updatedCaller = await Caller.query().first();
-      expect(updatedCaller.status).to.be('available');
-      expect(updatedCaller.conference_member_id).to.be('11');
+      let updatedCaller = await Caller.query().first()
+      expect(updatedCaller.status).to.be('available')
+      expect(updatedCaller.conference_member_id).to.be('11')
     })
-  });
+  })
 
   context('with 3 pressed during the conference', () => {
-    const CallUUID = '1';
-    const ConferenceUUID = '2';
+    const CallUUID = '1'
+    const ConferenceUUID = '2'
 
     it('should make a transfer api call', async () => {
-      const call = await Call.query().insert({ conference_uuid: ConferenceUUID });
+      await Call.query().insert({ conference_uuid: ConferenceUUID })
       const mockedApiCall = nock('https://api.plivo.com')
         .post(/\/Call\/1\//, (body) => {
           return body.aleg_url.match(/survey_result/)
             && body.aleg_url.match(/digit=3/)
-            && body.aleg_url.match(/incall=1/);
+            && body.aleg_url.match(/incall=1/)
         })
         .query(true)
-        .reply(200);
+        .reply(200)
       await request.post(`/conference_event/caller?caller_id=${caller.id}`)
         .type('form')
         .send({ ConferenceAction: 'digits', ConferenceDigitsMatch: '3', CallUUID, ConferenceUUID })
-        .expect(200);
-      mockedApiCall.done();
+        .expect(200)
+      mockedApiCall.done()
     })
-  });
+  })
 
   context('with 9 pressed during the conference', () => {
-    const CallUUID = '1';
-    const ConferenceUUID = '2';
-    const callee_call_uuid = '3';
+    const CallUUID = '1'
+    const ConferenceUUID = '2'
+    const callee_call_uuid = '3'
 
     it('should make a transfer api call', async () => {
-      const call = await Call.query().insert({ conference_uuid: ConferenceUUID, callee_call_uuid });
+      await Call.query().insert({ conference_uuid: ConferenceUUID, callee_call_uuid })
       const mockedApiCall = nock('https://api.plivo.com')
         .post(new RegExp(`/Call/${callee_call_uuid}/`), (body) => {
           return body.aleg_url.match(/transfer_to_target/)
-            && body.aleg_url.match(new RegExp(`campaign_id=${campaign.id}`));
+            && body.aleg_url.match(new RegExp(`campaign_id=${campaign.id}`))
         })
         .query(true)
-        .reply(200);
+        .reply(200)
       await request.post(`/conference_event/caller?caller_id=${caller.id}&campaign_id=${campaign.id}`)
         .type('form')
         .send({ ConferenceAction: 'digits', ConferenceDigitsMatch: '9', CallUUID, ConferenceUUID })
-        .expect(200);
-      mockedApiCall.done();
+        .expect(200)
+      mockedApiCall.done()
     })
-  });
+  })
 
   context('with caller leaving the conference and with a call that ended more than 30 seconds ago', () => {
     it('should record an event', async () => {
       const ConferenceUUID = '60996fca-70a7-11e9-a736-175f2f49f057'
-      const call = await Call.query().insert({ ended_at: moment(new Date()).subtract(40, 'seconds'), conference_uuid: ConferenceUUID, status: 'answered' });
+      await Call.query().insert({ ended_at: moment(new Date()).subtract(40, 'seconds'), conference_uuid: ConferenceUUID, status: 'answered' })
       await request.post(`/conference_event/caller?caller_id=1234&campaign_id=${campaign.id}`)
         .type('form')
         .send({ ConferenceAction: 'exit', ConferenceUUID })
@@ -1335,59 +1338,58 @@ describe('/conference_event/caller', () => {
       expect(JSON.parse(event.value)['conference_uuid']).to.be(ConferenceUUID)
       expect(event.caller_id).to.be(1234)
     })
-  });
-});
+  })
+})
 
 describe('/survey', () => {
-  const conference_uuid = '222';
+  const conference_uuid = '222'
   let call, callerInCall, campaign
   beforeEach(async () => {
-    await Call.query().delete();
-    await Campaign.query().delete();
-    await SurveyResult.query().delete();
-  });
+    await Call.query().delete()
+    await Campaign.query().delete()
+    await SurveyResult.query().delete()
+  })
   beforeEach(async () => {
     campaign = await Campaign.query().insert(activeCampaign)
     call = await Call.query().insert({ callee_call_uuid: CallUUID, conference_uuid, status: 'answered' })
     callerInCall = await Caller.query().insert(Object.assign(caller, { status: 'in-call', campaign_id: campaign.id }))
-  });
+  })
 
   context('after the first question', () => {
     it('should return the question specified by the q param', () => {
-      const question = 'action';
+      const question = 'action'
       return request.post(`/survey?q=${question}&call_id=${call.id}&campaign_id=${campaign.id}&caller_id=${callerInCall.id}`)
         .expect(new RegExp(`q=${question}`))
-        .expect(new RegExp(`${question}`, 'i'));
-    });
+        .expect(new RegExp(`${question}`, 'i'))
+    })
 
     it("should set the caller's status to in-survey", async () => {
       await request.post(`/survey?q=disposition&call_id=${call.id}&campaign_id=${campaign.id}&caller_id=${callerInCall.id}`)
       const updatedCaller = await caller.$query().first()
       expect(updatedCaller.status).to.be('in-survey')
-    });
-  });
+    })
+  })
 
   context('after undoing a question', () => {
     it('should return not mention that the call has ended', () => {
-      const question = 'action';
       return request.post(`/survey?q=disposition&call_id=${call.id}&campaign_id=${campaign.id}&undo=1&caller_id=${callerInCall.id}`)
         .expect(/7,8"><Speak language="en-GB" voice="MAN">What was the Overall/)
-    });
-  });
+    })
+  })
 
   context('with invalid xml characters', () => {
-    let malformed_campaign;
+    let malformed_campaign
     beforeEach(async () => {
-      await Caller.query().delete();
-      await Campaign.query().delete();
-    });
-    beforeEach(async () => malformed_campaign = await Campaign.query().insert(malformedCampaign));
+      await Caller.query().delete()
+      await Campaign.query().delete()
+    })
+    beforeEach(async () => malformed_campaign = await Campaign.query().insert(malformedCampaign))
     it('should be spripped out to valid xml', async () => {
-      const question = 'disposition';
+      const question = 'disposition'
       return request.post(`/survey?q=${question}&call_id=${call.id}&campaign_id=${malformed_campaign.id}&caller_id=${callerInCall.id}`)
-        .expect(new RegExp('testing', 'i'));
-    });
-  });
+        .expect(new RegExp('testing', 'i'))
+    })
+  })
 
   context('without a call record (* pressed while in the queue)', () => {
     beforeEach(async () => await Call.query().delete())
@@ -1400,7 +1402,7 @@ describe('/survey', () => {
       await request.post(`/survey?q=disposition&caller_id=1&campaign_id=${campaign.id}`)
         .type('form')
         .send({ CallUUID })
-        .expect(200);
+        .expect(200)
       const event = await Event.query().where({ campaign_id: campaign.id, name: 'left queue without call' }).first()
       expect(event.value).to.be(`{"CallUUID":"${CallUUID}"}`)
       expect(event.caller_id).to.be(1)
@@ -1427,18 +1429,18 @@ describe('/survey', () => {
 
   context('after any question', () => {
     it('should wait and play a help message', async () => {
-      const question = 'action';
+      const question = 'action'
       return request.post(`/survey?q=${question}&call_id=${call.id}&campaign_id=${campaign.id}&caller_id=${callerInCall.id}`)
         .expect(/<Wait length="5"\/><Speak language="en-GB" voice="MAN">.+<\/Speak>/)
-    });
-  });
-});
+    })
+  })
+})
 
 describe('/survey_result', () => {
-  const payload = { Digits: '2', To: '614000100' };
-  let call, callee;
+  const payload = { Digits: '2', To: '614000100' }
+  let call, callee
   beforeEach(async () => {
-    callee = await Callee.query().insert({ phone_number: '6133242342', campaign_id: campaign.id });
+    callee = await Callee.query().insert({ phone_number: '6133242342', campaign_id: campaign.id })
     call = await Call.query().insert({ status: 'answered', updated_at: new Date(), callee_id: callee.id })
   })
 
@@ -1448,206 +1450,204 @@ describe('/survey_result', () => {
       .then(async () => {
         const result = await SurveyResult.query()
           .where({ question: 'disposition', call_id: call.id })
-          .first();
-        expect(result.answer).to.be('answering machine');
-      });
-  });
+          .first()
+        expect(result.answer).to.be('answering machine')
+      })
+  })
 
   it('updates the updated_at on the call', async () => {
     await request.post(`/survey_result?q=disposition&campaign_id=1&call_id=${call.id}`)
       .type('form').send(payload)
       .expect(200)
     const updated_call = await call.$query()
-    expect(updated_call.updated_at).to.not.eql(call.updated_at);
+    expect(updated_call.updated_at).to.not.eql(call.updated_at)
   })
 
   context('with a non-meaningful disposition', () => {
-    const payload = { Digits: '3', To: '614000100' };
+    const payload = { Digits: '3', To: '614000100' }
     it('should announce the result & redirect to call_again', () => {
       return request.post(`/survey_result?q=disposition&campaign_id=1&call_id=${call.id}`)
         .type('form').send(payload)
-        .expect(/call_again/);
-    });
-  });
+        .expect(/call_again/)
+    })
+  })
 
   context('with a meaningful disposition', () => {
-    const payload = { Digits: '4', To: '614000100' };
+    const payload = { Digits: '4', To: '614000100' }
     it('should announce the result & redirect to the next question', () => {
       return request.post(`/survey_result?q=disposition&campaign_id=1&call_id=${call.id}`)
         .type('form').send(payload)
         .expect(/meaningful/)
-        .expect(/survey\?q=/);
-    });
-  });
+        .expect(/survey\?q=/)
+    })
+  })
 
   context('with a disposition question', () => {
-    const payload = { Digits: '4', To: '614000100' };
+    const payload = { Digits: '4', To: '614000100' }
     it('should call calee.trigger_callable_recalculation', async () => {
       await request.post(`/survey_result?q=disposition&campaign_id=1&call_id=${call.id}`)
         .type('form').send(payload)
       const updated_callee = await callee.$query()
       expect(updated_callee.callable_recalculated_at).to.not.be(null)
-    });
-  });
+    })
+  })
 
   context('with invalid xml characters', () => {
     beforeEach(async () => {
       campaign = await Campaign.query().insert(malformedCampaign)
-    });
-    const payload = { Digits: '2', To: '614000100' };
+    })
+    const payload = { Digits: '2', To: '614000100' }
     it('should be spripped out to valid xml', async () => {
-      const question = 'disposition';
       return request.post(`/survey_result?q=disposition&campaign_id=${campaign.id}&call_id=${call.id}`)
         .type('form').send(payload)
-        .expect(new RegExp('answering &amp; machine', 'i'));
-    });
-  });
+        .expect(new RegExp('answering &amp; machine', 'i'))
+    })
+  })
 
   context('with a callee that wants more info', () => {
-    const payload = { Digits: '2', To: '614000100' };
-    let callee, call;
+    const payload = { Digits: '2', To: '614000100' }
+    let callee, call
     beforeEach(async () => {
-      callee = await Callee.query().insert(associatedCallee);
-      call = await Call.query().insert({ callee_id: callee.id });
-    });
+      callee = await Callee.query().insert(associatedCallee)
+      call = await Call.query().insert({ callee_id: callee.id })
+    })
     it('should receive an sms', () => {
       return request.post(`/survey_result?q=action&campaign_id=1&call_id=${call.id}`)
         .type('form').send(payload)
-        .expect(/call/i);
-    });
+        .expect(/call/i)
+    })
     it('should receive an sms from the number set on the campaign', () => {
       return request.post(`/survey_result?q=action&campaign_id=1&call_id=${call.id}`)
         .type('form').send(payload)
-        .expect(new RegExp(campaign.sms_number));
-    });
+        .expect(new RegExp(campaign.sms_number))
+    })
     it("should send the sms to the callee's number", () => {
       return request.post(`/survey_result?q=action&campaign_id=1&call_id=${call.id}`)
         .type('form').send(payload)
-        .expect(new RegExp(callee.phone_number.replace(/[^0-9]/g, '')));
-    });
-  });
+        .expect(new RegExp(callee.phone_number.replace(/[^0-9]/g, '')))
+    })
+  })
 
   context('with an incall disposition', () => {
-    const payload = { Digits: '2', To: '614000100' };
-    let callee, call;
+    const payload = { Digits: '2', To: '614000100' }
+    let callee, call
     beforeEach(async () => {
-      callee = await Callee.query().insert(associatedCallee);
-      call = await Call.query().insert({ callee_id: callee.id });
-    });
+      callee = await Callee.query().insert(associatedCallee)
+      call = await Call.query().insert({ callee_id: callee.id })
+    })
 
     it('should put them back into the calling queue', () => {
       return request.post(`/survey_result?q=disposition&campaign_id=1&call_id=${call.id}&incall=1`)
         .type('form').send(payload)
         .expect(/ready/i)
-    });
-  });
+    })
+  })
 
   context('with a question with multiple responses', () => {
-    let callee, call;
-    const payload = { Digits: '2', To: '614000100' };
-    const skip_payload = { Digits: '*', To: '614000100' };
+    let callee, call
+    const payload = { Digits: '2', To: '614000100' }
+    const skip_payload = { Digits: '*', To: '614000100' }
     beforeEach(async () => {
       await SurveyResult.query().delete()
       await Call.query().delete()
       await Callee.query().delete()
       await Campaign.query().delete()
       campaign = await Campaign.query().insert(multipleCampaign)
-      callee = await Callee.query().insert(associatedCallee);
-      call = await Call.query().insert({ callee_id: callee.id });
-    });
+      callee = await Callee.query().insert(associatedCallee)
+      call = await Call.query().insert({ callee_id: callee.id })
+    })
     context('with a valid question digit', () => {
       context('with no current responses', () => {
         it('should announce the result & redirect to multiple survey', () => {
           return request.post(`/survey_result?q=event_rsvp&campaign_id=1&call_id=${call.id}&multiple=1`)
             .type('form').send(payload)
             .expect(/September/)
-            .expect(/survey_multiple\?q=/);
-        });
-      });
+            .expect(/survey_multiple\?q=/)
+        })
+      })
       context('with responses less than number of options', () => {
         beforeEach(async () => {
-          await SurveyResult.query().insert({ call_id: call.id, question: 'event_rsvp', answer: 'September 19' });
-        });
+          await SurveyResult.query().insert({ call_id: call.id, question: 'event_rsvp', answer: 'September 19' })
+        })
         it('should announce the result & redirect to multiple survey', () => {
           return request.post(`/survey_result?q=event_rsvp&campaign_id=1&call_id=${call.id}&multiple=1`)
             .type('form').send(payload)
             .expect(/September/)
-            .expect(/survey_multiple\?q=/);
-        });
-      });
+            .expect(/survey_multiple\?q=/)
+        })
+      })
       context('with responses as many number of options', () => {
-        let current_survey_results
         beforeEach(async () => {
-          await SurveyResult.query().insert({ call_id: call.id, question: 'event_rsvp', answer: 'September 19' });
-          await SurveyResult.query().insert({ call_id: call.id, question: 'event_rsvp', answer: 'September 22' });
-        });
+          await SurveyResult.query().insert({ call_id: call.id, question: 'event_rsvp', answer: 'September 19' })
+          await SurveyResult.query().insert({ call_id: call.id, question: 'event_rsvp', answer: 'September 22' })
+        })
         it('should announce the result & redirect to next question', () => {
           return request.post(`/survey_result?q=event_rsvp&campaign_id=1&call_id=${call.id}&multiple=1`)
             .type('form').send(payload)
-            .expect(/lift_needed/);
-        });
-      });
-    });
+            .expect(/lift_needed/)
+        })
+      })
+    })
     context('with the skip current question response given', () => {
       context('on a question with a next present', () => {
         it('should announce the result & redirect to survey', () => {
           return request.post(`/survey_result?q=event_rsvp&campaign_id=1&call_id=${call.id}&multiple=1`)
             .type('form').send(skip_payload)
-            .expect(/survey\?q=/);
-        });
-      });
+            .expect(/survey\?q=/)
+        })
+      })
       context('on a question with no next present', () => {
         beforeEach(async () => {
-          await SurveyResult.query().insert({ call_id: call.id, question: 'event_rsvp', answer: 'September 19' });
-        });
+          await SurveyResult.query().insert({ call_id: call.id, question: 'event_rsvp', answer: 'September 19' })
+        })
         it('should announce the result & redirect to call_again', () => {
           return request.post(`/survey_result?q=calling&campaign_id=1&call_id=${call.id}&multiple=1`)
             .type('form').send(skip_payload)
-            .expect(/call_again\?/);
-        });
-      });
-    });
-  });
-});
+            .expect(/call_again\?/)
+        })
+      })
+    })
+  })
+})
 
 describe('/survey_multiple', () => {
   context('with a question with multiple responses', () => {
-    const payload = { To: '614000100' };
-    let callee, call;
+    const payload = { To: '614000100' }
+    let callee, call
     beforeEach(async () => {
       await SurveyResult.query().delete()
       await Call.query().delete()
       await Callee.query().delete()
       await Campaign.query().delete()
       campaign = await Campaign.query().insert(multipleCampaign)
-      callee = await Callee.query().insert(associatedCallee);
-      call = await Call.query().insert({ callee_id: callee.id });
-    });
+      callee = await Callee.query().insert(associatedCallee)
+      call = await Call.query().insert({ callee_id: callee.id })
+    })
     context('with a valid question digit', () => {
       context('with no current responses', () => {
         it('should ask if there are any other survey results', () => {
           return request.post(`/survey_multiple?q=event_rsvp&campaign_id=1&call_id=${call.id}`)
             .type('form').send(payload)
             .expect(/2,3,4/)
-            .expect(/any other responses/);
-        });
-      });
-    });
+            .expect(/any other responses/)
+        })
+      })
+    })
     context('with the skip current question response given', () => {
       context('with no current responses', () => {
         beforeEach(async () => {
-          await SurveyResult.query().insert({ call_id: call.id, question: 'event_rsvp', answer: 'September 19' });
-        });
+          await SurveyResult.query().insert({ call_id: call.id, question: 'event_rsvp', answer: 'September 19' })
+        })
         it('should ask if there are any other survey results', () => {
           return request.post(`/survey_multiple?q=event_rsvp&campaign_id=1&call_id=${call.id}`)
             .type('form').send(payload)
             .expect(/2,4,*/)
-            .expect(/any other responses/);
-        });
-      });
-    });
-  });
-});
+            .expect(/any other responses/)
+        })
+      })
+    })
+  })
+})
 
 describe('/fallback', () => {
   it('stores a caller fallback event', async () => {
@@ -1656,76 +1656,76 @@ describe('/fallback', () => {
       .expect(/call back/)
     const event = await Event.query().where({ campaign_id: 1, name: 'caller fallback' }).first()
     expect(event.value).to.be(`{"CallUUID":"${CallUUID}"}`)
-  });
-});
+  })
+})
 
 describe('/call_again', () => {
   context('with an operational window campaign', () => {
-    beforeEach(async () => { await Campaign.query().delete() });
-    beforeEach(async () => campaign = await Campaign.query().insert(operationalWindowCampaign));
-    beforeEach(async () => { await Callee.query().insert(associatedCallee) });
-    const payload = { From: caller.phone_number };
+    beforeEach(async () => { await Campaign.query().delete() })
+    beforeEach(async () => campaign = await Campaign.query().insert(operationalWindowCampaign))
+    beforeEach(async () => { await Callee.query().insert(associatedCallee) })
+    const payload = { From: caller.phone_number }
     it('plays the operational window briefing message', () => {
       return request.post(`/call_again?campaign_id=${campaign.id}`)
         .type('form')
         .send(payload)
-        .expect(/finished for the day/);
-    });
-  });
+        .expect(/finished for the day/)
+    })
+  })
   context('with a paused campaign', async () => {
-    beforeEach(async () => { await Campaign.query().delete() });
-    beforeEach(async () => campaign = await Campaign.query().insert(pausedCampaign));
-    const payload = { Digits: '2' };
+    beforeEach(async () => { await Campaign.query().delete() })
+    beforeEach(async () => campaign = await Campaign.query().insert(pausedCampaign))
+    const payload = { Digits: '2' }
     it('should announce the result, notify user that campaign is currently paused', () => {
       return request.post(`/call_again?campaign_id=${campaign.id}`)
         .type('form').send(payload)
-        .expect(/currently paused/);
-    });
-  });
+        .expect(/currently paused/)
+    })
+  })
   context('with a statusless campaign', async () => {
-    beforeEach(async () => { await Campaign.query().delete() });
-    beforeEach(async () => campaign = await Campaign.query().insert(statuslessCampaign));
+    beforeEach(async () => { await Campaign.query().delete() })
+    beforeEach(async () => campaign = await Campaign.query().insert(statuslessCampaign))
     it('should announce the result, notify user that campaign is currently paused', () => {
       return request.post(`/call_again?campaign_id=${campaign.id}`)
         .type('form').send()
-        .expect(/currently paused/);
-    });
-  });
+        .expect(/currently paused/)
+    })
+  })
 
   context('with an inactive campaign', async () => {
-    beforeEach(async () => { await Campaign.query().delete() });
-    beforeEach(async () => campaign = await Campaign.query().insert(inactiveCampaign));
+    beforeEach(async () => { await Campaign.query().delete() })
+    beforeEach(async () => campaign = await Campaign.query().insert(inactiveCampaign))
     it('should announce the result, notify user that campaign is currently completed', () => {
       return request.post(`/call_again?campaign_id=${campaign.id}`)
         .type('form').send()
-        .expect(/has been completed/);
-    });
-  });
+        .expect(/has been completed/)
+    })
+  })
 
   context('with no call_id passed', async () => {
-    beforeEach(async () => { await Campaign.query().delete() });
-    beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign));
+    beforeEach(async () => { await Campaign.query().delete() })
+    beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign))
 
     it('should let the user press 9 to report an issue', () => {
       return request.post(`/call_again?caller_id=1&campaign_id=${campaign.id}`)
         .type('form').send()
         .expect(/9/)
         .expect(/campaign_id=\d+"/)
-        .expect(/or 9 to report a technical issue/i);
-    });
-  });
+        .expect(/or 9 to report a technical issue/i)
+    })
+  })
 
   context('with a call_id passed', async () => {
-    beforeEach(async () => { await Campaign.query().delete() });
-    beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign));
+    beforeEach(async () => { await Campaign.query().delete() })
+    beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign))
 
     it('should let the user press 8 to correct', () => {
       return request.post(`/call_again?campaign_id=${campaign.id}&call_id=1`)
         .type('form').send()
         .expect(/8/)
         .expect(/call_id=1/)
-        .expect(/Press, 8 to correct your entry/i);
-    });
+        .expect(/Press, 8 to correct your entry/i)
+    })
 
     context('with a campaign with use_reference_codes enabled', async () => {
       beforeEach(async () => await campaign.$query().patch({ use_reference_codes: true }))
@@ -1735,26 +1735,26 @@ describe('/call_again', () => {
           .type('form').send()
           .expect(/7/)
           .expect(/call_id=1/)
-          .expect(/press 7 to hear a reference code/i);
-      });
+          .expect(/press 7 to hear a reference code/i)
+      })
 
       it('should use the work repeat if they reference code was listened to', () => {
         return request.post(`/call_again?campaign_id=${campaign.id}&call_id=1&heard_reference_code=1`)
           .type('form').send()
           .expect(/7/)
           .expect(/call_id=1/)
-          .expect(/press 7 to repeat the reference code/i);
-      });
+          .expect(/press 7 to repeat the reference code/i)
+      })
     })
-  });
+  })
 
   context('with a completed campaign with a next campaign', () => {
-    beforeEach(async () => { await Campaign.query().delete() });
-    beforeEach(async () => campaign = await Campaign.query().insert(inactiveNextCampaign));
-    beforeEach(async () => next_campaign = await Campaign.query().insert(nextCampaign));
+    beforeEach(async () => { await Campaign.query().delete() })
+    beforeEach(async () => campaign = await Campaign.query().insert(inactiveNextCampaign))
+    beforeEach(async () => await Campaign.query().insert(nextCampaign))
     const nextAssociatedCallee = Object.assign({}, associatedCallee, { campaign_id: 2 })
-    beforeEach(async () => { await Callee.query().insert(nextAssociatedCallee) });
-    const payload = { From: caller.phone_number };
+    beforeEach(async () => { await Callee.query().insert(nextAssociatedCallee) })
+    const payload = { From: caller.phone_number }
 
     it('plays the next campaign name and number and hangs up', () => {
       return request.post(`/call_again?campaign_id=${campaign.id}`)
@@ -1763,16 +1763,16 @@ describe('/call_again', () => {
         .expect(/completed/)
         .expect(/0, 2, 9, 1, 2, 3, 4, 5, 6, 7/)
         .expect(new RegExp(nextCampaign.name))
-        .expect(/hangup/);
-    });
-  });
-});
+        .expect(/hangup/)
+    })
+  })
+})
 
 describe('/machine_detection', () => {
-  const callee_call_uuid = '111';
-  const conference_uuid = '222';
-  const payload = { CallUUID: callee_call_uuid };
-  let call, campaign;
+  const callee_call_uuid = '111'
+  const conference_uuid = '222'
+  const payload = { CallUUID: callee_call_uuid }
+  let call, campaign
 
   beforeEach(async () => {
     await Campaign.query().delete()
@@ -1780,40 +1780,40 @@ describe('/machine_detection', () => {
     await Caller.query().delete()
     campaign = await Campaign.query().insert(amdCampaign)
     call = await Call.query().insert({ callee_call_uuid, conference_uuid })
-  });
+  })
 
   context('with an existing call', () => {
     it('hangs up on the callee', async () => {
       const mockedApiCall = nock('https://api.plivo.com')
         .delete(/\/Call\/111\//)
-        .reply(200);
+        .reply(200)
       await request.post(`/machine_detection?campaign_id=${campaign.id}`)
         .type('form').send(payload)
-        .expect(200);
-      mockedApiCall.done();
-    });
+        .expect(200)
+      mockedApiCall.done()
+    })
 
     it('patches call status to machine_detection', async () => {
-      const mockedApiCall = nock('https://api.plivo.com')
+      nock('https://api.plivo.com')
         .delete(/\/Call\/111\//)
-        .reply(200);
+        .reply(200)
       await request.post(`/machine_detection?campaign_id=${campaign.id}`)
         .type('form').send(payload)
-        .expect(200);
-      const updatedCall = await Call.query().where({ id: call.id }).first();
-      expect(updatedCall.status).to.be('machine_detection');
-    });
-  });
+        .expect(200)
+      const updatedCall = await Call.query().where({ id: call.id }).first()
+      expect(updatedCall.status).to.be('machine_detection')
+    })
+  })
 
   context('without an existing call', () => {
     it('create error event', async () => {
       await request.post(`/machine_detection?campaign_id=${campaign.id}`)
-        .type('form').send();
-      const event = await Event.query().where({ name: 'failed_post_machine_callee_transfer', campaign_id: campaign.id }).first();
-      expect(event).to.be.an(Event);
-    });
-  });
-});
+        .type('form').send()
+      const event = await Event.query().where({ name: 'failed_post_machine_callee_transfer', campaign_id: campaign.id }).first()
+      expect(event).to.be.an(Event)
+    })
+  })
+})
 
 describe('/connect_sms', () => {
   beforeEach(async () => {
@@ -1826,7 +1826,7 @@ describe('/connect_sms', () => {
       return request.post('/connect_sms')
         .type('form')
         .send(payload)
-        .expect(/Sorry we can\'t find the campaign/)
+        .expect(new RegExp("Sorry we cannot find the campaign"))
     })
   })
   context('with a paused campaign', () => {
@@ -1907,7 +1907,7 @@ describe('/connect_sms', () => {
             && body.from === campaign.phone_number
             && body.answer_url.match(/connect/)
             && body.answer_url.match(/sms_callback=1/)
-            && body.answer_url.match(/campaign_id=1/);
+            && body.answer_url.match(/campaign_id=1/)
         })
         .query(true)
         .reply(200)
@@ -1921,28 +1921,29 @@ describe('/connect_sms', () => {
 })
 
 describe('/survey_assessment', () => {
-  const conference_uuid = '222';
+  const conference_uuid = '222'
+  let call
   beforeEach(async () => {
-    await Call.query().delete();
-    await Campaign.query().delete();
-    await SurveyResult.query().delete();
-  });
-  beforeEach(async () => call = await Call.query().insert({ callee_call_uuid: CallUUID, conference_uuid, status: 'answered' }));
+    await Call.query().delete()
+    await Campaign.query().delete()
+    await SurveyResult.query().delete()
+  })
+  beforeEach(async () => call = await Call.query().insert({ callee_call_uuid: CallUUID, conference_uuid, status: 'answered' }))
 
   context('after the first question', () => {
-    beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign));
+    beforeEach(async () => campaign = await Campaign.query().insert(activeCampaign))
     it('should return the question specified by the q param', () => {
-      const question = 'action';
+      const question = 'action'
       return request.post(`/survey_assessment?q=${question}&call_id=${call.id}&campaign_id=${campaign.id}`)
         .expect(new RegExp(`q=${question}`))
-        .expect(new RegExp(`${question}`, 'i'));
-    });
-  });
-});
+        .expect(new RegExp(`${question}`, 'i'))
+    })
+  })
+})
 
 describe('/survey_result_assessment', () => {
-  const payload = { Digits: '2', To: '614000100' };
-  let call, caller;
+  const payload = { Digits: '2', To: '614000100' }
+  let call, caller
   beforeEach(async () => {
     await dropFixtures()
     const campaign = await Campaign.query().insert(defaultCampaign)
@@ -1958,49 +1959,49 @@ describe('/survey_result_assessment', () => {
     const result = await SurveyResult.query()
       .where({ question: 'disposition', call_id: call.id }).first()
     expect(result).to.not.exist
-  });
+  })
 
   context('with a meaningful disposition', () => {
-    const payload = { Digits: '4', To: '614000100' };
+    const payload = { Digits: '4', To: '614000100' }
     it('should announce the result & redirect to the next question assessment', () => {
       return request.post(`/survey_result_assessment?q=disposition&campaign_id=1&call_id=${call.id}&caller_id=${caller.id}`)
         .type('form').send(payload)
         .expect(/meaningful/)
-        .expect(/survey_assessment\?q=/);
-    });
-  });
+        .expect(/survey_assessment\?q=/)
+    })
+  })
 
   context('with a response to the last question', () => {
-    const payload = { Digits: '2', To: '614000100' };
+    const payload = { Digits: '2', To: '614000100' }
     it('should redirect user back to briefing', () => {
       return request.post(`/survey_result_assessment?q=action&campaign_id=1&call_id=${call.id}&caller_id=${caller.id}`)
         .type('form').send(payload)
         .expect(/will call member of parliament/)
-        .expect(/briefing\?campaign_id=\d+/);
-    });
-  });
-});
+        .expect(/briefing\?campaign_id=\d+/)
+    })
+  })
+})
 
 describe('/survey_multiple_assessment', () => {
   context('with a question with multiple responses', () => {
-    const payload = { Digits: '2', To: '614000100' };
-    let callee, call, caller;
+    const payload = { Digits: '2', To: '614000100' }
+    let callee, call, caller
     beforeEach(async () => {
       await SurveyResult.query().delete()
       await Call.query().delete()
       await Callee.query().delete()
       await Campaign.query().delete()
       campaign = await Campaign.query().insert(multipleCampaign)
-      callee = await Callee.query().insert(associatedCallee);
-      call = await Call.query().insert({ callee_id: callee.id });
-      caller = await Caller.query().insert(associatedCaller);
-    });
+      callee = await Callee.query().insert(associatedCallee)
+      call = await Call.query().insert({ callee_id: callee.id })
+      caller = await Caller.query().insert(associatedCaller)
+    })
     context('with no current responses', () => {
       it('should ask if there are any other survey results', () => {
         return request.post(`/survey_multiple_assessment?q=event_rsvp&campaign_id=1&call_id=${call.id}&caller_id=${caller.id}`)
           .type('form').send(payload)
-          .expect(/any other responses/);
-      });
-    });
-  });
-});
+          .expect(/any other responses/)
+      })
+    })
+  })
+})

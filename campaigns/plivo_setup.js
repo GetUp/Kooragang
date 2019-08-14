@@ -133,9 +133,9 @@ const buy_number = async (region) => {
     search_number_payload.region = region_name
   }
 
-  const [number_search_code, number_search_response] = await plivo_api('search_phone_numbers', search_number_payload, {multiArgs: true})
+  const [_, number_search_response] = await plivo_api('search_phone_numbers', search_number_payload, {multiArgs: true})
   if (!number_search_response.objects.length) throw new NoNumbersError("No numbers available")
-  const [number_buy_code, number_buy_response] = await plivo_api('buy_phone_number', { number: number_search_response.objects[0].number }, {multiArgs: true})
+  await plivo_api('buy_phone_number', { number: number_search_response.objects[0].number }, {multiArgs: true})
   return number_search_response.objects[0].number
 }
 

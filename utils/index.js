@@ -1,10 +1,10 @@
-const _ = require('lodash');
+const _ = require('lodash')
 const i18n_module = require('i18n-nodejs')
-const region_number_prefix = require('./region_number_prefix.json');
+const region_number_prefix = require('./region_number_prefix.json')
 
 module.exports.sleep = (ms = 0) => {
-  const timeout = process.env.NODE_ENV === "test" ? 0 : ms;
-  return new Promise(r => setTimeout(r, timeout));
+  const timeout = process.env.NODE_ENV === "test" ? 0 : ms
+  return new Promise(r => setTimeout(r, timeout))
 }
 
 module.exports.error_exit = error => {
@@ -15,17 +15,17 @@ module.exports.error_exit = error => {
 module.exports.extractCallerNumber = (query, body) => {
   let caller_number
   if (query.callback === '1' || query.assessment === '1') {
-    caller_number = query.number;
+    caller_number = query.number
   } else {
-    const sip = body.From.match(/sip:(\w+)@/);
-    caller_number = sip ? sip[1] : body.From.replace(/\s/g, '');
+    const sip = body.From.match(/sip:(\w+)@/)
+    caller_number = sip ? sip[1] : body.From.replace(/\s/g, '')
   }
   if (process.env.COUNTRY_ISO == 'AU') {
-    return caller_number.replace(/^0/, '61');
+    return caller_number.replace(/^0/, '61')
   } else {
     return _.startsWith(caller_number, process.env.COUNTRY_CODE) ? caller_number : `${process.env.COUNTRY_CODE}${caller_number}`
   }
-};
+}
 
 const cleanNumber = number => number.replace(/[^\d]/g, '')
 
@@ -57,12 +57,12 @@ const sipHeaderPresent = module.exports.sipHeaderPresent = (body) => !!body['SIP
 module.exports.incomingCaller = (body) => body.Direction == 'inbound'
 
 module.exports.authenticationNeeded = (callback, campaign_passcode, authenticated) => {
-  return !(callback || !campaign_passcode || authenticated);
-};
+  return !(callback || !campaign_passcode || authenticated)
+}
 
 module.exports.isValidCallerNumber = (caller_number) => {
   return !_.isEmpty(caller_number) && caller_number !== 'anonymous' && caller_number !== 'undefined'
-};
+}
 
 module.exports.modelsBoundReadOnly = _.partialRight(_.mapValues, m => m.bindReadOnly())
 

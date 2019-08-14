@@ -17,7 +17,8 @@
     "debug": "node debug ./app.js",
     "test": "find . -name '*.js' -not -path './node_modules/*' | NODE_ENV=test entr -c mocha --require test/test_helper.js --full-trace test/**",
     "deploy-production": "git push kooragang HEAD:master && heroku run knex migrate:latest --app kooragang && git push kooragang-api HEAD:master && git push kooragang-hud HEAD:master",
-    "deploy-stage": "git push kooragang-stage HEAD:master && heroku run knex migrate:latest --app kooragang-stage && git push kooragang-api-stage HEAD:master"
+    "deploy-stage": "git push kooragang-stage HEAD:master && heroku run knex migrate:latest --app kooragang-stage && git push kooragang-api-stage HEAD:master",
+    "lint" : "./node_modules/.bin/eslint *.js test models ivr dialer hud load utils workers"
   },
   "dependencies": {
     "@slack/client": "^3.12.0",

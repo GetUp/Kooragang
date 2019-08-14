@@ -44,7 +44,7 @@ describe('Team API Endpoints', ()=> {
   describe('posting a team', ()=> {
     beforeEach(async () => { await Team.query().delete() })
     it('should create a team', async () => {
-      const res = await request.post('/api/teams')
+      await request.post('/api/teams')
         .set('Accept', 'application/json')
         .set('Authorization', process.env.KOORAGANG_API_HASH)
         .set('Content-type', 'application/json')
@@ -59,7 +59,7 @@ describe('Team API Endpoints', ()=> {
 
   describe('putting a team', ()=> {
     it('should update a team', async () => {
-      const res = await request.put('/api/teams/1')
+      await request.put('/api/teams/1')
         .set('Accept', 'application/json')
         .set('Authorization', process.env.KOORAGANG_API_HASH)
         .set('Content-type', 'application/json')
@@ -74,7 +74,7 @@ describe('Team API Endpoints', ()=> {
 
   describe('deleting a team', ()=> {
     it('should remove a team', async () => {
-      const res = await request.delete('/api/teams/1')
+      await request.delete('/api/teams/1')
         .set('Accept', 'application/json')
         .set('Authorization', process.env.KOORAGANG_API_HASH)
         .expect('Content-type',/json/)

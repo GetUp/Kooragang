@@ -1,16 +1,15 @@
-const {Campaign, Callee, Caller, Audience} = require('../models');
-const expect = require('expect.js');
-const objection = require('objection');
+const {Campaign, Callee} = require('../models')
+const expect = require('expect.js')
 const {dropFixtures} = require('./test_helper')
 
 describe('Campaign', () => {
   beforeEach(async () => {
     await dropFixtures()
-  });
+  })
 
   const expectInvalidQuestion = (questions, message) => {
     return async () => {
-      const campaign = await Campaign.query().insert({name: 'test', questions});
+      const campaign = await Campaign.query().insert({name: 'test', questions})
       try{
         campaign.valid()
         throw 'should never reach'
@@ -32,7 +31,7 @@ describe('Campaign', () => {
     })
     context('with an answer that is not between 1-9', () => {
       it('should throw a validation error', expectInvalidQuestion({disposition: {name: 'test', answers: {'0': {value: 'test'}}}}, /answer 0 for disposition question is not valid/))
-    });
+    })
     context('with an answer with missing value', () => {
       it('should throw a validation error', expectInvalidQuestion({disposition: {name: 'test', answers: {'2': {oops: 'test'}}}}, /answer 2 for disposition question is missing value/))
     })
@@ -45,9 +44,9 @@ describe('Campaign', () => {
   })
 
   describe('#recalculate_callable', () => {
-    let campaign, callee;
+    let campaign, callee
     beforeEach(async () => {
-      campaign = await Campaign.query().insert({name: 'test'});
+      campaign = await Campaign.query().insert({name: 'test'})
       callee = await Callee.query().insert({phone_number: '1', campaign_id: campaign.id, last_called_at: new Date()})
     })
 

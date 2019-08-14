@@ -97,7 +97,7 @@ class Campaign extends Base {
         }
         running_days = []
       }
-    });
+    })
     if (!_.isNull(moment.tz(this.timezone()).zoneName())) operating_hours_in_words += `${moment.tz(this.timezone()).zoneName()}. `
     return operating_hours_in_words
   }
@@ -112,7 +112,10 @@ class Campaign extends Base {
     return !moment.tz(this.timezone()).isBetween(start, stop)
   }
   async isRatioDialing() {
-    const callers = await Caller.knexQuery().where({campaign_id: this.id}).whereIn('status', ['available', 'in-call']).count().first();
+    const callers = await Caller.knexQuery()
+      .where({campaign_id: this.id})
+      .whereIn('status', ['available', 'in-call'])
+      .count().first()
     return callers.count >= this.min_callers_for_ratio
   }
   async areCallsInProgress() {
@@ -215,7 +218,7 @@ class Campaign extends Base {
     strip_keys.forEach(key => delete clone[key])
     clone.name = await Campaign.nonExistantClonedName(clone.name, data ? data.name : null)
     clone.number_region = data && data.number_region ? data.number_region : clone.number_region
-    clone.number_outgoing_region = data && data.number_outgoing_region ? data.number_outgoing_region : clone.number_outgoing_region
+    clone.number_outgoing_region = data && (data.number_outgoing_region || clone.number_outgoing_region)
     clone.target_numbers = data && data.target_numbers ? data.target_numbers : clone.target_numbers
     clone.status = 'inactive'
     clone.plivo_setup_status = 'needed'
@@ -360,7 +363,7 @@ class Caller extends Base {
     const last_call = await Call.query()
       .whereIn('caller_id', caller_ids)
       .orderBy('created_at', 'desc')
-      .limit(1).first();
+      .limit(1).first()
     if (!last_call) return
     return last_call.$query()
       .leftOuterJoin('survey_results', 'calls.id', 'survey_results.call_id')

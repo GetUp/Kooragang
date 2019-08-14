@@ -31,15 +31,15 @@ app.get('/api/campaigns/:id/statistics', wrap(async (req, res, next) => {
       .count('calls.id as count')
       .whereRaw("ended_at >= NOW() - INTERVAL '10 minutes'")
       .where({ campaign_id: campaign.id })
-      .groupBy('dropped');
+      .groupBy('dropped')
     const tech_issues = await Event.query()
       .count('events.id as count')
-      .where({ campaign_id: campaign.id, name: 'technical_issue_reported' });
-    const tech_issues_reported = _.sumBy(tech_issues, ({ count }) => parseInt(count, 10));
+      .where({ campaign_id: campaign.id, name: 'technical_issue_reported' })
+    const tech_issues_reported = _.sumBy(tech_issues, ({ count }) => parseInt(count, 10))
     const wait_events = await Event.query()
       .whereIn('name', ['caller_complete', 'answered'])
       .where({ campaign_id: campaign.id })
-      .whereRaw("created_at >= NOW() - INTERVAL '10 minutes'");
+      .whereRaw("created_at >= NOW() - INTERVAL '10 minutes'")
     let callee_total = await campaign.callee_total()
     callee_total = callee_total ? parseInt(callee_total[0].count, 10) : 0
     const callee_remaining = await campaign.callableCallees(999999).length
@@ -48,14 +48,15 @@ app.get('/api/campaigns/:id/statistics', wrap(async (req, res, next) => {
       .where({ campaign_id: campaign.id })
       .whereNotNull('last_called_at')
     callee_called = parseInt(callee_called[0].count)
-    const average_wait_time = wait_events.length ? Math.round(_.sumBy(wait_events, event => JSON.parse(event.value).seconds_waiting) / wait_events.length) : 0;
-    const total_calls = _.sumBy(status_counts, ({ count }) => parseInt(count, 10));
-    const drop_status = _.find(status_counts, ({ dropped }) => dropped);
-    const drops = drop_status ? parseInt(drop_status.count, 10) : 0;
-    const drop_rate = total_calls ? Math.round(drops * 100 / total_calls) : 0;
+    const average_wait_time = wait_events.length ? Math.round(
+      _.sumBy(wait_events, event => JSON.parse(event.value).seconds_waiting) / wait_events.length) : 0
+    const total_calls = _.sumBy(status_counts, ({ count }) => parseInt(count, 10))
+    const drop_status = _.find(status_counts, ({ dropped }) => dropped)
+    const drops = drop_status ? parseInt(drop_status.count, 10) : 0
+    const drop_rate = total_calls ? Math.round(drops * 100 / total_calls) : 0
     const getCountForStatus = (status) => {
-      const record = _.find(caller_counts, (record) => record.status === status);
-      return record ? parseInt(record.count, 10) : 0;
+      const record = _.find(caller_counts, (record) => record.status === status)
+      return record ? parseInt(record.count, 10) : 0
     }
 
     const data = {
@@ -74,7 +75,7 @@ app.get('/api/campaigns/:id/statistics', wrap(async (req, res, next) => {
       callee_called
     }
 
-    const time_period_in_hours = 24;
+    const time_period_in_hours = 24
     const calls_in_progress = await Event.raw(`
         select created_at, ((value::json)->>'calls_in_progress')::integer as calls_in_progress from events
         where campaign_id = ${campaign.id}
@@ -136,29 +137,33 @@ app.get('/api/campaigns/:id/statistics', wrap(async (req, res, next) => {
         `)
     Object.assign(data, {
       graph: {
-        calls_in_progress: calls_in_progress.rows.map(event => { return { x: event.created_at, y: event.calls_in_progress } }),
+        calls_in_progress: calls_in_progress.rows.map(
+          event => { return { x: event.created_at, y: event.calls_in_progress } }
+        ),
         drop_data: drop_data.rows.map(event => { return { x: event.created_at, y: 0.5 } }),
         callers_data: callers_data.rows.map(event => { return { x: event.created_at, y: parseFloat(event.callers) } }),
         completed_data: completed_data.rows.map(event => { return { x: event.created_at, y: 0 } }),
         tech_issue_data: tech_issue_data.rows.map(event => { return { x: event.created_at, y: 1 } }),
         calls_data: calls_data.rows.map(event => { return { x: event.created_at, y: event.value } }),
         ratio_data: ratio_data.rows.map(event => { return { x: event.created_at, y: parseFloat(event.ratio) } }),
-        drop_ratio_data: drop_ratio_data.rows.map(event => { return { x: event.created_at, y: parseFloat(event.ratio) } })
+        drop_ratio_data: drop_ratio_data.rows.map(
+          event => { return { x: event.created_at, y: parseFloat(event.ratio) } }
+        )
       }
-    });
+    })
 
-    const current_callers = data.available + data['callers_in_call'];
-    data.approximate_rate = current_callers ? Math.round(total_calls * 6 / current_callers) : 0;
-    return data;
+    const current_callers = data.available + data['callers_in_call']
+    data.approximate_rate = current_callers ? Math.round(total_calls * 6 / current_callers) : 0
+    return data
   }
-  const data = await generateReport();
+  const data = await generateReport()
   return res.json({ data: data })
 }))
 
 //teams report
 app.get('/api/teams/:passcode/statistics', wrap(async (req, res, next) => {
   if (!req.params.passcode) return next(new BadRequestError('No Team Passcode Sent With Request'))
-  const team = await Team.query().where({ passcode: req.params.passcode }).first();
+  const team = await Team.query().where({ passcode: req.params.passcode }).first()
   if (!team) return next(new NotFoundError('No Team Exists With Passcode: ' + req.params.passcode))
   const data = await knex.raw(
     `select c.created_at::date as date, cp.name, count(distinct ca.phone_number) as callers, count(c.id) as calls,
