@@ -12,7 +12,7 @@
     "web": "node ./app.js",
     "dialer-worker": "node ./workers/dialer_worker.js",
     "setup-worker": "node ./workers/setup_worker.js",
-    "audit": "node ./audit.js",
+    "audit": "node ./workers/audit_worker.js",
     "nightly": "node ./nightly.js",
     "debug": "node debug ./app.js",
     "test": "find . -name '*.js' -not -path './node_modules/*' | NODE_ENV=test entr -c mocha --require test/test_helper.js --full-trace test/**",

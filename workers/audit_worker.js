@@ -1,10 +1,10 @@
 /* eslint no-constant-condition: 0 */
 
-const {sleep, error_exit} = require('./utils')
+const {sleep, error_exit} = require('../utils')
 const period = process.env.AUDIT_PERIOD || 60000
 const env = process.env.NODE_ENV || 'development'
 const promisify = require('es6-promisify')
-const config = require('./knexfile_read_only')
+const config = require('../knexfile_read_only')
 const pg = require ('pg')
 const delay_interval = '20 minutes'
 const IncomingWebhook = require('@slack/client').IncomingWebhook
@@ -32,7 +32,7 @@ const work = async () => {
       text += '[Next alert in 5 minutes]'
       await webhookp({text})
     }
-    await sleep(period);
+    await sleep(period)
   }
 }
 
