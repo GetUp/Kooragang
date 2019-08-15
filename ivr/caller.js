@@ -21,15 +21,6 @@ app.post('/connect', async ({ body, query }, res) => {
   const r = plivo.Response()
   const campaign = query.campaign_id && await Campaign.query().where({ id: query.campaign_id }).first()
 
-  if (process.env.RECORD_CALLS === 'true') {
-    r.addRecord({
-      action: res.locals.appUrl('log'),
-      maxLength: 60 * 60,
-      recordSession: true,
-      redirect: false
-    })
-  }
-
   if (!campaign) {
     r.addWait({ length: 2 })
     r.addSpeakI18n('error_unassociated_number')
