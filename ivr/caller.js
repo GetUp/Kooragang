@@ -564,7 +564,7 @@ app.post('/survey', async ({ query, body }, res) => {
   }
   const caller = await Caller.query().where({ id: caller_id }).first()
   if (caller) {
-    await Event.query().insert({campaign_id: campaign.id, caller_id: caller_id, call_id: call.id, name: 'caller_survey', value: {callee_id: call.callee_id}})
+    await Event.query().insert({ campaign_id: campaign.id, caller_id: caller_id, call_id: call.id, name: 'caller_survey', value: { callee_id: call.callee_id } })
     await caller.$query().patch({ status: 'in-survey' })
   }
   if (!call) {
@@ -655,7 +655,7 @@ app.post('/survey_result', async ({ query, body }, res) => {
 
   if (next) {
     r.addRedirect(res.locals.appUrl(`survey?q=${next}&call_id=${query.call_id}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`))
-  } else if ( data.question === 'disposition' && query.incall) {
+  } else if (data.question === 'disposition' && query.incall) {
     r.addRedirect(res.locals.appUrl(`ready?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`))
   } else {
     r.addRedirect(res.locals.appUrl(`call_again?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&call_id=${query.call_id}`))
