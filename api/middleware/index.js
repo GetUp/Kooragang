@@ -1,3 +1,4 @@
+const _ = require('lodash')
 const { Log } = require("../../models")
 const {
   BadRequestError,
@@ -39,9 +40,17 @@ const headers = (req, res, next) => {
 }
 const unauthenticatedEndpoints = [
   '/api/calls_count_today',
+  '/api/campaigns_public',
+  '/api/campaigns/.*?/outbound_caller',
 ]
+const isValidUnauthenticatedEndpoint = (url) => {
+  return _.find(unauthenticatedEndpoints, (endpoint) => {
+    const pattern = new RegExp(endpoint.value)
+    return pattern.test(url);
+  })
+}
 const authentication = (req, res, next) => {
-  if (unauthenticatedEndpoints.includes(req.url)) return next()
+  if (isValidUnauthenticatedEndpoint(req.url)) return next()
   const token = req.headers['authorization']
   if (token) {
     if (token === process.env.KOORAGANG_API_HASH) {

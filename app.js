@@ -12,3 +12,4 @@ const server = app.listen(port, () => console.log('App running on port', port))
 if (process.env.HUD) {
   require('./hud')(server)
 }
+
