@@ -1,14 +1,16 @@
 # Kooragang
 
-Kooragang is a tool for running large-scale distributed volunteer phone banking campaigns.
+Kooragang is a tool for running large-scale distributed volunteer phone banking campaigns. The tool was built by GetUp (https://getup.org.au).
 
 Existing third-party phone banking tools are typically designed for a centralised environment such as a call centre. They require stable internet and secondary computers or tablets. They also require training. These requirements are challenging in a distributed campaign where people are calling from community centres, house-parties and by themselves at home. These environments have unstable internet and rarely is there enough devices to go around. There is also little time at such events to run training on new technology. These challenges limit the speed at which a distributed campaign can scale.
 
-Kooragang was designed to overcome these challenges by only requiring a volunteer caller to have a phone that can make normal phone calls (i.e. not a smart phone).
+Kooragang was designed to overcome these challenges by only requiring a volunteer caller to have a phone that can make normal phone calls (i.e. not a smart phone). Instead training and instructions are given over the phone by a robot. Volunteers record the outcomes of calls and control the software by using their keypad.
 
 Kooragang uses a predictive dialer algorithm to speed up calling. The ratio of the algorithm can be configured to stay within acceptable drop rates. This can reduce the wait times for volunteers to as low as under 10 seconds.
 
-### Development setup
+## Getting started
+
+Create an account at https://www.plivo.com/.
 
 `npm i`
 `createdb kooragang`
@@ -25,7 +27,7 @@ Kooragang uses a predictive dialer algorithm to speed up calling. The ratio of t
 
 See `package.json` for further commands.
 
-### FAQ
+## FAQ
 
 *How do volunteers know who they are calling?*
 
@@ -67,3 +69,6 @@ GetUp uses place names as internal code words for projects. Some of the develope
 *I have more questions!*
 
 This documentation is still a work in progress. Please either raise a github issue or send us a mail at tech@getup.org.au.
+
+## License
+Kooragang is licensed under the MIT license.
