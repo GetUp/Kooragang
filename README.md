@@ -1,5 +1,7 @@
 # Kooragang
 
+![CircleCI](https://circleci.com/gh/GetUp/Kooragang.svg?style=svg&circle-token=977f814119e1508e26039439cf539a5d39355532)
+
 Kooragang is a tool for running large-scale distributed volunteer phone banking campaigns. The tool was built by GetUp (https://getup.org.au).
 
 Existing third-party phone banking tools are typically designed for a centralised environment such as a call centre. They require stable internet and secondary computers or tablets. They also require training. These requirements are challenging in a distributed campaign where people are calling from community centres, house-parties and by themselves at home. These environments have unstable internet and rarely is there enough devices to go around. There is also little time at such events to run training on new technology. These challenges limit the speed at which a distributed campaign can scale.
