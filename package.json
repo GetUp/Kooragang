@@ -15,7 +15,7 @@
     "audit": "node ./workers/audit_worker.js",
     "nightly": "node ./nightly.js",
     "debug": "node debug ./app.js",
-    "test": "NODE_ENV=test mocha --require test/test_helper.js --full-trace test/**",
+    "test": "NODE_ENV=test mocha --require test/test_helper.js --full-trace --exit test/**",
     "test-watch": "find . -name '*.js' -not -path './node_modules/*' | NODE_ENV=test entr -c mocha --require test/test_helper.js --full-trace test/**",
     "deploy-production": "git push kooragang HEAD:master && heroku run knex migrate:latest --app kooragang && git push kooragang-api HEAD:master && git push kooragang-hud HEAD:master",
     "deploy-stage": "git push kooragang-stage HEAD:master && heroku run knex migrate:latest --app kooragang-stage && git push kooragang-api-stage HEAD:master",
