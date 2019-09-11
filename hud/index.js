@@ -3,7 +3,12 @@ const config = require('../knexfile')
 const pg = require ('pg')
 
 module.exports = async (server) => {
-  const io = require('socket.io')(server, { pingInterval: 15000, pingTimeout: 30000 })
+  const connectionOptions = {
+    transports: ['websocket'],
+    pingInterval: 15000,
+    pingTimeout: 30000
+  }
+  const io = require('socket.io')(server, connectionOptions)
   const db = await pg.connect(config[env].connection)
 
   io.use(async  (socket, next) => {
@@ -21,10 +26,9 @@ module.exports = async (server) => {
   db.query('listen caller_event')
   db.on('notification', async notification => {
     if (notification.channel !== 'caller_event') return
-    console.log(`~~~~~ ${notification.payload}`)
     const event = JSON.parse(notification.payload)
     event.value = JSON.parse(event.value)
-    if (event.name === 'answered') {
+    if (event.name === 'answered' || event.name === 'caller_survey') {
       event.callee = (await db.query('select * from callees inner join calls on callee_id = callees.id where calls.id = $1', [event.call_id])).rows[0]
     }
     io.to(`caller-${event.caller_id}`).emit('event', event)

@@ -92,8 +92,6 @@ app.post('/api/campaigns/:id/outbound_caller', wrap(async (req, res, next) => {
   if (!campaign) return next(new NotFoundError('No Campaign Exists With ID: ' + req.params.id))
   if (!req.body.data.mobile_number) return next(new BadRequestError('No Phone Number'))
   const mobile = process.env.COUNTRY_ISO == 'AU' ? req.body.data.mobile_number.replace(/^0/, '61'): req.body.data.mobile_number
-  console.log('!!!!!!!!!!')
-  console.log(callerCallParams(campaign, mobile, host, 0))
   await plivo_api('make_call', callerCallParams(campaign, mobile, host, 0))
   return res.json({data: req.params.id})
 }))

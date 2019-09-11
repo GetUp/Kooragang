@@ -39,7 +39,7 @@
     "objection": "^0.7.12",
     "pg": "^6.1.5",
     "plivo": "GetUp/plivo-node#production",
-    "socket.io": "^2.2.0"
+    "socket.io": "2.2.0"
   },
   "devDependencies": {
     "dotenv": "4.0.0",

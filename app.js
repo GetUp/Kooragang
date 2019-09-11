@@ -7,8 +7,17 @@ if (process.env.IVR) {
 if (process.env.API) {
   app.use(require('./api'))
 }
+if (process.env.HUD) {
+  app.use(function(req, res, next) {
+    res.header('Access-Control-Allow-Origin', '*')
+    res.header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+    res.header('Access-Control-Allow-Headers', 'Content-Type')
+    res.header('Access-Control-Allow-Headers', 'X-Requested-With')
+    console.log(`~~~~~~> Using Cors Headers For Response ${res}`)
+    return next()
+  })
+}
 const server = app.listen(port, () => console.log('App running on port', port))
-
 if (process.env.HUD) {
   require('./hud')(server)
 }
