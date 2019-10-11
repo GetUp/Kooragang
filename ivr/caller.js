@@ -555,7 +555,9 @@ app.post('/survey', async ({ query, body }, res) => {
   }
   const caller = await Caller.query().where({ id: caller_id }).first()
   if (caller) {
-    await Event.query().insert({ campaign_id: campaign.id, caller_id: caller_id, call_id: call.id, name: 'caller_survey', value: { callee_id: call.callee_id } })
+    const call_id = call && call.id
+    const callee_id = call && call.callee_id
+    await Event.query().insert({ campaign_id: campaign.id, caller_id: caller_id, call_id, name: 'caller_survey', value: { callee_id: callee_id } })
     await caller.$query().patch({ status: 'in-survey' })
   }
   if (!call) {

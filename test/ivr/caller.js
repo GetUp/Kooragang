@@ -1434,6 +1434,16 @@ describe('/survey', () => {
         .expect(/<Wait length="5"\/><Speak language="en-GB" voice="MAN">.+<\/Speak>/)
     })
   })
+
+  context('with no matching call based on conference uuid', () => {
+    it('should wait and play a help message', async () => {
+      const question = 'action'
+      await Call.query().delete()
+      await request.post(`/survey?q=${question}&call_id=${call.id}&campaign_id=${campaign.id}&caller_id=${callerInCall.id}`)
+        .expect(/left the call queue/)
+        .expect(200)
+    })
+  })
 })
 
 describe('/survey_result', () => {
