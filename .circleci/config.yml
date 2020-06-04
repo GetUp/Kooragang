@@ -10,6 +10,8 @@ jobs:
         environment:
           TEST_DATABASE_URL: postgres://postgres@localhost/circle_test
       - image: circleci/postgres:9
+        environment:
+          POSTGRES_HOST_AUTH_METHOD: trust
 
     working_directory: ~/repo
 
