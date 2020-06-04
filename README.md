@@ -10,6 +10,18 @@ Kooragang was designed to overcome these challenges by only requiring a voluntee
 
 Kooragang uses a predictive dialer algorithm to speed up calling. The ratio of the algorithm can be configured to stay within acceptable drop rates. This can reduce the wait times for volunteers to as low as under 10 seconds.
 
+Other features of Kooragang include:
+* configurable post-call survey to encode outcomes as structured data;
+* configurable briefing messages and training information;
+* configurable hours of operation for the campaign;
+* configurable caller ID;
+* option for the caller to be called back if they are unable to afford the call;
+* answering machine detection;
+* option to press `2` to quickly end calls and return to the queue if connected to an answering machine;
+* option to press `9` to transfer the caller to target, e.g. volunteers can call other volunteers, give them instructions on what to say, and then transfer them directly to the target;
+* configurable predictive dialler threshold that balances wait times with the risk of a dropped call.
+
+
 ## Getting started
 
 Create an account at https://www.plivo.com/.
@@ -70,7 +82,7 @@ GetUp uses place names as internal code words for projects. Some of the develope
 
 *I have more questions!*
 
-This documentation is still a work in progress. Please either raise a github issue or send us a mail at tech@getup.org.au.
+This documentation is still a work in progress. Please either raise a github issue.
 
 ## License
-Kooragang is licensed under the MIT license.
+Kooragang is licensed under the GPLv3 license.
