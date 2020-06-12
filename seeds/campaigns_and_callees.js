@@ -18,7 +18,7 @@ exports.seed = function(knex, Promise) {
         max_ratio: 1,
         questions: questions_json,
         more_info: more_info_json,
-        script_url: "https://docs.google.com/document/d/1_2uhubfXoW8zokuhKXdRAdz8_WMH7R0wAQM5YWZii-4/pub?embedded=true",
+        script_url: "https://www.getup.org.au",
       }),
       knex('campaigns').insert({
         id: 2,
@@ -29,7 +29,7 @@ exports.seed = function(knex, Promise) {
         max_ratio: 2,
         questions: questions_json,
         more_info: more_info_json,
-        script_url: "https://docs.google.com/document/d/1_2uhubfXoW8zokuhKXdRAdz8_WMH7R0wAQM5YWZii-4/pub?embedded=true",
+        script_url: "https://www.getup.org.au",
         callers_remaining: 37,
       })
     )
