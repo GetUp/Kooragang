@@ -176,11 +176,11 @@
         "de": "Sie sind jetzt in der Anrufwarteschlange."
     },
     "long_wait_time_daytime": {
-        "en": "You may experience *longer* than normal wait times between calls as you're dialing during the *day*",
+        "en": "You may experience longer than normal wait times between calls as you're dialing during the day",
         "de": ""
     },
     "long_wait_time_caller_number": {
-        "en": "You may experience *longer* than normal wait times between calls as you're dialing with only a *few* other volunteers at the moment.",
+        "en": "You may experience longer than normal wait times between calls as you're dialing with only a few other volunteers at the moment.",
         "de": ""
     },
     "back_in_call_queue": {
@@ -192,8 +192,8 @@
         "de": "Wir werden Sie in Kürze mit einem Anruf verbinden."
     },
     "final_calling_instructions": {
-        "en": "Remember, don't hangup *your* phone. Press star to end a call. Or wait for the other person to hang up.",
-        "de": "Denken Sie daran, hängen Sie *Ihr* Telefon nicht auf. Drücken Sie Sternchen, um einen Anruf zu beenden. Oder warten Sie darauf, dass die andere Person auflegt."
+        "en": "Remember, don't hangup your phone. Press star to end a call. Or wait for the other person to hang up.",
+        "de": "Denken Sie daran, hängen Sie Ihr Telefon nicht auf. Drücken Sie Sternchen, um einen Anruf zu beenden. Oder warten Sie darauf, dass die andere Person auflegt."
     },
     "last_call_outcome": {
         "en": "You have decided to enter the outcome for your last call.",
