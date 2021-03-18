@@ -37,7 +37,7 @@
     "moment-timezone": "^0.5.13",
     "newrelic": "^4.10.0",
     "objection": "^0.7.12",
-    "pg": "^6.1.5",
+    "pg": "^8.5.0",
     "plivo": "GetUp/plivo-node#production",
     "socket.io": "2.2.0"
   },
