@@ -26,18 +26,20 @@ Other features of Kooragang include:
 
 Create an account at https://www.plivo.com/.
 
-`npm i`
-`createdb kooragang`
-`createdb kooragang_test`
-`knex migrate:latest`
-`knex migrate:latest --env test`
-`knex seed:run`
+```
+npm i
+createdb kooragang
+createdb kooragang_test
+knex migrate:latest
+knex migrate:latest --env test
+knex seed:run
 
-`cp .env.example .env` & add your Plivo credentials
+cp .env.example .env # & add your Plivo credentials
 
-`npm run start` to boot the app
+npm run start # to boot the app
 
-`npm test` to run tests
+npm test # to run tests
+```
 
 See `package.json` for further commands.
 
