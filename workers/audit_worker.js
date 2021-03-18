@@ -18,9 +18,9 @@ where qc.created_at < now() - '${delay_interval}'::interval`
 let time_since_last_alert
 
 const work = async () => {
-  const db = await pg.connect(config[env].connection)
+  const pool = new pg.Pool({connectionString: config[env].connection})
   while (true) {
-    const queued_calls = (await db.query(query)).rows
+    const queued_calls = (await pool.query(query)).rows
     const now = new Date()
     if (queued_calls.length && (!time_since_last_alert || now - time_since_last_alert > 300000)) {
       time_since_last_alert = now
