@@ -12,7 +12,7 @@
     "web": "node ./app.js",
     "dialer-worker": "node ./workers/dialer_worker.js",
     "setup-worker": "node ./workers/setup_worker.js",
-    "audit": "node ./workers/audit_worker.js",
+    "audit-worker": "node ./workers/audit_worker.js",
     "nightly": "node ./nightly.js",
     "debug": "node debug ./app.js",
     "test": "./node_modules/.bin/knex migrate:latest --env test && NODE_ENV=test mocha --require test/test_helper.js --full-trace --exit test/**",
