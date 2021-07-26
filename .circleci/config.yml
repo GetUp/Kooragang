@@ -6,10 +6,10 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/node:10.6
+      - image: circleci/node:14
         environment:
           TEST_DATABASE_URL: postgres://postgres@localhost/circle_test
-      - image: circleci/postgres:9
+      - image: circleci/postgres:13
         environment:
           POSTGRES_HOST_AUTH_METHOD: trust
 

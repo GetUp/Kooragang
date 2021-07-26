@@ -9,7 +9,8 @@ module.exports = async (server) => {
     pingTimeout: 30000
   }
   const io = require('socket.io')(server, connectionOptions)
-  const db = await pg.connect(config[env].connection)
+  const pool = new pg.Pool({connectionString: config[env].connection})
+  const db = await pool.connect()
 
   io.use(async  (socket, next) => {
     const caller_id = socket.handshake.query.token
