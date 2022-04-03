@@ -1,4 +1,4 @@
-const { plivo_api } = require('../api/plivo')
+const { get_callback_base_url, plivo_api } = require('../api/plivo')
 const moment = require('moment')
 const _ = require('lodash')
 const objection = require('objection')
@@ -16,7 +16,7 @@ const {
   Event
 } = require('../models')
 
-module.exports.dial = async (appUrl, campaign) => {
+module.exports.dial = async (campaign) => {
   if (!campaign.isWithinDailyTimeOfOperation()) {
     return
   }
@@ -60,7 +60,7 @@ module.exports.dial = async (appUrl, campaign) => {
     queued_calls
   }
   if (callees.length) {
-    await Promise.all(callees.map(callee => updateAndCall(campaign, callee, appUrl)))
+    await Promise.all(callees.map(callee => updateAndCall(campaign, callee)))
     const callee_ids = _.map(callees, 'id')
     extra_event_data.callsToMake = callsToMake
     extra_event_data.callees = callees.length,
@@ -131,35 +131,38 @@ const recalculateRatio = async (campaign) => {
 
 const formattedName = (callee) => removeDiacritics(callee.first_name  || '') .replace(/[^a-zA-Z]/g,'-')
 
-module.exports.callerCallParams = (campaign, phone_number, appUrl, assessment=0) => {
+module.exports.callerCallParams = (campaign, phone_number, assessment=0) => {
+  const callback_url = get_callback_base_url()
   return {
     to: phone_number,
     from: campaign.phone_number || '1111111111',
-    answer_url: `${appUrl}/connect?campaign_id=${campaign.id}&number=${phone_number}&assessment=${assessment}`,
-    hangup_url: `${appUrl}/call_ended?campaign_id=${campaign.id}&number=${phone_number}&assessment=${assessment}`,
+    answer_url: `${callback_url}/connect?campaign_id=${campaign.id}&number=${phone_number}&assessment=${assessment}`,
+    hangup_url: `${callback_url}/call_ended?campaign_id=${campaign.id}&number=${phone_number}&assessment=${assessment}`,
     ring_timeout: 30
   }
 }
 
-const calleeCallParams = (campaign, callee, appUrl) => {
+const calleeCallParams = (campaign, callee) => {
+  const callback_url = get_callback_base_url()
   return {
     to: sipFormatNumber(callee.phone_number),
     from : campaign.outgoing_number || process.env.NUMBER || '1111111111',
-    answer_url : `${appUrl}/answer?name=${formattedName(callee)}&callee_id=${callee.id}&campaign_id=${callee.campaign_id}`,
-    hangup_url : `${appUrl}/hangup?callee_id=${callee.id}&campaign_id=${callee.campaign_id}`,
-    fallback_url : `${appUrl}/callee_fallback?callee_id=${callee.id}&campaign_id=${callee.campaign_id}`,
+    answer_url : `${callback_url}/answer?name=${formattedName(callee)}&callee_id=${callee.id}&campaign_id=${callee.campaign_id}`,
+    hangup_url : `${callback_url}/hangup?callee_id=${callee.id}&campaign_id=${callee.campaign_id}`,
+    fallback_url : `${callback_url}/callee_fallback?callee_id=${callee.id}&campaign_id=${callee.campaign_id}`,
     time_limit: 60 * 60,
     ring_timeout: campaign.ring_timeout || process.env.RING_TIMEOUT || 15
   }
 }
 
-const updateAndCall = async (campaign, callee, appUrl) => {
-  const params = calleeCallParams(campaign, callee, appUrl)
+const updateAndCall = async (campaign, callee) => {
+  const params = calleeCallParams(campaign, callee)
   if (process.env.SIP_HEADERS && params.to.match(/^sip:/)) params.sip_headers = process.env.SIP_HEADERS
   if (campaign.detect_answering_machine) {
+    const callback_url = get_callback_base_url()
     params.machine_detection = 'true'
     params.machine_detection_time = process.env.MACHINE_DETECTION_TIME || '3500'
-    params.machine_detection_url = `${appUrl}/machine_detection?callee_id=${callee.id}&campaign_id=${callee.campaign_id}`
+    params.machine_detection_url = `${callback_url}/machine_detection?callee_id=${callee.id}&campaign_id=${callee.campaign_id}`
   }
   if (process.env.NODE_ENV === 'development') console.error('CALLING', params)
   try{

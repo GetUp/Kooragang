@@ -2,8 +2,6 @@
 const { dial, notifyAgents } = require('../dialer')
 const { sleep, error_exit } = require('../utils')
 const { Campaign } = require('../models')
-const host = process.env.BASE_URL
-if (!host) throw `BASE_URL must be set`
 const period = process.env.DIALER_PERIOD || 1000
 
 const work = async () => {
@@ -18,7 +16,7 @@ const work = async () => {
         // these callees will subsequently be dropped
         if (campaign.isPausing()) await campaign.$query().patch({status: 'paused'})
       } else {
-        await dial(host, campaign)
+        await dial(campaign)
       }
     }
     await sleep(period)
