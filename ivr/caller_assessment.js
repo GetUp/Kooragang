@@ -11,7 +11,7 @@ app.post('/survey_assessment', async ({query}, res) => {
   const caller_id = query.caller_id
   const questionData = questions[question]
   const surveyResponse = r.addGetDigits({
-    action: res.locals.appUrl(`survey_result_assessment?q=${question}&caller_id=${caller_id}&campaign_id=${query.campaign_id}&assessment=1`),
+    action: res.locals.plivoCallbackUrl(`survey_result_assessment?q=${question}&caller_id=${caller_id}&campaign_id=${query.campaign_id}&assessment=1`),
     redirect: true,
     retries: 10,
     numDigits: 1,
@@ -35,10 +35,10 @@ app.post('/survey_result_assessment', async ({query, body}, res) => {
 
   if (multiple && (body.Digits  === '*' || query.digit  === '*')) {
     if (question.next) {
-      r.addRedirect(res.locals.appUrl(`survey_assessment?q=${question.next}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&assessment=1`))
+      r.addRedirect(res.locals.plivoCallbackUrl(`survey_assessment?q=${question.next}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&assessment=1`))
     } else {
       r.addSpeakI18n('end_assessment_survey')
-      r.addRedirect(res.locals.appUrl(`briefing?campaign_id=${campaign.id}&caller_number=${caller.phone_number}&start=1&callback=0&authenticated=${query.authenticated ? '1' : '0'}&assessment=1`))
+      r.addRedirect(res.locals.plivoCallbackUrl(`briefing?campaign_id=${campaign.id}&caller_number=${caller.phone_number}&start=1&callback=0&authenticated=${query.authenticated ? '1' : '0'}&assessment=1`))
     }
     return res.send(r.toXML())
   }
@@ -65,17 +65,17 @@ app.post('/survey_result_assessment', async ({query, body}, res) => {
   const all_possible_responses_entered = current_survey_results.length >= Object.keys(answers).length
 
   if (query.q != 'disposition' && question.multiple && !all_possible_responses_entered) {
-    r.addRedirect(res.locals.appUrl(`survey_multiple_assessment?q=${query.q}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&assessment_responses=${current_survey_results_string}`))
+    r.addRedirect(res.locals.plivoCallbackUrl(`survey_multiple_assessment?q=${query.q}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&assessment_responses=${current_survey_results_string}`))
     return res.send(r.toXML())
   } else if (query.q != 'disposition' && question.multiple && all_possible_responses_entered) {
     r.addSpeakI18n('survey_multiple_all_possible_entered', {question: question.name})
   }
 
   if (next) {
-    r.addRedirect(res.locals.appUrl(`survey_assessment?q=${next}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&assessment=1`))
+    r.addRedirect(res.locals.plivoCallbackUrl(`survey_assessment?q=${next}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&assessment=1`))
   } else {
     r.addSpeakI18n('end_assessment_survey')
-    r.addRedirect(res.locals.appUrl(`briefing?campaign_id=${campaign.id}&caller_number=${caller.phone_number}&start=1&callback=0&authenticated=${query.authenticated ? '1' : '0'}&assessment=1`))
+    r.addRedirect(res.locals.plivoCallbackUrl(`briefing?campaign_id=${campaign.id}&caller_number=${caller.phone_number}&start=1&callback=0&authenticated=${query.authenticated ? '1' : '0'}&assessment=1`))
   }
   res.send(r.toXML())
 })
@@ -94,7 +94,7 @@ app.post('/survey_multiple_assessment', async ({query}, res) => {
   _.remove(validDigits, (digit) => _.includes(matched_previous_response_keys, digit))
   if (current_survey_results) { validDigits.push('*') }
   const surveyResponse = r.addGetDigits({
-    action: res.locals.appUrl(`survey_result_assessment?q=${question}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&multiple=1&assessment_responses=${current_survey_results_string}`),
+    action: res.locals.plivoCallbackUrl(`survey_result_assessment?q=${question}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&multiple=1&assessment_responses=${current_survey_results_string}`),
     redirect: true,
     retries: 10,
     numDigits: 1,

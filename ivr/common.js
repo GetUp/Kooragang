@@ -3,7 +3,7 @@
 const app = require('express')()
 const plivo = require('plivo')
 const bodyParser = require('body-parser')
-const { plivo_signature } = require('../api/plivo')
+const { get_callback_base_url, plivo_signature } = require('../api/plivo')
 const { languageBlock } = require('../utils')
 const voice = require('./voice')
 
@@ -22,8 +22,8 @@ response.addSpeakI18n = function(block, vars) {
 }
 
 app.use((req, res, next) => {
-  const host= process.env.BASE_URL || `${req.protocol}://${req.hostname}`
-  res.locals.appUrl = endpoint => endpoint ? `${host}/${endpoint}` : host
+  const host = get_callback_base_url() || `${req.protocol}://${req.hostname}`
+  res.locals.plivoCallbackUrl = endpoint => endpoint ? `${host}/${endpoint}` : host
   res.set('Content-Type', 'text/xml')
   next()
 })

@@ -11,7 +11,7 @@ app.post('/passcode', async ({query, body}, res) => {
     r.addWait({length: 1})
     r.addSpeakI18n('thanks')
     r.addWait({length: 1})
-    r.addRedirect(res.locals.appUrl(`connect?campaign_id=${campaign.id}&authenticated=1`))
+    r.addRedirect(res.locals.plivoCallbackUrl(`connect?campaign_id=${campaign.id}&authenticated=1`))
     return res.send(r.toXML())
   }
 

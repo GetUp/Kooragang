@@ -119,7 +119,7 @@ app.post('/connect', async ({ body, query }, res) => {
       r.addHangup()
     } else {
       r.addSpeakI18n('lines_full_calling_back')
-      r.addRedirect(res.locals.appUrl(`ready?campaign_id=${campaign.id}&caller_number=${caller_number}&start=1&force_callback=1`))
+      r.addRedirect(res.locals.plivoCallbackUrl(`ready?campaign_id=${campaign.id}&caller_number=${caller_number}&start=1&force_callback=1`))
     }
     await Event.query().insert({
       name: 'reached_channel_limit', campaign_id: campaign.id, value: {
@@ -134,13 +134,13 @@ app.post('/connect', async ({ body, query }, res) => {
   if (promptAuth) {
     r.addWait({ length: 2 })
     const passcodeAction = r.addGetDigits({
-      action: res.locals.appUrl(`passcode?campaign_id=${query.campaign_id}`),
+      action: res.locals.plivoCallbackUrl(`passcode?campaign_id=${query.campaign_id}`),
       timeout: 10,
       retries: 10,
       numDigits: campaign.passcode.length
     })
     passcodeAction.addSpeakI18n('campaign_passcode_entry')
-    r.addRedirect(res.locals.appUrl('passcode'))
+    r.addRedirect(res.locals.plivoCallbackUrl('passcode'))
     return res.send(r.toXML())
   }
 
@@ -150,7 +150,7 @@ app.post('/connect', async ({ body, query }, res) => {
     let valid_team_digits = ['2', '*']
     if (user && user.team_id) { valid_team_digits.push('1') }
     const teamAction = r.addGetDigits({
-      action: res.locals.appUrl(`team?campaign_id=${query.campaign_id}&callback=${query.callback ? query.callback : 0}&authenticated=${query.authenticated ? '1' : '0'}&assessment=${query.assessment ? '1' : '0'}&number=${caller_number}`),
+      action: res.locals.plivoCallbackUrl(`team?campaign_id=${query.campaign_id}&callback=${query.callback ? query.callback : 0}&authenticated=${query.authenticated ? '1' : '0'}&assessment=${query.assessment ? '1' : '0'}&number=${caller_number}`),
       timeout: 10,
       retries: 10,
       numDigits: 1,
@@ -169,7 +169,7 @@ app.post('/connect', async ({ body, query }, res) => {
     return res.send(r.toXML())
   }
 
-  r.addRedirect(res.locals.appUrl(`briefing?campaign_id=${campaign.id}&caller_number=${caller_number}&start=1&callback=${query.callback ? query.callback : 0}&authenticated=${query.authenticated ? '1' : '0'}&assessment=${query.assessment ? '1' : '0'}`))
+  r.addRedirect(res.locals.plivoCallbackUrl(`briefing?campaign_id=${campaign.id}&caller_number=${caller_number}&start=1&callback=${query.callback ? query.callback : 0}&authenticated=${query.authenticated ? '1' : '0'}&assessment=${query.assessment ? '1' : '0'}`))
   res.send(r.toXML())
 })
 
@@ -230,8 +230,8 @@ app.post('/connect_sms', async ({ body, query }, res) => {
   const params = {
     to: sipFormatNumber(caller_number),
     from: campaign.phone_number || process.env.NUMBER || '1111111111',
-    answer_url: res.locals.appUrl(`connect?campaign_id=${campaign.id}&sms_callback=1&number=${caller_number}`),
-    hangup_url: res.locals.appUrl(`call_ended?campaign_id=${campaign.id}&sms_callback=1&number=${caller_number}`),
+    answer_url: res.locals.plivoCallbackUrl(`connect?campaign_id=${campaign.id}&sms_callback=1&number=${caller_number}`),
+    hangup_url: res.locals.plivoCallbackUrl(`call_ended?campaign_id=${campaign.id}&sms_callback=1&number=${caller_number}`),
     ring_timeout: process.env.RING_TIMEOUT || 30
   }
   if (process.env.SIP_HEADERS && params.to.match(/^sip:/)) params.sip_headers = process.env.SIP_HEADERS
@@ -261,7 +261,7 @@ app.post('/briefing', async ({ query }, res) => {
   }
 
   const briefing = r.addGetDigits({
-    action: res.locals.appUrl(`ready?campaign_id=${campaign.id}&caller_number=${query.caller_number}&start=1&authenticated=${query.authenticated ? '1' : '0'}&assessment=${query.assessment ? '1' : '0'}`),
+    action: res.locals.plivoCallbackUrl(`ready?campaign_id=${campaign.id}&caller_number=${query.caller_number}&start=1&authenticated=${query.authenticated ? '1' : '0'}&assessment=${query.assessment ? '1' : '0'}`),
     method: 'POST',
     timeout: 5,
     numDigits: 1,
@@ -350,27 +350,27 @@ app.post('/ready', async ({ body, query }, res) => {
 
   if (!assessment && await campaign.isComplete()) {
     r.addSpeakI18n('campaign_status_completed_short')
-    r.addRedirect(res.locals.appUrl('disconnect?completed=1'))
+    r.addRedirect(res.locals.plivoCallbackUrl('disconnect?completed=1'))
     return res.send(r.toXML())
   }
 
   if (body.Digits === '8' && query.call_id) {
     await Event.query().insert({ name: 'undo', campaign_id: campaign.id, caller_id, call_id: query.call_id, value: { log_id: query.log_id } })
     await SurveyResult.query().where({ call_id: query.call_id }).delete()
-    r.addRedirect(res.locals.appUrl(`survey?q=disposition&caller_id=${caller_id}&campaign_id=${campaign.id}&undo=1&call_id=${query.call_id}`))
+    r.addRedirect(res.locals.plivoCallbackUrl(`survey?q=disposition&caller_id=${caller_id}&campaign_id=${campaign.id}&undo=1&call_id=${query.call_id}`))
     return res.send(r.toXML())
   } else if (body.Digits === '7' && query.call_id) {
     const reference_code = query.call_id.toString().split('').join(' ')
     r.addSpeakI18n('call_reference_code', { reference_code })
-    r.addRedirect(res.locals.appUrl(`call_again?caller_id=${caller_id}&campaign_id=${query.campaign_id}&call_id=${query.call_id}&heard_reference_code=1`))
+    r.addRedirect(res.locals.plivoCallbackUrl(`call_again?caller_id=${caller_id}&campaign_id=${query.campaign_id}&call_id=${query.call_id}&heard_reference_code=1`))
     return res.send(r.toXML())
   } else if (body.Digits === '9' && query.call_id) {
     await Event.query().insert({ name: 'technical_issue_reported', campaign_id: campaign.id, caller_id, call_id: query.call_id, value: { query: query, body: body } })
     r.addSpeakI18n('tech_issue_reported')
-    r.addRedirect(res.locals.appUrl(`call_again?caller_id=${caller_id}&campaign_id=${query.campaign_id}&tech_issue_reported=1&call_id=${query.call_id}`))
+    r.addRedirect(res.locals.plivoCallbackUrl(`call_again?caller_id=${caller_id}&campaign_id=${query.campaign_id}&tech_issue_reported=1&call_id=${query.call_id}`))
     return res.send(r.toXML())
   } else if (body.Digits === '0') {
-    r.addRedirect(res.locals.appUrl('disconnect'))
+    r.addRedirect(res.locals.plivoCallbackUrl('disconnect'))
     return res.send(r.toXML())
   } else if (body.Digits === '2' || query.force_callback) {
     await Caller.query().where({ id: caller_id }).patch({ callback: true })
@@ -378,17 +378,17 @@ app.post('/ready', async ({ body, query }, res) => {
     return res.send(r.toXML())
   } else if (body.Digits === '4') {
     r.addSpeakI18n('dialer_tool_explainer', { org_name: process.env.ORG_NAME || '' })
-    r.addRedirect(res.locals.appUrl(`briefing?campaign_id=${campaign.id}&caller_number=${query.caller_number}&entry=more_info&entry_key=4&authenticated=${query.authenticated}`))
+    r.addRedirect(res.locals.plivoCallbackUrl(`briefing?campaign_id=${campaign.id}&caller_number=${query.caller_number}&entry=more_info&entry_key=4&authenticated=${query.authenticated}`))
     return res.send(r.toXML())
   } else if (body.Digits === '*') {
     r.addSpeakI18n('assessment_redirection')
-    r.addRedirect(res.locals.appUrl(`survey_assessment?q=disposition&caller_id=${caller_id}&campaign_id=${query.campaign_id}&assessment=${query.assessment ? '1' : '0'}`))
+    r.addRedirect(res.locals.plivoCallbackUrl(`survey_assessment?q=disposition&caller_id=${caller_id}&campaign_id=${query.campaign_id}&assessment=${query.assessment ? '1' : '0'}`))
     return res.send(r.toXML())
   }
 
   if (Object.keys(campaign.more_info).length > 0 && Object.keys(campaign.more_info).includes(body.Digits)) {
     r.addSpeakI18n('_transparent', { var: campaign.more_info[body.Digits].content })
-    r.addRedirect(res.locals.appUrl(`briefing?campaign_id=${campaign.id}&caller_number=${query.caller_number}&entry=more_info&entry_key=${body.Digits}&authenticated=${query.authenticated}`))
+    r.addRedirect(res.locals.plivoCallbackUrl(`briefing?campaign_id=${campaign.id}&caller_number=${query.caller_number}&entry=more_info&entry_key=${body.Digits}&authenticated=${query.authenticated}`))
     return res.send(r.toXML())
   }
 
@@ -396,7 +396,7 @@ app.post('/ready', async ({ body, query }, res) => {
     const last_call = await caller.last_call_today_with_no_survey_result()
     if (last_call) {
       const resumeIVR = r.addGetDigits({
-        action: res.locals.appUrl(`resume_survey?caller_id=${caller_id}&last_call_id=${last_call.id}&campaign_id=${query.campaign_id}`),
+        action: res.locals.plivoCallbackUrl(`resume_survey?caller_id=${caller_id}&last_call_id=${last_call.id}&campaign_id=${query.campaign_id}`),
         redirect: true,
         retries: 10,
         numDigits: 1,
@@ -444,14 +444,14 @@ app.post('/ready', async ({ body, query }, res) => {
   }
 
   let params = {
-    waitSound: res.locals.appUrl(`hold_music?campaign_id=${query.campaign_id}`),
+    waitSound: res.locals.plivoCallbackUrl(`hold_music?campaign_id=${query.campaign_id}`),
     maxMembers: 2,
     timeLimit: 60 * 120,
-    callbackUrl: res.locals.appUrl(callbackUrl),
+    callbackUrl: res.locals.plivoCallbackUrl(callbackUrl),
     hangupOnStar: 'true',
     stayAlone: false,
     endConferenceOnExit: true,
-    action: res.locals.appUrl(`survey?q=disposition&caller_id=${caller_id}&campaign_id=${query.campaign_id}`)
+    action: res.locals.plivoCallbackUrl(`survey?q=disposition&caller_id=${caller_id}&campaign_id=${query.campaign_id}`)
   }
   if (process.env.ENABLE_ANSWER_MACHINE_SHORTCUT) params.digitsMatch = ['3']
   if (campaign.transfer_to_target) params.digitsMatch = (params.digitsMatch || []).concat('9')
@@ -466,11 +466,11 @@ app.post('/resume_survey', async ({ query, body }, res) => {
     const original_caller_id = call.caller_id
     await call.$query().patch({ caller_id: query.caller_id })
     r.addSpeakI18n('last_call_outcome')
-    r.addRedirect(res.locals.appUrl(`survey?call_id=${call.id}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&q=disposition&undo=1`))
+    r.addRedirect(res.locals.plivoCallbackUrl(`survey?call_id=${call.id}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&q=disposition&undo=1`))
     await Event.query().insert({ name: 'resume calling', campaign_id: query.campaign_id, caller_id: query.caller_id, call_id: call.id, value: { original_caller_id } })
   } else {
     r.addSpeakI18n('continuing_calling')
-    r.addRedirect(res.locals.appUrl(`ready?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&resumed=1`))
+    r.addRedirect(res.locals.plivoCallbackUrl(`ready?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&resumed=1`))
   }
   res.send(r.toXML())
 })
@@ -504,10 +504,10 @@ app.post('/conference_event/caller', async ({ query, body }, res) => {
     if (call) {
       const params = body.ConferenceDigitsMatch === '3' ? {
         call_uuid: body.CallUUID,
-        aleg_url: res.locals.appUrl(`survey_result?q=disposition&caller_id=${query.caller_id}&call_id=${call.id}&campaign_id=${query.campaign_id}&digit=3&incall=1`),
+        aleg_url: res.locals.plivoCallbackUrl(`survey_result?q=disposition&caller_id=${query.caller_id}&call_id=${call.id}&campaign_id=${query.campaign_id}&digit=3&incall=1`),
       } : {
           call_uuid: call.callee_call_uuid,
-          aleg_url: res.locals.appUrl(`transfer_to_target?call_id=${call.id}&campaign_id=${query.campaign_id}`)
+          aleg_url: res.locals.plivoCallbackUrl(`transfer_to_target?call_id=${call.id}&campaign_id=${query.campaign_id}`)
         }
       try {
         await plivo_api('transfer_call', params)
@@ -563,16 +563,16 @@ app.post('/survey', async ({ query, body }, res) => {
   if (!call) {
     r.addSpeakI18n('left_call_queue')
     await Event.query().insert({ campaign_id: query.campaign_id, name: 'left queue without call', value: body, caller_id })
-    r.addRedirect(res.locals.appUrl(`call_again?caller_id=${caller_id}&campaign_id=${query.campaign_id}`))
+    r.addRedirect(res.locals.plivoCallbackUrl(`call_again?caller_id=${caller_id}&campaign_id=${query.campaign_id}`))
     return res.send(r.toXML())
   }
   if (call.status === 'machine_detection') {
     r.addSpeakI18n('answering_machine_detected')
-    r.addRedirect(res.locals.appUrl(`ready?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`))
+    r.addRedirect(res.locals.plivoCallbackUrl(`ready?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`))
     return res.send(r.toXML())
   }
   const surveyResponse = r.addGetDigits({
-    action: res.locals.appUrl(`survey_result?q=${question}&caller_id=${caller_id}&call_id=${call.id}&campaign_id=${query.campaign_id}`),
+    action: res.locals.plivoCallbackUrl(`survey_result?q=${question}&caller_id=${caller_id}&call_id=${call.id}&campaign_id=${query.campaign_id}`),
     redirect: true,
     retries: 10,
     numDigits: 1,
@@ -599,9 +599,9 @@ app.post('/survey_result', async ({ query, body }, res) => {
 
   if (multiple && (body.Digits === '*' || query.digit === '*')) {
     if (question.next) {
-      r.addRedirect(res.locals.appUrl(`survey?q=${question.next}&call_id=${query.call_id}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`))
+      r.addRedirect(res.locals.plivoCallbackUrl(`survey?q=${question.next}&call_id=${query.call_id}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`))
     } else {
-      r.addRedirect(res.locals.appUrl(`call_again?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&call_id=${query.call_id}`))
+      r.addRedirect(res.locals.plivoCallbackUrl(`call_again?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&call_id=${query.call_id}`))
     }
     return res.send(r.toXML())
   }
@@ -636,22 +636,22 @@ app.post('/survey_result', async ({ query, body }, res) => {
   }
 
   if (data.question != 'disposition' && question.multiple && !all_possible_responses_entered) {
-    r.addRedirect(res.locals.appUrl(`survey_multiple?q=${query.q}&call_id=${query.call_id}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`))
+    r.addRedirect(res.locals.plivoCallbackUrl(`survey_multiple?q=${query.q}&call_id=${query.call_id}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`))
     return res.send(r.toXML())
   } else if (query.q != 'disposition' && question.multiple && all_possible_responses_entered) {
     r.addSpeakI18n('survey_multiple_all_possible_entered', { question: question.name })
     if (question.next) {
-      r.addRedirect(res.locals.appUrl(`survey?q=${question.next}&call_id=${query.call_id}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`))
+      r.addRedirect(res.locals.plivoCallbackUrl(`survey?q=${question.next}&call_id=${query.call_id}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`))
       return res.send(r.toXML())
     }
   }
 
   if (next) {
-    r.addRedirect(res.locals.appUrl(`survey?q=${next}&call_id=${query.call_id}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`))
+    r.addRedirect(res.locals.plivoCallbackUrl(`survey?q=${next}&call_id=${query.call_id}&caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`))
   } else if (data.question === 'disposition' && query.incall) {
-    r.addRedirect(res.locals.appUrl(`ready?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`))
+    r.addRedirect(res.locals.plivoCallbackUrl(`ready?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`))
   } else {
-    r.addRedirect(res.locals.appUrl(`call_again?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&call_id=${query.call_id}`))
+    r.addRedirect(res.locals.plivoCallbackUrl(`call_again?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}&call_id=${query.call_id}`))
   }
   res.send(r.toXML())
 })
@@ -671,7 +671,7 @@ app.post('/survey_multiple', async ({ query }, res) => {
   _.remove(validDigits, (digit) => _.includes(matched_previous_response_keys, digit))
   if (previous_survey_results.length > 0) { validDigits.push('*') }
   const surveyResponse = r.addGetDigits({
-    action: res.locals.appUrl(`survey_result?q=${question}&caller_id=${query.caller_id}&call_id=${call.id}&campaign_id=${query.campaign_id}&multiple=1`),
+    action: res.locals.plivoCallbackUrl(`survey_result?q=${question}&caller_id=${query.caller_id}&call_id=${call.id}&campaign_id=${query.campaign_id}&multiple=1`),
     redirect: true,
     retries: 10,
     numDigits: 1,
@@ -694,7 +694,7 @@ app.post('/call_again', async ({ query }, res) => {
       r.addWait({ length: 1 })
       const next_campaign_number = sayPhoneNumber(next_campaign.phone_number)
       r.addSpeakI18n('campaign_status_completed_with_next', { campaign_name: campaign.name, next_campaign_name: next_campaign.name, next_campaign_number })
-      r.addRedirect(res.locals.appUrl(`connect?campaign_id=${next_campaign.id}`))
+      r.addRedirect(res.locals.plivoCallbackUrl(`connect?campaign_id=${next_campaign.id}`))
       return res.send(r.toXML())
     }
   }
@@ -737,14 +737,14 @@ app.post('/call_again', async ({ query }, res) => {
   let readyUrl = `ready?caller_id=${query.caller_id}&campaign_id=${query.campaign_id}`
   if (query.call_id) readyUrl += `&call_id=${query.call_id}`
   const callAgain = r.addGetDigits({
-    action: res.locals.appUrl(readyUrl),
+    action: res.locals.plivoCallbackUrl(readyUrl),
     timeout: 10,
     retries: 10,
     numDigits: 1,
     validDigits
   })
   callAgain.addSpeakLanguage(message)
-  r.addRedirect(res.locals.appUrl('disconnect'))
+  r.addRedirect(res.locals.plivoCallbackUrl('disconnect'))
   res.send(r.toXML())
 })
 
@@ -755,7 +755,7 @@ app.post('/disconnect', (req, res) => {
 
   if (process.env.ALLOW_USER_AUDIO_FEEDBACK === 'true') {
     const feedback = r.addGetDigits({
-      action: res.locals.appUrl('feedback'),
+      action: res.locals.plivoCallbackUrl('feedback'),
       timeout: 5,
       retries: 2
     })
@@ -769,7 +769,7 @@ app.post('/feedback', (req, res) => {
   const r = plivo.Response()
   r.addSpeakI18n('feedback_instructions')
   r.addRecord({
-    action: res.locals.appUrl('log'),
+    action: res.locals.plivoCallbackUrl('log'),
     maxLength: 60,
     redirect: false
   })
@@ -801,8 +801,8 @@ app.post('/call_ended', async ({ body, query }, res) => {
     const params = {
       from: campaign.phone_number || '1111111111',
       to: sipFormatNumber(caller.phone_number),
-      answer_url: res.locals.appUrl(`connect?campaign_id=${campaign.id}&callback=1&number=${caller.phone_number}`),
-      hangup_url: res.locals.appUrl(`call_ended?campaign_id=${campaign.id}&callback=1&number=${caller.phone_number}`),
+      answer_url: res.locals.plivoCallbackUrl(`connect?campaign_id=${campaign.id}&callback=1&number=${caller.phone_number}`),
+      hangup_url: res.locals.plivoCallbackUrl(`call_ended?campaign_id=${campaign.id}&callback=1&number=${caller.phone_number}`),
       ring_timeout: 30
     }
     if (process.env.SIP_HEADERS && params.to.match(/^sip:/)) params.sip_headers = process.env.SIP_HEADERS

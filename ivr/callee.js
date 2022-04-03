@@ -44,7 +44,7 @@ app.post('/answer', async ({body, query}, res) => {
         conference_id: `conference-${caller.id}`,
         member_id: caller.conference_member_id,
         text: name,
-        callback_url: res.locals.appUrl(`log?event=speak_name`)
+        callback_url: res.locals.plivoCallbackUrl(`log?event=speak_name`)
       }, voice())
       try{
         if (process.env.SPEAK_NAMES) await plivo_api('speak_conference_member', params)
@@ -58,7 +58,7 @@ app.post('/answer', async ({body, query}, res) => {
       startConferenceOnEnter: false,
       stayAlone: false,
       endConferenceOnExit: true,
-      callbackUrl: res.locals.appUrl(`conference_event/callee?caller_id=${caller.id}&campaign_id=${query.campaign_id}`)
+      callbackUrl: res.locals.plivoCallbackUrl(`conference_event/callee?caller_id=${caller.id}&campaign_id=${query.campaign_id}`)
     })
   } else {
     const call = await Call.query().insert({
