@@ -1,5 +1,6 @@
 const expect = require('expect.js')
 const nock = require('nock')
+const { set_callback_base_url } = require('../api/plivo')
 const { plivo_setup_campaigns } = require('../campaigns/plivo_setup')
 const { dropFixtures } = require('./test_helper')
 const { Campaign } = require('../models')
@@ -17,6 +18,8 @@ process.env.COUNTRY_CODE = '61'
 process.env.PLIVO_OUTGOING_HANGUP_APP_ID = '123123'
 
 const numberSetupCampaign = Object.assign({}, defaultCampaign, {plivo_setup_status: 'needed', plivo_setup_outgoing_status: 'needed', user_set_outgoing_number: true})
+
+set_callback_base_url('https://test')
 
 describe('plivo_setup_campaigns', () => {
   let searchRentedNumbersCall, createApplicationCall, editRentedNumberCall
