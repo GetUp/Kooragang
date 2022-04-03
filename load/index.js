@@ -1,3 +1,5 @@
+const { get_callback_base_url } = require('../api/plivo')
+
 const port = process.env.PORT || 4080
 const express = require('express')
 const plivo = require('plivo')
@@ -46,8 +48,8 @@ app.use((req, res, next) => {
   next()
 })
 
-const host = process.env.BASE_URL
-const appUrl = endpoint => endpoint ? `${host}/${endpoint}` : host
+const callback_url = get_callback_base_url()
+const plivoCallbackUrl = endpoint => endpoint ? `${callback_url}/${endpoint}` : callback_url
 
 app.get('/', (req, res) => res.send('<_-.-_>let\'s test.</_-.-_>'))
 
@@ -58,7 +60,7 @@ app.all('/answer', async (req, res) => {
   r.addWait({length: 10})
   r.addDTMF(1)
   r.addWait({length: 15})
-  r.addRedirect(appUrl(`cycle?agent=${req.query.agent}`))
+  r.addRedirect(plivoCallbackUrl(`cycle?agent=${req.query.agent}`))
   return res.send(r.toXML())
 })
 app.all('/hangup', async (req, res) => {
@@ -92,7 +94,7 @@ app.all('/cycle', async (req, res) => {
   }
   state[req.query.agent] = caller.status
   r.addWait({length: (15 + _.random(4))})
-  r.addRedirect(appUrl(`cycle?agent=${req.query.agent}`))
+  r.addRedirect(plivoCallbackUrl(`cycle?agent=${req.query.agent}`))
   return res.send(r.toXML())
 })
 
@@ -124,8 +126,8 @@ const addAgent = async (count) => {
     const params = {
       to: selectTarget(),
       from : agent,
-      answer_url : appUrl(`answer?agent=${agent}`),
-      hangup_url : appUrl(`hangup?agent=${agent}`),
+      answer_url : plivoCallbackUrl(`answer?agent=${agent}`),
+      hangup_url : plivoCallbackUrl(`hangup?agent=${agent}`),
       time_limit: 60 * 120
     }
     try{

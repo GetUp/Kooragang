@@ -1,4 +1,4 @@
-const { plivo_api } = require('../api/plivo')
+const { get_callback_base_url, plivo_api } = require('../api/plivo')
 const _ = require('lodash')
 const { Campaign } = require('../models')
 const { NoNumbersError } = require('../api/middleware/errors')
@@ -23,12 +23,12 @@ const setup_inbound = async (campaign) => {
 }
 
 const setup_inbound_infrastructure = async (campaign) => {
-  const base_url = process.env.BASE_URL || 'https://test'
+  const callback_url = get_callback_base_url()
   const payload = {
     app_name: `kooragang-${process.env.NODE_ENV || 'development'}-${campaign.id}-${campaign.name.replace(/\W/g, '_').toLowerCase()}_${moment().format('YYMMDDHHmm')}`,
-    answer_url: `${base_url}/connect?campaign_id=${campaign.id}`,
-    fallback_answer_url: `${base_url}/log?event=fallback&campaign_id=${campaign.id}`,
-    hangup_url: `${base_url}/call_ended?campaign_id=${campaign.id}`
+    answer_url: `${callback_url}/connect?campaign_id=${campaign.id}`,
+    fallback_answer_url: `${callback_url}/log?event=fallback&campaign_id=${campaign.id}`,
+    hangup_url: `${callback_url}/call_ended?campaign_id=${campaign.id}`
   }
   try {
     const inbound_number = await create_app_and_link_number(payload, campaign.number_region)

@@ -4,7 +4,6 @@ const { wrap } = require('./middleware')
 const { BadRequestError, NotFoundError } = require("./middleware/errors")
 const { plivo_api } = require('./plivo')
 const { callerCallParams } = require('../dialer')
-const host = process.env.BASE_URL
 
 //index
 app.get('/api/campaigns', wrap(async (req, res, next) => {
@@ -82,7 +81,7 @@ app.post('/api/campaigns/:id/assessment', wrap(async (req, res, next) => {
   if (!campaign) return next(new NotFoundError('No Campaign Exists With ID: ' + req.params.id))
   if (!req.body.data.mobile_number) return next(new BadRequestError('No Phone Number'))
   const mobile = process.env.COUNTRY_ISO == 'AU' ? req.body.data.mobile_number.replace(/^0/, '61'): req.body.data.mobile_number
-  await plivo_api('make_call', callerCallParams(campaign, mobile, host, 1))
+  await plivo_api('make_call', callerCallParams(campaign, mobile, 1))
   return res.json({data: req.params.id})
 }))
 
@@ -92,7 +91,7 @@ app.post('/api/campaigns/:id/outbound_caller', wrap(async (req, res, next) => {
   if (!campaign) return next(new NotFoundError('No Campaign Exists With ID: ' + req.params.id))
   if (!req.body.data.mobile_number) return next(new BadRequestError('No Phone Number'))
   const mobile = process.env.COUNTRY_ISO == 'AU' ? req.body.data.mobile_number.replace(/^0/, '61'): req.body.data.mobile_number
-  await plivo_api('make_call', callerCallParams(campaign, mobile, host, 0))
+  await plivo_api('make_call', callerCallParams(campaign, mobile, 0))
   return res.json({data: req.params.id})
 }))
 

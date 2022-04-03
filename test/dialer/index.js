@@ -3,8 +3,8 @@ const nock = require('nock')
 const dialer = require('../../dialer')
 const moment = require('moment')
 const _ = require('lodash')
-
-const {dropFixtures} = require('../test_helper')
+const { set_callback_base_url, plivo_api } = require('../../api/plivo')
+const { dropFixtures } = require('../test_helper')
 const { Audience, QueuedCall, Callee, Caller, Call, Campaign, Event, SurveyResult } = require('../../models')
 
 const hours_of_operation_full = require('../../seeds/hours_of_operation_full.example.json')
@@ -26,9 +26,10 @@ const insertMinNumberOfCallers = async (campaign) => {
   }
 }
 
+set_callback_base_url('http://test')
+
 describe('.dial', () => {
   let callee, campaign
-  const testUrl = 'http://test'
   beforeEach(async () => {
     await dropFixtures()
     campaign = await Campaign.query().insert(defaultCampaign)
@@ -52,7 +53,7 @@ describe('.dial', () => {
           .post(/Call/, true)
           .query(true)
           .reply(200)
-        await dialer.dial(testUrl, campaign)
+        await dialer.dial(campaign)
         expect(await Event.query()).to.eql([])
       })
     })
@@ -72,7 +73,7 @@ describe('.dial', () => {
           })
           .query(true)
           .reply(200)
-        await dialer.dial(testUrl, campaign)
+        await dialer.dial(campaign)
         mockedApiCall.done()
       })
     })
@@ -84,7 +85,7 @@ describe('.dial', () => {
           .post(/Call/, body => body.from === process.env.NUMBER)
           .query(true)
           .reply(200)
-        await dialer.dial(testUrl, campaign)
+        await dialer.dial(campaign)
         mockedApiCall.done()
       })
     })
@@ -98,7 +99,7 @@ describe('.dial', () => {
           .post(/Call/, body => body.ring_timeout === campaign.ring_timeout)
           .query(true)
           .reply(200)
-        await dialer.dial(testUrl, campaign)
+        await dialer.dial(campaign)
         mockedApiCall.done()
       })
     })
@@ -113,7 +114,7 @@ describe('.dial', () => {
             .post(/Call/, body => !body.sip_headers)
             .query(true)
             .reply(200)
-          await dialer.dial(testUrl, campaign)
+          await dialer.dial(campaign)
           mockedApiCall.done()
         })
       })
@@ -130,7 +131,7 @@ describe('.dial', () => {
             .post(/Call/, body => body.to === 'sip:61400000123@sip.example.com')
             .query(true)
             .reply(200)
-          await dialer.dial(testUrl, campaign)
+          await dialer.dial(campaign)
           mockedApiCall.done()
         })
       })
@@ -145,7 +146,7 @@ describe('.dial', () => {
           .post(/Call/, body => body.answer_url.match(/Tim-James---/))
           .query(true)
           .reply(200)
-        await dialer.dial(testUrl, campaign)
+        await dialer.dial(campaign)
         mockedApiCall.done()
       })
     })
@@ -156,7 +157,7 @@ describe('.dial', () => {
           .post(/Call/, _ => true)
           .query(true)
           .reply(404)
-        await dialer.dial(testUrl, campaign)
+        await dialer.dial(campaign)
         expect((await QueuedCall.query()).length).to.be(0)
         mockedApiCall.done()
       })
@@ -184,7 +185,7 @@ describe('.dial', () => {
       })
 
       it('should reset the ratio to 1', async () => {
-        await dialer.dial(testUrl, campaign)
+        await dialer.dial(campaign)
         const updatedCampaign = await Campaign.query().where({id: campaign.id}).first()
         expect(updatedCampaign.ratio).to.be(1)
       })
@@ -193,7 +194,7 @@ describe('.dial', () => {
         beforeEach(async () => campaign = await campaign.$query().patchAndFetchById(campaign.id, {ratio: 1.0}))
 
         it('should not create an event', async () => {
-          await dialer.dial(testUrl, campaign)
+          await dialer.dial(campaign)
           expect((await Event.query()).length).to.be(0)
         })
       })
@@ -205,7 +206,7 @@ describe('.dial', () => {
         campaign = await Campaign.query().patchAndFetchById(campaign.id, {last_checked_ratio_at: moment().subtract(4, 'minutes').toDate()})
       })
       it('should reset the ratio to 1', async () => {
-        await dialer.dial(testUrl, campaign)
+        await dialer.dial(campaign)
         const updatedCampaign = await Campaign.query().where({id: campaign.id}).first()
         expect(updatedCampaign.ratio).to.be(1.0)
       })
@@ -217,7 +218,7 @@ describe('.dial', () => {
         campaign = await Campaign.query().patchAndFetchById(campaign.id, {min_callers_for_ratio: 5})
       })
       it('should reset the ratio to 1', async () => {
-        await dialer.dial(testUrl, campaign)
+        await dialer.dial(campaign)
         const updatedCampaign = await Campaign.query().where({id: campaign.id}).first()
         expect(updatedCampaign.ratio).to.be(1.0)
       })
@@ -227,7 +228,7 @@ describe('.dial', () => {
       beforeEach(() => insertMinNumberOfCallers(campaign))
       beforeEach(async () => await Call.query().insert({callee_id: callee.id, ended_at: new Date()}))
       it('should increase the calling ratio by the campaign ratio_increment', async () => {
-        await dialer.dial(testUrl, campaign)
+        await dialer.dial(campaign)
         const updatedCampaign = await Campaign.query().where({id: campaign.id}).first()
         expect(updatedCampaign.ratio).to.be(1.2)
       })
@@ -237,7 +238,7 @@ describe('.dial', () => {
           campaign = await Campaign.query().patchAndFetchById(campaign.id, {ratio: campaign.max_ratio})
         })
         it('should not increase the calling ratio', async () => {
-          await dialer.dial(testUrl, campaign)
+          await dialer.dial(campaign)
           const updatedCampaign = await Campaign.query().where({id: campaign.id}).first()
           expect(updatedCampaign.ratio).to.be(campaign.max_ratio)
         })
@@ -255,7 +256,7 @@ describe('.dial', () => {
       })
       beforeEach(() => insertMinNumberOfCallers(campaign))
       it('should decrease the calling ratio using the ratio_decrease_factor', async () => {
-        await dialer.dial(testUrl, campaign)
+        await dialer.dial(campaign)
         const updatedCampaign = await Campaign.query().where({id: campaign.id}).first()
         const expectedRatio = campaign.max_ratio - campaign.ratio_increment * campaign.ratio_decrease_factor
         expect(updatedCampaign.ratio).to.be(expectedRatio)
@@ -277,13 +278,13 @@ describe('.dial', () => {
       })
       beforeEach(() => insertMinNumberOfCallers(campaign))
       it('should increase the calling ratio', async () => {
-        await dialer.dial(testUrl, campaign)
+        await dialer.dial(campaign)
         const updatedCampaign = await Campaign.query().where({id: campaign.id}).first()
         expect(updatedCampaign.ratio).to.be(currentRatio + 0.2)
       })
 
       it('should create an event', async () => {
-        await dialer.dial(testUrl, campaign)
+        await dialer.dial(campaign)
         const event = await Event.query().where({campaign_id: campaign.id, name: 'ratio'}).first()
         expect(event).to.be.an(Event)
         expect(event.value).to.be('{"ratio":"2.2","old_ratio":2,"ratio_window":600,"total":101,"drops":1,"calculatedRatio":0.009900990099009901}')
@@ -298,7 +299,7 @@ describe('.dial', () => {
         })
       })
       it('should make no further adjustments', async () => {
-        await dialer.dial(testUrl, campaign)
+        await dialer.dial(campaign)
         const updatedCampaign = await Campaign.query().where({id: campaign.id}).first()
         expect(updatedCampaign.ratio).to.be(campaign.max_ratio - 1)
       })
@@ -333,7 +334,7 @@ describe('.dial', () => {
           })
 
           it('should call callees prioritised by their audience priority not excluding those within max_call_attempts', async () => {
-            await dialer.dial(testUrl, campaign)
+            await dialer.dial(campaign)
             expect((await completedCallee.$query()).last_called_at).to.be(null)
             expect((await busyCallee.$query()).last_called_at).to.not.be(null)
             expect((await uncalledCallee.$query()).last_called_at).to.be(null)
@@ -348,7 +349,7 @@ describe('.dial', () => {
           })
 
           it('should call callees prioritised by their id excluding those outside max_call_attempts', async () => {
-            await dialer.dial(testUrl, campaign)
+            await dialer.dial(campaign)
             expect((await completedCallee.$query()).last_called_at).to.be(null)
             expect((await busyCallee.$query()).last_called_at).to.be(null)
             expect((await uncalledCallee.$query()).last_called_at).to.not.be(null)
@@ -364,7 +365,7 @@ describe('.dial', () => {
         })
         context('with callees with different call counts', () => {
           it('should call callees prioritised by lowest call count', async () => {
-            await dialer.dial(testUrl, campaign)
+            await dialer.dial(campaign)
             expect((await completedCallee.$query()).last_called_at).to.be(null)
             expect((await busyCallee.$query()).last_called_at).to.be(null)
             expect((await uncalledCallee.$query()).last_called_at).to.not.be(null)
@@ -391,7 +392,7 @@ describe('.dial', () => {
 
           context('with dissimilar last_called_at', () => {
             it('should call callees prioritised by last_called_at', async () => {
-              await dialer.dial(testUrl, campaign)
+              await dialer.dial(campaign)
               expect(moment((await recentlyCalledCallee.$query()).last_called_at).format())
                 .to.be(moment(recentDate).format())
               expect(moment((await pastCalledCallee.$query()).last_called_at).format())
@@ -405,7 +406,7 @@ describe('.dial', () => {
             })
 
             it('should call callees prioritised by id', async () => {
-              await dialer.dial(testUrl, campaign)
+              await dialer.dial(campaign)
               expect(moment((await recentlyCalledCallee.$query()).last_called_at).format())
                 .to.not.be(moment(pastDate).format())
               expect(moment((await pastCalledCallee.$query()).last_called_at).format())
@@ -435,7 +436,7 @@ describe('.dial', () => {
           .query(true)
           .times(4)
           .reply(200)
-        await dialer.dial(testUrl, campaign)
+        await dialer.dial(campaign)
         mockedApiCall.done()
       })
 
@@ -446,7 +447,7 @@ describe('.dial', () => {
           .times(4)
           .reply(200)
         expect((await Callee.query()).length).to.be(4)
-        await dialer.dial(testUrl, campaign)
+        await dialer.dial(campaign)
         const event = await Event.query().where({campaign_id: campaign.id, name: 'calling'}).first()
         expect(event).to.be.an(Event)
         expect(event.value).to.match(/callsToMake/)
@@ -474,7 +475,7 @@ describe('.dial', () => {
           .query(true)
           .times(2)
           .reply(200)
-        await dialer.dial(testUrl, campaign)
+        await dialer.dial(campaign)
         mockedApiCall.done()
       })
     })
@@ -496,7 +497,7 @@ describe('.dial', () => {
       it('should not make any calls', async () => {
         await Caller.query().insert({phone_number: '1', status: 'available', campaign_id: campaign.id})
         await Caller.query().insert({phone_number: '2', status: 'available', campaign_id: campaign.id})
-        await dialer.dial(testUrl, campaign)
+        await dialer.dial(campaign)
       })
 
       context('with log_no_calls set', () => {
@@ -506,7 +507,7 @@ describe('.dial', () => {
         it('should record an event', async () => {
           await Caller.query().insert({phone_number: '1', status: 'available', campaign_id: campaign.id})
           await Caller.query().insert({phone_number: '2', status: 'in-call', campaign_id: campaign.id})
-          await dialer.dial(testUrl, campaign)
+          await dialer.dial(campaign)
           const event = await Event.query().where({campaign_id: campaign.id, name: 'no-calling'}).first()
           expect(event).to.be.an(Event)
           const {incall, callers, ratio, queued_calls} = JSON.parse(event.value)
@@ -540,13 +541,13 @@ describe('.dial', () => {
         await Caller.query().insert({phone_number: '1', status: 'available', campaign_id: campaign.id})
         await Caller.query().insert({phone_number: '2', status: 'available', campaign_id: campaign.id})
         await Caller.query().insert({phone_number: '3', status: 'available', campaign_id: campaign.id})
-        await dialer.dial(testUrl, campaign)
+        await dialer.dial(campaign)
         const answered_callee = await Callee.query().where({campaign_id: campaign.id}).whereNotNull('last_called_at').first()
         await QueuedCall.query().where({callee_id: answered_callee.id}).delete()
         // insert an old queued call that should be ignored
         await QueuedCall.query().insert({callee_id: answered_callee.id, campaign_id: campaign.id, created_at: moment().subtract(16, 'minutes').toDate()})
         expect((await QueuedCall.query().where({campaign_id: campaign.id})).length).to.be(3)
-        await dialer.dial(testUrl, campaign)
+        await dialer.dial(campaign)
         mockedApiCall.done()
       })
     })
@@ -570,7 +571,7 @@ describe('.dial', () => {
           .query(true)
           .times(3)
           .reply(200)
-        await dialer.dial(testUrl, campaign)
+        await dialer.dial(campaign)
         mockedApiCall.done()
       })
 
@@ -580,7 +581,7 @@ describe('.dial', () => {
           .query(true)
           .times(3)
           .reply(200)
-        await dialer.dial(testUrl, campaign)
+        await dialer.dial(campaign)
         expect((await QueuedCall.query().where({status: '200', campaign_id: campaign.id})).length).to.be(3)
         mockedApiCall.done()
       })
@@ -591,7 +592,7 @@ describe('.dial', () => {
           .query(true)
           .times(3)
           .reply(200)
-        await dialer.dial(testUrl, campaign)
+        await dialer.dial(campaign)
         expect((await Event.query().where({name: 'call_initiated'})).length).to.be(3)
       })
     })
